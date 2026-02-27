@@ -1,0 +1,33 @@
+name: cryptalk
+description: "Cryptalk 加密聊天应用."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  device_info_plus: ^12.3.0
+  dio: ^5.9.1
+  flutter:
+    sdk: flutter
+  gal: ^2.3.2
+  image_picker: ^1.2.1
+  logger: ^2.6.2
+  lpinyin: ^2.0.3
+  mobile_scanner: ^7.2.0
+  package_info_plus: ^9.0.0
+  path_provider: ^2.1.5
+  qr_flutter: ^4.1.0
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
