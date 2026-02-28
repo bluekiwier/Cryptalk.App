@@ -3,6 +3,8 @@ import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../services/friend_service.dart';
+import '../chat/chat_detail_page.dart';
+import '../../models/conversation.dart';
 
 /// 联系人详情页面
 /// 展示联系人的个人信息和操作按钮
@@ -181,7 +183,22 @@ class ContactDetailPage extends StatelessWidget {
               icon: Icons.chat_bubble_rounded,
               label: '发消息',
               isPrimary: true,
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                // 构造一个临时的 Conversation 对象用于私聊
+                final conv = Conversation(
+                  id: user.id, // 用用户ID作为初始ID
+                  chatUserId: user.id,
+                  title: user.nickname,
+                  avatar: user.avatar,
+                  isGroup: false,
+                );
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatDetailPage(conversation: conv),
+                  ),
+                );
+              },
             ),
           ),
           // const SizedBox(width: 12),

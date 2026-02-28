@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
@@ -8,6 +9,7 @@ import '../config/api_config.dart';
 import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'chat_service.dart';
 
 /// 认证服务 - 管理用户登录/注册状态
 class AccountService extends ChangeNotifier {
@@ -27,7 +29,11 @@ class AccountService extends ChangeNotifier {
     String systemInfo = 'Unknown System';
 
     try {
-      if (Platform.isAndroid) {
+      if (kIsWeb) {
+        final webInfo = await deviceInfo.webBrowserInfo;
+        systemInfo =
+            'Web; ${webInfo.browserName.name}; ${webInfo.userAgent ?? "Unknown"}';
+      } else if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
         systemInfo =
             'Android ${androidInfo.version.release}; ${androidInfo.brand}; ${androidInfo.model}';
@@ -62,10 +68,10 @@ class AccountService extends ChangeNotifier {
       _cachedUserAgent = await _getUserAgent(_cachedAppVersion!);
     }
 
-    final headers = <String, dynamic>{
-      'App-Version': _cachedAppVersion,
-      'User-Agent': _cachedUserAgent,
-    };
+    final headers = <String, dynamic>{'App-Version': _cachedAppVersion};
+    if (!kIsWeb) {
+      headers['User-Agent'] = _cachedUserAgent;
+    }
     if (extraHeaders != null) {
       headers.addAll(extraHeaders);
     }
@@ -187,6 +193,12 @@ class AccountService extends ChangeNotifier {
           await prefs.setString('refreshToken', data['jwt']['refreshToken']);
         }
 
+        // WebSocket 服务器地址
+        final wsServer = data['server'];
+        if (wsServer != null) {
+          await prefs.setString('wsServer', wsServer.toString());
+        }
+
         _currentUser = User(
           id: data['user']['id']?.toString() ?? '',
           account: data['user']['account'] ?? 'user',
@@ -197,6 +209,9 @@ class AccountService extends ChangeNotifier {
           signature: data['user']['signature']?.toString() ?? '',
           isOnline: true,
         );
+
+        // 连接 WebSocket
+        ChatService().connect();
 
         // 获取过期时间并开启定时刷新
         if (data['jwt']['expiresTicks'] != null) {
@@ -399,6 +414,10 @@ Data: {} (无请求体)''');
       // 清除本地存储的 Token
       await prefs.remove('accessToken');
       await prefs.remove('refreshToken');
+      await prefs.remove('wsServer');
+
+      // 断开 WebSocket
+      ChatService().disconnect();
 
       _currentUser = null;
       _errorMessage = null;

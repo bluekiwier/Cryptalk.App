@@ -126,6 +126,7 @@ class MockData {
   static final List<Conversation> conversations = [
     Conversation(
       id: 'conv_1',
+      chatUserId: 'user_1',
       title: '张三',
       avatar: '👨‍💻',
       lastMessage: Message(
@@ -139,6 +140,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_2',
+      chatUserId: 'user_2',
       title: '李四',
       avatar: '👩‍🎨',
       lastMessage: Message(
@@ -151,6 +153,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_3',
+      chatUserId: 'user_3',
       title: '技术交流群',
       avatar: '💻',
       isGroup: true,
@@ -166,6 +169,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_4',
+      chatUserId: 'user_4',
       title: '赵六',
       avatar: '👨‍🍳',
       lastMessage: Message(
@@ -179,6 +183,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_5',
+      chatUserId: 'user_5',
       title: '钱七',
       avatar: '🧑‍🚀',
       lastMessage: Message(
@@ -191,6 +196,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_6',
+      chatUserId: 'user_6',
       title: '项目组',
       avatar: '🏢',
       isGroup: true,
@@ -211,6 +217,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_7',
+      chatUserId: 'user_7',
       title: '孙八',
       avatar: '👩‍⚕️',
       lastMessage: Message(
@@ -225,6 +232,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_8',
+      chatUserId: 'user_8',
       title: '周九',
       avatar: '🧑‍🏫',
       lastMessage: Message(
@@ -237,6 +245,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_9',
+      chatUserId: 'user_9',
       title: '美食分享群',
       avatar: '🍜',
       isGroup: true,
@@ -251,6 +260,7 @@ class MockData {
     ),
     Conversation(
       id: 'conv_10',
+      chatUserId: 'user_10',
       title: '郑十一',
       avatar: '🧑‍💼',
       lastMessage: Message(

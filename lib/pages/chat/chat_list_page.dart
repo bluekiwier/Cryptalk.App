@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../data/mock_data.dart';
 import '../../models/conversation.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/search_bar_widget.dart';
+import '../../services/conversation_service.dart';
 import 'chat_detail_page.dart';
 import '../contacts/scanner_page.dart';
 import '../contacts/add_friend_page.dart';
@@ -11,8 +11,32 @@ import '../profile/my_qr_code_page.dart';
 
 /// 聊天列表页面
 /// 展示最近的聊天会话
-class ChatListPage extends StatelessWidget {
+class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
+
+  @override
+  State<ChatListPage> createState() => _ChatListPageState();
+}
+
+class _ChatListPageState extends State<ChatListPage> {
+  List<Conversation> _conversations = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  Future<void> _loadConversations() async {
+    final list = await ConversationService().getConversations();
+    if (mounted) {
+      setState(() {
+        _conversations = list;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,15 +49,38 @@ class ChatListPage extends StatelessWidget {
           // 搜索栏
           SliverToBoxAdapter(child: const CustomSearchBar(hintText: '搜索聊天记录')),
           // 会话列表
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final conversation = MockData.conversations[index];
-              return _ConversationTile(
-                conversation: conversation,
-                onTap: () => _openChat(context, conversation),
-              );
-            }, childCount: MockData.conversations.length),
-          ),
+          _isLoading
+              ? const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 50),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              : _conversations.isEmpty
+              ? const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 100),
+                    child: Center(
+                      child: Text(
+                        '暂无聊天会话',
+                        style: TextStyle(color: AppTheme.textHint),
+                      ),
+                    ),
+                  ),
+                )
+              : SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final conversation = _conversations[index];
+                    return _ConversationTile(
+                      conversation: conversation,
+                      onTap: () async {
+                        await _openChat(context, conversation);
+                        // 返回后刷新会话列表
+                        _loadConversations();
+                      },
+                    );
+                  }, childCount: _conversations.length),
+                ),
           // 底部间距
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],
@@ -177,8 +224,8 @@ class ChatListPage extends StatelessWidget {
   }
 
   /// 打开聊天详情
-  void _openChat(BuildContext context, Conversation conversation) {
-    Navigator.push(
+  Future<void> _openChat(BuildContext context, Conversation conversation) {
+    return Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ChatDetailPage(conversation: conversation),

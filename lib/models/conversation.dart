@@ -4,6 +4,7 @@ import 'message.dart';
 /// 会话模型（单聊或群聊）
 class Conversation {
   final String id;
+  final String chatUserId;
   final String title;
   final String avatar;
   final bool isGroup;
@@ -15,6 +16,7 @@ class Conversation {
 
   const Conversation({
     required this.id,
+    required this.chatUserId,
     required this.title,
     required this.avatar,
     this.isGroup = false,

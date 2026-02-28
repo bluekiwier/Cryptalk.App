@@ -4,6 +4,9 @@ import '../../data/mock_data.dart';
 import '../../models/conversation.dart';
 import '../../models/message.dart';
 import '../../widgets/avatar_widget.dart';
+import '../../services/account_service.dart';
+import '../../services/chat_service.dart';
+import '../../services/conversation_service.dart';
 
 /// 聊天详情页面
 /// 展示与某人或某群的具体聊天内容
@@ -20,11 +23,93 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late List<Message> _messages;
+  bool _isLoading = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
-    _messages = MockData.getChatMessages(widget.conversation.id);
+    _messages = [];
+    _loadMessages();
+  }
+
+  /// 从服务器加载消息
+  Future<void> _loadMessages({bool isLoadMore = false}) async {
+    if (_isLoading) return;
+    if (isLoadMore && !_hasMore) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    int minMessageId = 0;
+    if (isLoadMore && _messages.isNotEmpty) {
+      // 找出当前列表中最小的消息ID作为翻页依据
+      minMessageId = _messages
+          .map((m) => int.tryParse(m.id) ?? 0)
+          .where((id) => id > 0)
+          .fold(0, (minId, id) => (minId == 0 || id < minId) ? id : minId);
+    }
+
+    final response = await ConversationService().getMessages(
+      widget.conversation.id,
+      messageId: minMessageId,
+      pageSize: 20,
+    );
+
+    if (response != null && response['success'] == true) {
+      final data = response['data'];
+      final list = (data['list'] as List<dynamic>?) ?? [];
+
+      final newMessages = list.map((json) {
+        return Message(
+          id: json['id']?.toString() ?? '',
+          senderId: json['senderId']?.toString() ?? '',
+          content: json['content']?.toString() ?? '',
+          type: MessageType.values.firstWhere(
+            (e) => e.index == (json['type'] ?? 0),
+            orElse: () => MessageType.text,
+          ),
+          timestamp: json['createdAt'] != null
+              ? DateTime.tryParse(json['createdAt'].toString()) ??
+                    DateTime.now()
+              : DateTime.now(),
+          isRead: true, // 默认设为已读
+        );
+      }).toList();
+
+      // 对新的消息按时间升序（旧在前、新在后）确保UI表现正常
+      newMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+      if (mounted) {
+        setState(() {
+          if (isLoadMore) {
+            _messages.insertAll(0, newMessages);
+          } else {
+            _messages = newMessages;
+          }
+          _hasMore = data['hasMore'] == true;
+          _isLoading = false;
+        });
+
+        // 如果是首次加载或者是刷新最新页，滚动到底部
+        if (!isLoadMore) {
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(
+                _scrollController.position.maxScrollExtent,
+              );
+            }
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -114,29 +199,35 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   /// 构建消息列表
   Widget _buildMessageList() {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: _messages.length,
-      itemBuilder: (context, index) {
-        final message = _messages[index];
-        final isMe = message.senderId == 'user_0';
+    if (_messages.isEmpty && _isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return RefreshIndicator(
+      onRefresh: () => _loadMessages(isLoadMore: true),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: _messages.length,
+        itemBuilder: (context, index) {
+          final message = _messages[index];
+          final isMe = message.senderId == AccountService().currentUser?.id;
 
-        // 时间分隔线
-        final showTime =
-            index == 0 ||
-            _messages[index].timestamp
-                    .difference(_messages[index - 1].timestamp)
-                    .inMinutes >
-                5;
+          // 时间分隔线
+          final showTime =
+              index == 0 ||
+              _messages[index].timestamp
+                      .difference(_messages[index - 1].timestamp)
+                      .inMinutes >
+                  5;
 
-        return Column(
-          children: [
-            if (showTime) _buildTimeLabel(message.timestamp),
-            _buildMessageBubble(message, isMe),
-          ],
-        );
-      },
+          return Column(
+            children: [
+              if (showTime) _buildTimeLabel(message.timestamp),
+              _buildMessageBubble(message, isMe),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -205,7 +296,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           ),
           if (isMe) ...[
             const SizedBox(width: 8),
-            AvatarWidget(avatar: MockData.currentUser.avatar, size: 36),
+            AvatarWidget(
+              avatar:
+                  AccountService().currentUser?.avatar ??
+                  MockData.currentUser.avatar,
+              size: 36,
+            ),
           ],
         ],
       ),
@@ -303,33 +399,62 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   /// 发送消息
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _messages.add(
-        Message(
-          id: 'msg_new_${_messages.length}',
-          senderId: 'user_0',
-          content: text,
-          timestamp: DateTime.now(),
-          isRead: true,
-        ),
-      );
-      _messageController.clear();
-    });
-
-    // 滚动到底部
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+    final currentUser = AccountService().currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('未登录')));
       }
-    });
+      return;
+    }
+
+    // conversation.id 这里我们假定，如果是从联系人详情页进来，它是对方的 receiverId；
+    // 如果是从会话列表进来，它可能是 conversationId。暂时都传对方ID，具体根据后端逻辑判断。
+    final success = await ChatService().sendPrivateMessage(
+      conversationId: widget.conversation.id, // 如果后端接收0表示新会话，这里可以根据具体情况调整
+      senderId: currentUser.id,
+      receiverId: widget.conversation.chatUserId, // 私聊的接收者
+      message: text,
+    );
+
+    if (success) {
+      if (mounted) {
+        setState(() {
+          _messages.add(
+            Message(
+              id: 'msg_new_${_messages.length}',
+              senderId: currentUser.id,
+              content: text,
+              timestamp: DateTime.now(),
+              isRead: true,
+            ),
+          );
+          _messageController.clear();
+        });
+
+        // 滚动到底部
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('消息发送失败，请重试')));
+      }
+    }
   }
 
   /// 格式化消息时间
