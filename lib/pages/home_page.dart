@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/friend_service.dart';
+import '../services/chat_service.dart';
 import 'chat/chat_list_page.dart';
 import 'contacts/contacts_page.dart';
 import 'profile/profile_page.dart';
@@ -19,6 +20,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final List<Widget> _pages;
   late final AnimationController _fabController;
   final FriendService _friendService = FriendService();
+  final ChatService _chatService = ChatService();
 
   /// 好友申请数量，用于通讯录 tab 角标
   int _friendRequestCount = 0;
@@ -46,6 +48,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // 进入首页时加载好友申请数量
     _loadFriendRequestCount();
+
+    // 检查并重新连接 WebSocket（用于 APP 重新打开时）
+    _chatService.checkAndReconnect();
   }
 
   @override

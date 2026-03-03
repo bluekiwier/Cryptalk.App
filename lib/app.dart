@@ -20,7 +20,7 @@ class CryptalkApp extends StatelessWidget {
       listenable: Listenable.merge([accountService, themeService]),
       builder: (context, _) {
         return MaterialApp(
-          title: 'Cryptalk',
+          title: '闲聊',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

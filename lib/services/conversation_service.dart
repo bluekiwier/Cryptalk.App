@@ -14,9 +14,7 @@ class ConversationService {
   Future<List<Conversation>> getConversations() async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.get(
-        '${ApiConfig.baseUrl}/api/conversation/list',
-      );
+      final response = await dio.get('${ApiConfig.baseUrl}/api/conversation/list');
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -31,16 +29,15 @@ class ConversationService {
             unreadCount: (json['unreadCount'] is int)
                 ? json['unreadCount']
                 : int.tryParse(json['unreadCount']?.toString() ?? '0') ?? 0,
-            isPinned: json['isPinned'] == 1 || json['isPinned'] == true,
-            isMuted: json['isMute'] == 1 || json['isMute'] == true,
+            isPinned: json['isPinned'] == true || json['isPinned'] == 1,
+            isMuted: json['isMuted'] == true || json['isMuted'] == 1,
             lastMessage: Message(
               id: json['lastMessageId']?.toString() ?? '',
               content: json['lastMessagePreview']?.toString() ?? '',
               senderId: json['lastSenderId']?.toString() ?? '',
               type: MessageType.text,
               timestamp: json['lastMessageAt'] != null
-                  ? DateTime.tryParse(json['lastMessageAt'].toString()) ??
-                        DateTime.now()
+                  ? DateTime.tryParse(json['lastMessageAt'].toString()) ?? DateTime.now()
                   : DateTime.now(),
               isRead: true,
             ),
@@ -57,19 +54,13 @@ class ConversationService {
   /// [conversationId] 会话ID
   /// [messageId] 翻页用的最小消息ID，首次为0
   /// [pageSize] 每页数量
-  Future<Map<String, dynamic>?> getMessages(
-    dynamic conversationId, {
-    int messageId = 0,
-    int pageSize = 20,
-  }) async {
+  Future<Map<String, dynamic>?> getMessages(dynamic conversationId, {int messageId = 0, int pageSize = 20}) async {
     try {
       final dio = await AccountService().getDio();
       final response = await dio.post(
         '${ApiConfig.baseUrl}/api/conversation/messages',
         data: {
-          'conversationId': conversationId is String
-              ? int.tryParse(conversationId) ?? 0
-              : (conversationId ?? 0),
+          'conversationId': conversationId is String ? int.tryParse(conversationId) ?? 0 : (conversationId ?? 0),
           'messageId': messageId,
           'pageSize': pageSize,
         },

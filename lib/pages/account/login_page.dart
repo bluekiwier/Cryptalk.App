@@ -163,14 +163,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     MediaQuery.of(context).padding.bottom,
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 48),
+                    // const SizedBox(height: 10),
                     // 品牌标识区域
                     _buildBrandSection(),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 24),
                     // 表单区域
                     _buildFormSection(),
                     const SizedBox(height: 32),
@@ -196,32 +196,23 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         child: Column(
           children: [
             // 应用图标
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.chat_bubble_rounded,
-                  size: 44,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            // Container(
+            //   width: 96,
+            //   height: 96,
+            //   decoration: BoxDecoration(color: Colors.transparent),
+            //   child: Center(
+            //     child: Image.asset(
+            //       'assets/images/logo@96.png',
+            //       width: 96,
+            //       height: 96,
+            //       fit: BoxFit.contain,
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(height: 10),
             // 应用名称
             const Text(
-              'Cryptalk',
+              '闲聊',
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.bold,
@@ -279,13 +270,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '登录你的账号',
+                  '登录您的账号',
                   style: TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary.withValues(alpha: 0.8),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 // 手机号输入
                 _buildInputLabel('手机号'),
@@ -382,7 +373,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
                 // 登录按钮
                 _buildLoginButton(),

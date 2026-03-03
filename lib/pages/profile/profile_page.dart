@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../services/account_service.dart';
 import '../../services/theme_service.dart';
+import '../../services/chat_service.dart';
 import 'settings_page.dart';
 import 'change_password_page.dart';
 import 'about_page.dart';
@@ -280,7 +281,7 @@ class ProfilePage extends StatelessWidget {
               return _buildMenuItem(
                 icon: Icons.info_outline_rounded,
                 iconColor: const Color(0xFF06B6D4),
-                label: '关于 Cryptalk',
+                label: '关于闲聊',
                 subtitle: '版本 $version',
                 onTap: () {
                   Navigator.push(
@@ -319,6 +320,8 @@ class ProfilePage extends StatelessWidget {
                   onPressed: () async {
                     // 关闭对话框
                     Navigator.pop(dialogContext);
+                    // 关闭 WebSocket 连接
+                    ChatService().disconnect();
                     // 退出登录
                     await AccountService().logout();
                     // 这里判断外层的 context 是否依然挂载

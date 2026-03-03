@@ -15,13 +15,28 @@ class ChatService extends ChangeNotifier {
   final _logger = Logger();
   WebSocketChannel? _channel;
   bool _isConnected = false;
+  bool _isConnecting = false;
+  Timer? _heartbeatTimer;
 
   bool get isConnected => _isConnected;
+  // 添加手动断开标志
+  bool _isManuallyDisconnected = false;
+
+  /// 检查并重新连接 WebSocket（用于 APP 重新打开时）
+  Future<void> checkAndReconnect() async {
+    if (!_isConnected) {
+      _logger.i('APP 重新打开，检查并重新连接 WebSocket');
+      await connect();
+    } else {
+      _logger.i('WebSocket 连接正常');
+    }
+  }
 
   /// 连接 WebSocket
   Future<void> connect() async {
-    if (_isConnected) return;
-
+    _isManuallyDisconnected = false;
+    if (_isConnected || _isConnecting) return;
+    _isConnecting = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       final wsServer = prefs.getString('wsServer');
@@ -42,35 +57,44 @@ class ChatService extends ChangeNotifier {
       _isConnected = true;
       notifyListeners();
       _logger.i('WebSocket 已连接');
+      _startHeartbeat();
 
       _channel!.stream.listen(
         (message) {
-          _logger.d('收到 WebSocket 消息: $message');
           _handleMessage(message);
         },
         onDone: () {
           _logger.w('WebSocket 连接已关闭');
           _isConnected = false;
+          _stopHeartbeat();
           notifyListeners();
-          _reconnect();
+          // 只有非手动断开时才重连
+          if (!_isManuallyDisconnected) {
+            _reconnect();
+          }
         },
         onError: (error) {
           _logger.e('WebSocket 错误: $error');
           _isConnected = false;
+          _stopHeartbeat();
           notifyListeners();
         },
       );
     } catch (e) {
       _logger.e('WebSocket 连接失败: $e');
       _isConnected = false;
+      _stopHeartbeat();
       notifyListeners();
       _reconnect();
+    } finally {
+      _isConnecting = false;
     }
   }
 
   /// 处理接收到的消息
   void _handleMessage(dynamic message) {
     // TODO: 解析接收到的消息，可以是 JSON 格式，更新状态或通知 UI
+    _logger.i('收到 WebSocket 消息: $message');
   }
 
   /// 发送消息
@@ -85,7 +109,7 @@ class ChatService extends ChangeNotifier {
 
   /// 断线重连
   void _reconnect() {
-    _logger.i('3秒后尝试重新获取地址并连接 WebSocket...');
+    _logger.i('断线重连: 3秒后尝试重新获取地址并连接 WebSocket...');
     Future.delayed(const Duration(seconds: 3), () async {
       if (!_isConnected) {
         await _fetchWsServerAndConnect();
@@ -163,10 +187,47 @@ class ChatService extends ChangeNotifier {
 
   /// 断开连接（例如登出时调用）
   void disconnect() {
+    _isManuallyDisconnected = true;
     _channel?.sink.close();
     _channel = null;
     _isConnected = false;
+    _stopHeartbeat();
     notifyListeners();
     _logger.i('手动断开 WebSocket');
+  }
+
+  /// 启动心跳机制
+  void _startHeartbeat() {
+    // 停止之前的心跳（如果存在）
+    _stopHeartbeat();
+
+    // 每30秒发送一次心跳
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _sendHeartbeat();
+    });
+    _logger.i('心跳机制已启动');
+  }
+
+  /// 停止心跳机制
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+  }
+
+  /// 发送心跳消息
+  void _sendHeartbeat() {
+    if (_channel != null && _isConnected) {
+      try {
+        // 发送一个简单的心跳消息
+        _channel!.sink.add('ping');
+        _logger.d('发送心跳消息: ping');
+      } catch (e) {
+        _logger.e('发送心跳失败: $e');
+        _isConnected = false;
+        _stopHeartbeat();
+        notifyListeners();
+        _reconnect();
+      }
+    }
   }
 }

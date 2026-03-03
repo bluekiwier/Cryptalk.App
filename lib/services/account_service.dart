@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,24 +30,20 @@ class AccountService extends ChangeNotifier {
     try {
       if (kIsWeb) {
         final webInfo = await deviceInfo.webBrowserInfo;
-        systemInfo =
-            'Web; ${webInfo.browserName.name}; ${webInfo.userAgent ?? "Unknown"}';
+        systemInfo = 'Web; ${webInfo.browserName.name}; ${webInfo.userAgent ?? "Unknown"}';
       } else if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
-        systemInfo =
-            'Android ${androidInfo.version.release}; ${androidInfo.brand}; ${androidInfo.model}';
+        systemInfo = 'Android ${androidInfo.version.release}; ${androidInfo.brand}; ${androidInfo.model}';
       } else if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
-        systemInfo =
-            'iOS ${iosInfo.systemVersion}; Apple; ${iosInfo.utsname.machine}';
+        systemInfo = 'iOS ${iosInfo.systemVersion}; Apple; ${iosInfo.utsname.machine}';
       } else if (Platform.isWindows) {
         final windowsInfo = await deviceInfo.windowsInfo;
         systemInfo =
             'Windows ${windowsInfo.majorVersion}.${windowsInfo.minorVersion}.${windowsInfo.buildNumber}; Microsoft; PC';
       } else if (Platform.isMacOS) {
         final macInfo = await deviceInfo.macOsInfo;
-        systemInfo =
-            'macOS ${macInfo.majorVersion}.${macInfo.minorVersion}; Apple; Mac';
+        systemInfo = 'macOS ${macInfo.majorVersion}.${macInfo.minorVersion}; Apple; Mac';
       } else if (Platform.isLinux) {
         final linuxInfo = await deviceInfo.linuxInfo;
         systemInfo = 'Linux ${linuxInfo.versionId}; ${linuxInfo.id}; PC';
@@ -107,6 +102,13 @@ class AccountService extends ChangeNotifier {
   /// 其他 Service 可通过此方法获取带有 token 刷新拦截器的 Dio 实例
   Future<Dio> getDio({Map<String, dynamic>? extraHeaders}) async {
     final dio = await _getBaseDio(extraHeaders: extraHeaders);
+
+    // 从本地存储读取token并添加到headers
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('accessToken');
+    if (accessToken != null && accessToken.isNotEmpty) {
+      dio.options.headers['Authorization'] = 'Bearer $accessToken';
+    }
 
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -211,7 +213,7 @@ class AccountService extends ChangeNotifier {
         );
 
         // 连接 WebSocket
-        ChatService().connect();
+        await ChatService().checkAndReconnect();
 
         // 获取过期时间并开启定时刷新
         if (data['jwt']['expiresTicks'] != null) {
@@ -233,9 +235,7 @@ class AccountService extends ChangeNotifier {
         return false;
       }
     } on DioException catch (e) {
-      if (e.response != null &&
-          e.response?.data != null &&
-          e.response?.data is Map) {
+      if (e.response != null && e.response?.data != null && e.response?.data is Map) {
         _errorMessage = e.response?.data['message'] ?? '登录失败';
       } else {
         _errorMessage = '网络错误：无法连接到服务器';
@@ -264,19 +264,12 @@ class AccountService extends ChangeNotifier {
 
     try {
       final dio = await getDio();
-      final requestData = {
-        'account': phone,
-        'password': password,
-        'nickname': name,
-      };
+      final requestData = {'account': phone, 'password': password, 'nickname': name};
       if (invitationCode != null && invitationCode.isNotEmpty) {
         requestData['inviteCode'] = invitationCode;
       }
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/account/sign-up',
-        data: requestData,
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/account/sign-up', data: requestData);
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -291,9 +284,7 @@ class AccountService extends ChangeNotifier {
         return false;
       }
     } on DioException catch (e) {
-      if (e.response != null &&
-          e.response?.data != null &&
-          e.response?.data is Map) {
+      if (e.response != null && e.response?.data != null && e.response?.data is Map) {
         _errorMessage = e.response?.data['message'] ?? '注册失败';
       } else {
         _errorMessage = '网络错误：无法连接到服务器';
@@ -328,15 +319,13 @@ class AccountService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final currentRefreshToken = prefs.getString('refreshToken');
       if (currentRefreshToken == null || currentRefreshToken.isEmpty) {
-        _logger.e('未找到 refreshToken，无法刷新');
+        // _logger.e('未找到 refreshToken，无法刷新');
         return false;
       }
 
       final accessToken = prefs.getString('accessToken');
 
-      final dio = await _getBaseDio(
-        extraHeaders: {'Authorization': 'Bearer $accessToken'},
-      );
+      final dio = await _getBaseDio(extraHeaders: {'Authorization': 'Bearer $accessToken'});
 
       _logger.i('开始刷新refreshToken');
       final response = await dio.post(
@@ -386,9 +375,7 @@ class AccountService extends ChangeNotifier {
       final accessToken = prefs.getString('accessToken');
 
       if (accessToken != null && accessToken.isNotEmpty) {
-        final dio = await getDio(
-          extraHeaders: {'Authorization': 'Bearer $accessToken'},
-        );
+        final dio = await getDio(extraHeaders: {'Authorization': 'Bearer $accessToken'});
 
         final url = '${ApiConfig.baseUrl}/api/account/sign-out';
         _logger.d('''
