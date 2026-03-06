@@ -32,13 +32,9 @@ class _UserDetailPageState extends State<UserDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.message),
-          backgroundColor: result.success
-              ? AppTheme.accentColor
-              : AppTheme.badgeColor,
+          backgroundColor: result.success ? AppTheme.accentColor : AppTheme.badgeColor,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
 
@@ -78,23 +74,14 @@ class _UserDetailPageState extends State<UserDetailPage> {
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
               ),
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                ),
+                decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -108,20 +95,13 @@ class _UserDetailPageState extends State<UserDetailPage> {
                     // 名字
                     Text(
                       widget.user.nickname,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     // 账号
                     Text(
                       '账号: ${widget.user.account}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                     ),
                   ],
                 ),
@@ -148,27 +128,17 @@ class _UserDetailPageState extends State<UserDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '个人信息',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  const Text('个人信息', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   _buildInfoRow(
                     context,
                     Icons.edit_note_rounded,
                     '个性签名',
-                    widget.user.signature?.isNotEmpty == true
-                        ? widget.user.signature!
-                        : '该用户暂未设置签名',
+                    widget.user.signature?.isNotEmpty == true ? widget.user.signature! : '该用户暂未设置签名',
                   ),
                   if (widget.user.mobile?.isNotEmpty == true) ...[
                     const Divider(height: 32),
-                    _buildInfoRow(
-                      context,
-                      Icons.phone_android_rounded,
-                      '手机号',
-                      widget.user.mobile!,
-                    ),
+                    _buildInfoRow(context, Icons.phone_android_rounded, '手机号', widget.user.mobile!),
                   ],
                 ],
               ),
@@ -176,10 +146,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
           ),
 
           // 底部填充
-          const SliverFillRemaining(
-            hasScrollBody: false,
-            child: SizedBox(height: 100),
-          ),
+          const SliverFillRemaining(hasScrollBody: false, child: SizedBox(height: 100)),
         ],
       ),
       // 底部固定按钮
@@ -212,27 +179,17 @@ class _UserDetailPageState extends State<UserDetailPage> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.person_add_alt_1_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 20),
                             SizedBox(width: 8),
                             Text(
                               '申请加为好友',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -245,12 +202,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     );
   }
 
-  Widget _buildInfoRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
+  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -267,18 +219,9 @@ class _UserDetailPageState extends State<UserDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textHint),
-              ),
+              Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textHint)),
               const SizedBox(height: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
+              Text(value, style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
             ],
           ),
         ),

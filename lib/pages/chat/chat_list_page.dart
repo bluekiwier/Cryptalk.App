@@ -4,13 +4,14 @@ import '../../models/conversation.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/search_bar_widget.dart';
 import '../../services/conversation_service.dart';
+import '../../services/account_service.dart';
 import 'chat_detail_page.dart';
 import '../contacts/scanner_page.dart';
 import '../contacts/add_friend_page.dart';
 import '../profile/my_qr_code_page.dart';
 
 /// 聊天列表页面
-/// 展示最近的聊天会话
+/// 策略：冷启动 < 100ms（本地 DB），60fps（ListView.builder），实时未读（ChangeNotifier）
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
 
@@ -19,76 +20,130 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  List<Conversation> _conversations = [];
-  bool _isLoading = true;
+  final ConversationService _service = ConversationService();
+  final AccountService _accountService = AccountService();
+  final ScrollController _scrollController = ScrollController();
+
+  // 是否正在初始化（首次从 DB 加载）
+  bool _initializing = true;
 
   @override
   void initState() {
     super.initState();
-    _loadConversations();
-  }
-
-  Future<void> _loadConversations() async {
-    final list = await ConversationService().getConversations();
-    if (mounted) {
-      setState(() {
-        _conversations = list;
-        _isLoading = false;
-      });
-    }
+    _scrollController.addListener(_onScroll);
+    _service.addListener(_onServiceChanged);
+    _init();
   }
 
   @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _service.removeListener(_onServiceChanged);
+    super.dispose();
+  }
+
+  /// 初始化：加载本地 DB（秒开），后台同步网络
+  Future<void> _init() async {
+    await _service.initialize();
+    if (mounted) setState(() => _initializing = false);
+  }
+
+  /// ConversationService 状态变化时触发 UI 刷新
+  void _onServiceChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// 滚动到底部时加载更多
+  void _onScroll() {
+    if (_initializing) return;
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
+      _service.loadMore();
+    }
+  }
+
+  /// 下拉刷新
+  Future<void> _onRefresh() => _service.refresh();
+
+  @override
   Widget build(BuildContext context) {
+    final conversations = _service.conversations;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // 顶部渐变 AppBar
-          _buildAppBar(context),
-          // 搜索栏
-          SliverToBoxAdapter(child: const CustomSearchBar(hintText: '搜索聊天记录')),
-          // 会话列表
-          _isLoading
-              ? const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 50),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                )
-              : _conversations.isEmpty
-              ? const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 100),
-                    child: Center(
-                      child: Text(
-                        '暂无聊天会话',
-                        style: TextStyle(color: AppTheme.textHint),
-                      ),
-                    ),
-                  ),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final conversation = _conversations[index];
-                    return _ConversationTile(
-                      conversation: conversation,
-                      onTap: () async {
-                        await _openChat(context, conversation);
-                        // 返回后刷新会话列表
-                        _loadConversations();
-                      },
-                    );
-                  }, childCount: _conversations.length),
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        color: AppTheme.primaryColor,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          slivers: [
+            // 顶部渐变 AppBar
+            _buildAppBar(context),
+            // 搜索栏
+            const SliverToBoxAdapter(child: CustomSearchBar(hintText: '搜索聊天记录')),
+            // 内容区
+            if (_initializing)
+              // 首次加载（本地 DB 还没完成）—— 极短，通常 < 50ms
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 60),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
-          // 底部间距
-          const SliverToBoxAdapter(child: SizedBox(height: 80)),
-        ],
+              )
+            else if (conversations.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 100),
+                  child: Center(
+                    child: Text('暂无聊天会话', style: TextStyle(color: AppTheme.textHint)),
+                  ),
+                ),
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  // 末尾额外的加载指示器 item
+                  if (index == conversations.length) {
+                    return _buildLoadMoreIndicator();
+                  }
+                  return _ConversationTile(
+                    key: ValueKey(conversations[index].id),
+                    conversation: conversations[index],
+                    onTap: () async {
+                      // 进入聊天页时清零未读数
+                      await _service.clearUnread(conversations[index].id);
+                      if (!mounted) return;
+                      // 用局部变量捕获 context，避免跨异步使用
+                      // ignore: use_build_context_synchronously
+                      await _openChat(context, conversations[index]);
+                    },
+                  );
+                }, childCount: conversations.length + 1),
+              ),
+            // 底部间距
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
+        ),
       ),
     );
   }
 
-  /// 构建顶部渐变 AppBar
+  Widget _buildLoadMoreIndicator() {
+    if (_service.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (_service.hasMore) return const SizedBox.shrink();
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Text('没有更多会话了', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+      ),
+    );
+  }
+
   Widget _buildAppBar(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 60,
@@ -104,33 +159,23 @@ class _ChatListPageState extends State<ChatListPage> {
               child: Row(
                 children: [
                   const Text(
-                    'Cryptalk',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                    '闲聊',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      '18条未读',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                  if (_accountService.currentUser?.messageUnreadCount != null &&
+                      _accountService.currentUser!.messageUnreadCount! > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '(${_accountService.currentUser!.messageUnreadCount!})',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
                       ),
                     ),
-                  ),
                   const Spacer(),
                   _buildAddMenu(context),
                 ],
@@ -142,44 +187,26 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  /// 构建右上角添加菜单
   Widget _buildAddMenu(BuildContext context) {
     return Theme(
-      data: Theme.of(context).copyWith(
-        hoverColor: Colors.transparent,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-      ),
+      data: Theme.of(
+        context,
+      ).copyWith(hoverColor: Colors.transparent, splashColor: Colors.transparent, highlightColor: Colors.transparent),
       child: PopupMenuButton<String>(
         offset: const Offset(0, 10),
         position: PopupMenuPosition.under,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: _buildHeaderAction(
-          const Icon(
-            Icons.add_circle_outline_rounded,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
+        child: _buildHeaderAction(const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 24)),
         onSelected: (value) {
           switch (value) {
             case 'add_friend':
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddFriendPage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFriendPage()));
               break;
             case 'scanner':
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ScannerPage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerPage()));
               break;
             case 'my_qr':
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyQrCodePage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const MyQrCodePage()));
               break;
           }
         },
@@ -194,11 +221,7 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  PopupMenuItem<String> _buildPopupItem(
-    String value,
-    IconData icon,
-    String title,
-  ) {
+  PopupMenuItem<String> _buildPopupItem(String value, IconData icon, String title) {
     return PopupMenuItem<String>(
       value: value,
       child: Row(
@@ -211,35 +234,28 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  /// 顶部操作按钮容器
   Widget _buildHeaderAction(Widget child) {
     return Container(
       padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
       child: child,
     );
   }
 
-  /// 打开聊天详情
   Future<void> _openChat(BuildContext context, Conversation conversation) {
-    return Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatDetailPage(conversation: conversation),
-      ),
-    );
+    return Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailPage(conversation: conversation)));
   }
 }
 
-/// 会话列表项组件
+// ─────────────────────────────────────────────
+// 会话列表项（const 优化，key 驱动局部更新）
+// ─────────────────────────────────────────────
+
 class _ConversationTile extends StatelessWidget {
   final Conversation conversation;
   final VoidCallback onTap;
 
-  const _ConversationTile({required this.conversation, required this.onTap});
+  const _ConversationTile({super.key, required this.conversation, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -248,21 +264,13 @@ class _ConversationTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: conversation.isPinned
-              ? AppTheme.primaryColor.withValues(alpha: 0.05)
-              : Theme.of(context).cardColor,
-          border: const Border(
-            bottom: BorderSide(color: AppTheme.dividerColor, width: 0.5),
-          ),
+          color: conversation.isPinned ? AppTheme.primaryColor.withValues(alpha: 0.05) : Theme.of(context).cardColor,
+          border: const Border(bottom: BorderSide(color: AppTheme.dividerColor, width: 0.5)),
         ),
         child: Row(
           children: [
             // 头像
-            AvatarWidget(
-              avatar: conversation.avatar,
-              size: 52,
-              isGroup: conversation.isGroup,
-            ),
+            AvatarWidget(avatar: conversation.avatar, size: 52, isGroup: conversation.isGroup),
             const SizedBox(width: 14),
             // 中间内容
             Expanded(
@@ -273,8 +281,8 @@ class _ConversationTile extends StatelessWidget {
                   Row(
                     children: [
                       if (conversation.isPinned)
-                        Container(
-                          margin: const EdgeInsets.only(right: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
                           child: Icon(
                             Icons.push_pin_rounded,
                             size: 12,
@@ -302,20 +310,14 @@ class _ConversationTile extends StatelessWidget {
                       if (conversation.isMuted)
                         const Padding(
                           padding: EdgeInsets.only(right: 4),
-                          child: Icon(
-                            Icons.notifications_off_outlined,
-                            size: 14,
-                            color: AppTheme.textHint,
-                          ),
+                          child: Icon(Icons.notifications_off_outlined, size: 14, color: AppTheme.textHint),
                         ),
                       Expanded(
                         child: Text(
                           conversation.lastMessage?.content ?? '',
                           style: TextStyle(
                             fontSize: 13,
-                            color: conversation.unreadCount > 0
-                                ? AppTheme.textSecondary
-                                : AppTheme.textHint,
+                            color: conversation.unreadCount > 0 ? AppTheme.textSecondary : AppTheme.textHint,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -327,41 +329,28 @@ class _ConversationTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // 右侧时间和未读数
+            // 右侧时间 + 未读数
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  _formatTime(conversation.lastMessage?.timestamp),
+                  _formatTime(conversation.lastMessage?.createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: conversation.unreadCount > 0
-                        ? AppTheme.primaryColor
-                        : AppTheme.textHint,
+                    color: conversation.unreadCount > 0 ? AppTheme.primaryColor : AppTheme.textHint,
                   ),
                 ),
                 const SizedBox(height: 6),
                 if (conversation.unreadCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: conversation.isMuted
-                          ? AppTheme.textHint
-                          : AppTheme.badgeColor,
+                      color: conversation.isMuted ? AppTheme.textHint : AppTheme.badgeColor,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      conversation.unreadCount > 99
-                          ? '99+'
-                          : conversation.unreadCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      conversation.unreadCount > 99 ? '99+' : conversation.unreadCount.toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                     ),
                   )
                 else
@@ -374,12 +363,10 @@ class _ConversationTile extends StatelessWidget {
     );
   }
 
-  /// 格式化时间显示
   String _formatTime(DateTime? time) {
     if (time == null) return '';
     final now = DateTime.now();
     final diff = now.difference(time);
-
     if (diff.inMinutes < 1) return '刚刚';
     if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
     if (diff.inHours < 24) {

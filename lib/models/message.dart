@@ -4,7 +4,7 @@ class Message {
   final String content;
   final String senderId;
   final MessageType type;
-  final DateTime timestamp;
+  final DateTime createdAt;
   final bool isRead;
 
   const Message({
@@ -12,7 +12,7 @@ class Message {
     required this.content,
     this.senderId = '',
     this.type = MessageType.text,
-    required this.timestamp,
+    required this.createdAt,
     this.isRead = false,
   });
 }

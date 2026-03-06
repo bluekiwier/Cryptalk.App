@@ -133,7 +133,7 @@ class MockData {
         id: 'msg_1',
         senderId: 'user_1',
         content: '明天下午一起喝咖啡吗？',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
       ),
       unreadCount: 2,
       isPinned: true,
@@ -147,7 +147,7 @@ class MockData {
         id: 'msg_2',
         senderId: 'user_2',
         content: '新设计稿我发你邮箱了，看看怎么样',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
+        createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
       ),
       unreadCount: 1,
     ),
@@ -161,7 +161,7 @@ class MockData {
         id: 'msg_3',
         senderId: 'user_3',
         content: '王五: Flutter 3.0 新功能太棒了！',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
+        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
       ),
       unreadCount: 15,
       isPinned: true,
@@ -176,7 +176,7 @@ class MockData {
         id: 'msg_4',
         senderId: 'user_0',
         content: '好的，周末见！',
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
         isRead: true,
       ),
       unreadCount: 0,
@@ -190,7 +190,7 @@ class MockData {
         id: 'msg_5',
         senderId: 'user_5',
         content: '航天纪录片看了吗？推荐给你',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       ),
       unreadCount: 3,
     ),
@@ -204,16 +204,10 @@ class MockData {
         id: 'msg_6',
         senderId: 'user_7',
         content: '周九: 本周迭代目标已更新，请查看',
-        timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
       ),
       unreadCount: 8,
-      members: [
-        contacts[0],
-        contacts[2],
-        contacts[4],
-        contacts[6],
-        contacts[8],
-      ],
+      members: [contacts[0], contacts[2], contacts[4], contacts[6], contacts[8]],
     ),
     Conversation(
       id: 'conv_7',
@@ -224,7 +218,7 @@ class MockData {
         id: 'msg_7',
         senderId: 'user_6',
         content: '记得按时吃药哦 💊',
-        timestamp: DateTime.now().subtract(const Duration(hours: 5)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 5)),
         isRead: true,
       ),
       unreadCount: 0,
@@ -239,7 +233,7 @@ class MockData {
         id: 'msg_8',
         senderId: 'user_7',
         content: '课程资料我整理好了，晚上发你',
-        timestamp: DateTime.now().subtract(const Duration(hours: 8)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 8)),
       ),
       unreadCount: 0,
     ),
@@ -253,7 +247,7 @@ class MockData {
         id: 'msg_9',
         senderId: 'user_4',
         content: '赵六: [图片] 今天做的红烧肉',
-        timestamp: DateTime.now().subtract(const Duration(days: 1)),
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
       ),
       unreadCount: 0,
       members: [contacts[3], contacts[5], contacts[7], contacts[9]],
@@ -267,7 +261,7 @@ class MockData {
         id: 'msg_10',
         senderId: 'user_9',
         content: '合同条款已修改，请确认',
-        timestamp: DateTime.now().subtract(const Duration(days: 1)),
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
       ),
       unreadCount: 1,
     ),
@@ -280,79 +274,65 @@ class MockData {
         id: 'dm_1',
         senderId: 'user_1',
         content: '嘿，最近忙什么呢？',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       ),
       Message(
         id: 'dm_2',
         senderId: 'user_0',
         content: '在做一个 Flutter 项目，很有意思！',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 55),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 55)),
         isRead: true,
       ),
       Message(
         id: 'dm_3',
         senderId: 'user_1',
         content: '哦？什么项目？',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 50),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 50)),
       ),
       Message(
         id: 'dm_4',
         senderId: 'user_0',
         content: '一个聊天 App，叫「闲聊」，支持 Android、iOS 和 Web 三端！',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 45),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 45)),
         isRead: true,
       ),
       Message(
         id: 'dm_5',
         senderId: 'user_1',
         content: '听起来很酷啊！用的什么技术栈？',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 40),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 40)),
       ),
       Message(
         id: 'dm_6',
         senderId: 'user_0',
         content: 'Flutter + Dart，一套代码搞定三个平台 🚀',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 35),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 35)),
         isRead: true,
       ),
       Message(
         id: 'dm_7',
         senderId: 'user_1',
         content: '太厉害了，改天教教我吧',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 30),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 30)),
       ),
       Message(
         id: 'dm_8',
         senderId: 'user_0',
         content: '没问题！随时都可以 😄',
-        timestamp: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 25),
-        ),
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 25)),
         isRead: true,
       ),
       Message(
         id: 'dm_9',
         senderId: 'user_1',
         content: '对了，明天下午一起喝咖啡吗？',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
       ),
       Message(
         id: 'dm_10',
         senderId: 'user_1',
         content: '上次去的那家店还不错',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
+        createdAt: DateTime.now().subtract(const Duration(minutes: 3)),
       ),
     ];
   }
@@ -364,11 +344,6 @@ class MockData {
     'Q': [contacts[4]], // 钱七
     'S': [contacts[5]], // 孙八
     'W': [contacts[2], contacts[7]], // 王五, 吴十
-    'Z': [
-      contacts[0],
-      contacts[3],
-      contacts[6],
-      contacts[8],
-    ], // 张三, 赵六, 周九, 郑十一
+    'Z': [contacts[0], contacts[3], contacts[6], contacts[8]], // 张三, 赵六, 周九, 郑十一
   };
 }

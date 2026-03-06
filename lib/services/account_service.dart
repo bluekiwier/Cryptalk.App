@@ -110,6 +110,18 @@ class AccountService extends ChangeNotifier {
       dio.options.headers['Authorization'] = 'Bearer $accessToken';
     }
 
+    // 添加通用日志拦截器
+    dio.interceptors.add(
+      LogInterceptor(
+        request: true,
+        requestHeader: true,
+        requestBody: true,
+        // responseHeader: true,
+        responseBody: true,
+        error: true,
+      ),
+    );
+
     dio.interceptors.add(
       InterceptorsWrapper(
         onError: (DioException e, ErrorInterceptorHandler handler) async {
@@ -150,6 +162,57 @@ class AccountService extends ChangeNotifier {
   User? _currentUser;
   User? get currentUser => _currentUser;
 
+  /// 初始化：从本地存储恢复用户信息
+  Future<void> initialize() async {
+    _logger.d('开始初始化 AccountService...');
+    await _loadUserFromLocal();
+    _logger.d('AccountService 初始化完成，currentUser: $_currentUser');
+  }
+
+  /// 保存用户信息到本地
+  Future<void> _saveUserToLocal(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', user.id);
+    await prefs.setString('userAccount', user.account);
+    await prefs.setString('userNickname', user.nickname);
+    await prefs.setString('userAvatar', user.avatar);
+    if (user.email != null) {
+      await prefs.setString('userEmail', user.email!);
+    }
+    if (user.mobile != null) {
+      await prefs.setString('userMobile', user.mobile!);
+    }
+    if (user.signature != null) {
+      await prefs.setString('userSignature', user.signature!);
+    }
+    await prefs.setBool('userIsOnline', user.isOnline);
+  }
+
+  /// 从本地存储加载用户信息
+  Future<void> _loadUserFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+    _logger.d('从本地读取 userId: $userId');
+
+    if (userId == null || userId.isEmpty) {
+      _logger.d('本地没有用户信息');
+      return;
+    }
+
+    _currentUser = User(
+      id: userId,
+      account: prefs.getString('userAccount') ?? '',
+      nickname: prefs.getString('userNickname') ?? '用户',
+      avatar: prefs.getString('userAvatar') ?? '',
+      email: prefs.getString('userEmail') ?? '',
+      mobile: prefs.getString('userMobile') ?? '',
+      signature: prefs.getString('userSignature') ?? '',
+      isOnline: prefs.getBool('userIsOnline') ?? false,
+    );
+    _logger.d('加载用户信息成功: $_currentUser');
+    notifyListeners();
+  }
+
   /// 更新当前用户信息
   void updateCurrentUser(User user) {
     _currentUser = user;
@@ -182,7 +245,7 @@ class AccountService extends ChangeNotifier {
       );
 
       final responseData = response.data;
-      _logger.d('登录返回数据: $responseData');
+      // _logger.d('登录返回数据: $responseData');
       if (responseData != null && responseData['success'] == true) {
         final data = responseData['data'];
 
@@ -211,6 +274,11 @@ class AccountService extends ChangeNotifier {
           signature: data['user']['signature']?.toString() ?? '',
           isOnline: true,
         );
+
+        // 保存用户信息到本地
+        _logger.d('登录成功，保存用户信息: $_currentUser');
+        await _saveUserToLocal(_currentUser!);
+        _logger.d('用户信息保存完成');
 
         // 连接 WebSocket
         await ChatService().checkAndReconnect();
@@ -307,7 +375,7 @@ class AccountService extends ChangeNotifier {
     int timeoutMs = expiresTicks - 30000;
     if (timeoutMs <= 0) timeoutMs = expiresTicks ~/ 2; // 如果有效期太短，在剩余一半时间时刷新
 
-    _logger.d('将在 $timeoutMs 毫秒后自动刷新 accessToken');
+    // _logger.d('将在 $timeoutMs 毫秒后自动刷新 accessToken');
     _refreshTimer = Timer(Duration(milliseconds: timeoutMs), () {
       refreshToken();
     });
@@ -323,9 +391,7 @@ class AccountService extends ChangeNotifier {
         return false;
       }
 
-      final accessToken = prefs.getString('accessToken');
-
-      final dio = await _getBaseDio(extraHeaders: {'Authorization': 'Bearer $accessToken'});
+      final dio = await _getBaseDio();
 
       _logger.i('开始刷新refreshToken');
       final response = await dio.post(
@@ -344,7 +410,7 @@ class AccountService extends ChangeNotifier {
           await prefs.setString('refreshToken', data['refreshToken']);
         }
 
-        _logger.d('accessToken 刷新成功');
+        _logger.d('AccessToken 刷新成功');
 
         if (data['expiresTicks'] != null) {
           int expiresTicks = data['expiresTicks'] is int
@@ -358,17 +424,19 @@ class AccountService extends ChangeNotifier {
       } else {
         _logger.e('刷新令牌失败: ${responseData?['message']}');
         // 刷新失败可考虑强制退出
-        await logout();
+        await signOut();
         return false;
       }
     } catch (e) {
       _logger.e('刷新令牌异常: $e');
+      // 刷新异常也退出登录
+      await signOut();
       return false;
     }
   }
 
   /// 退出登录
-  Future<void> logout() async {
+  Future<void> signOut() async {
     _refreshTimer?.cancel();
     final prefs = await SharedPreferences.getInstance();
     try {
@@ -378,11 +446,6 @@ class AccountService extends ChangeNotifier {
         final dio = await getDio(extraHeaders: {'Authorization': 'Bearer $accessToken'});
 
         final url = '${ApiConfig.baseUrl}/api/account/sign-out';
-        _logger.d('''
---- 退出登录请求 ---
-URL: $url
-Headers: ${dio.options.headers}
-Data: {} (无请求体)''');
 
         // 调用退出登录接口
         final response = await dio.post(url);
@@ -398,10 +461,18 @@ Data: {} (无请求体)''');
       // 无论后端是否成功返回，均往下走清理本地数据
       _logger.e('退出登录接口调用失败：$e');
     } finally {
-      // 清除本地存储的 Token
+      // 清除本地存储的 Token 和用户信息
       await prefs.remove('accessToken');
       await prefs.remove('refreshToken');
       await prefs.remove('wsServer');
+      await prefs.remove('userId');
+      await prefs.remove('userAccount');
+      await prefs.remove('userNickname');
+      await prefs.remove('userAvatar');
+      await prefs.remove('userEmail');
+      await prefs.remove('userMobile');
+      await prefs.remove('userSignature');
+      await prefs.remove('userIsOnline');
 
       // 断开 WebSocket
       ChatService().disconnect();

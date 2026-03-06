@@ -12,8 +12,7 @@ class RegisterPage extends StatefulWidget {
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage>
-    with TickerProviderStateMixin {
+class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _nameController = TextEditingController();
@@ -34,14 +33,8 @@ class _RegisterPageState extends State<RegisterPage>
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();
   }
 
@@ -127,7 +120,7 @@ class _RegisterPageState extends State<RegisterPage>
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: FadeTransition(
                       opacity: _fadeAnimation,
                       child: Column(
@@ -160,11 +153,7 @@ class _RegisterPageState extends State<RegisterPage>
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
-              Icons.arrow_back_ios_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
+            icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 22),
           ),
           const Spacer(),
         ],
@@ -176,44 +165,13 @@ class _RegisterPageState extends State<RegisterPage>
   Widget _buildHeader() {
     return Column(
       children: [
-        // 注册图标
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.person_add_alt_1_rounded,
-              size: 36,
-              color: Colors.white,
-            ),
-          ),
-        ),
         const SizedBox(height: 16),
         const Text(
           '创建新账号',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 2,
-          ),
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
         ),
         const SizedBox(height: 8),
-        Text(
-          '加入 Cryptalk，开始聊天之旅',
-          style: TextStyle(
-            fontSize: 15,
-            color: Colors.white.withValues(alpha: 0.85),
-          ),
-        ),
+        Text('加入闲聊，开始聊天之旅', style: TextStyle(fontSize: 15, color: Colors.white.withValues(alpha: 0.85))),
       ],
     );
   }
@@ -226,11 +184,7 @@ class _RegisterPageState extends State<RegisterPage>
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 40, offset: const Offset(0, 16)),
         ],
       ),
       child: Form(
@@ -244,15 +198,9 @@ class _RegisterPageState extends State<RegisterPage>
             TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(11),
-              ],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-              decoration: _buildInputDecoration(
-                hintText: '请输入手机号',
-                prefixIcon: Icons.phone_android_rounded,
-              ),
+              decoration: _buildInputDecoration(hintText: '请输入手机号', prefixIcon: Icons.phone_android_rounded),
               validator: (value) {
                 if (value == null || value.isEmpty) return '请输入手机号';
                 if (value.length != 11) return '请输入11位手机号';
@@ -267,10 +215,7 @@ class _RegisterPageState extends State<RegisterPage>
             TextFormField(
               controller: _nameController,
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-              decoration: _buildInputDecoration(
-                hintText: '给自己取个名字吧',
-                prefixIcon: Icons.face_rounded,
-              ),
+              decoration: _buildInputDecoration(hintText: '给自己取个名字吧', prefixIcon: Icons.face_rounded),
               validator: (value) {
                 if (value == null || value.isEmpty) return '请输入昵称';
                 if (value.length > 20) return '昵称不能超过20个字符';
@@ -294,9 +239,7 @@ class _RegisterPageState extends State<RegisterPage>
                     setState(() => _obscurePassword = !_obscurePassword);
                   },
                   icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
+                    _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                     color: AppTheme.textHint,
                     size: 20,
                   ),
@@ -322,14 +265,10 @@ class _RegisterPageState extends State<RegisterPage>
                 prefixIcon: Icons.lock_outline_rounded,
                 suffixIcon: IconButton(
                   onPressed: () {
-                    setState(
-                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                    );
+                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                   },
                   icon: Icon(
-                    _obscureConfirmPassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
+                    _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                     color: AppTheme.textHint,
                     size: 20,
                   ),
@@ -349,10 +288,7 @@ class _RegisterPageState extends State<RegisterPage>
             TextFormField(
               controller: _invitationCodeController,
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-              decoration: _buildInputDecoration(
-                hintText: '请输入邀请码',
-                prefixIcon: Icons.card_giftcard_rounded,
-              ),
+              decoration: _buildInputDecoration(hintText: '请输入邀请码', prefixIcon: Icons.card_giftcard_rounded),
             ),
             const SizedBox(height: 20),
 
@@ -372,26 +308,15 @@ class _RegisterPageState extends State<RegisterPage>
   Widget _buildInputLabel(String label) {
     return Text(
       label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppTheme.textSecondary,
-      ),
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
     );
   }
 
   /// 构建输入框装饰
-  InputDecoration _buildInputDecoration({
-    required String hintText,
-    required IconData prefixIcon,
-    Widget? suffixIcon,
-  }) {
+  InputDecoration _buildInputDecoration({required String hintText, required IconData prefixIcon, Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(
-        color: AppTheme.textHint.withValues(alpha: 0.7),
-        fontSize: 15,
-      ),
+      hintStyle: TextStyle(color: AppTheme.textHint.withValues(alpha: 0.7), fontSize: 15),
       prefixIcon: Container(
         margin: const EdgeInsets.only(left: 4, right: 8),
         child: Icon(prefixIcon, color: AppTheme.primaryColor, size: 20),
@@ -400,10 +325,7 @@ class _RegisterPageState extends State<RegisterPage>
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: AppTheme.scaffoldBg,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
@@ -434,13 +356,8 @@ class _RegisterPageState extends State<RegisterPage>
               setState(() => _agreeToTerms = value ?? false);
             },
             activeColor: AppTheme.primaryColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
-            ),
-            side: BorderSide(
-              color: _agreeToTerms ? AppTheme.primaryColor : AppTheme.textHint,
-              width: 1.5,
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+            side: BorderSide(color: _agreeToTerms ? AppTheme.primaryColor : AppTheme.textHint, width: 1.5),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
@@ -452,27 +369,17 @@ class _RegisterPageState extends State<RegisterPage>
             },
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  height: 1.5,
-                ),
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
                 children: [
                   const TextSpan(text: '我已阅读并同意 '),
                   TextSpan(
                     text: '《用户协议》',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
                   ),
                   const TextSpan(text: ' 和 '),
                   TextSpan(
                     text: '《隐私政策》',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -493,10 +400,7 @@ class _RegisterPageState extends State<RegisterPage>
         decoration: BoxDecoration(
           gradient: _isLoading
               ? LinearGradient(
-                  colors: [
-                    AppTheme.primaryColor.withValues(alpha: 0.5),
-                    AppTheme.primaryDark.withValues(alpha: 0.5),
-                  ],
+                  colors: [AppTheme.primaryColor.withValues(alpha: 0.5), AppTheme.primaryDark.withValues(alpha: 0.5)],
                 )
               : const LinearGradient(
                   colors: [AppTheme.primaryColor, AppTheme.primaryDark],
@@ -519,9 +423,7 @@ class _RegisterPageState extends State<RegisterPage>
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: _isLoading
               ? const SizedBox(
@@ -534,12 +436,7 @@ class _RegisterPageState extends State<RegisterPage>
                 )
               : const Text(
                   '注 册',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    letterSpacing: 2,
-                  ),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 2),
                 ),
         ),
       ),
@@ -551,13 +448,7 @@ class _RegisterPageState extends State<RegisterPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          '已有账号？',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 14,
-          ),
-        ),
+        Text('已有账号？', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(

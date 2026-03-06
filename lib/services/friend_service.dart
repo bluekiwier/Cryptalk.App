@@ -12,38 +12,23 @@ class FriendService {
   FriendService._internal();
 
   final _logger = Logger();
+  final accountService = AccountService();
 
   /// 获取待处理的好友申请列表
   /// 调用 GET /api/friend/requests 接口
   /// 返回 [FriendRequest] 列表，失败时返回空列表
   Future<List<FriendRequest>> getRequests() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('accessToken');
+      // 复用 AccountService 的 Dio 实例
+      final dio = await accountService.getDio();
+      // if (dio == null) return [];
 
-      if (accessToken == null || accessToken.isEmpty) {
-        _logger.w('未登录，无法获取好友申请列表');
-        return [];
-      }
-
-      // 复用 AccountService 的 Dio 实例（含 token 刷新拦截器）
-      final accountService = AccountService();
-      final dio = await accountService.getDio(
-        extraHeaders: {'Authorization': 'Bearer $accessToken'},
-      );
-
-      _logger.d('请求好友申请列表: ${ApiConfig.baseUrl}/api/friend/requests?status=0');
-
-      final response = await dio.get(
-        '${ApiConfig.baseUrl}/api/friend/requests?status=0',
-      );
+      final response = await dio.get('/api/friend/requests?status=0');
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         final List<dynamic> dataList = responseData['data'] ?? [];
-        final requests = dataList
-            .map((item) => FriendRequest.fromJson(item))
-            .toList();
+        final requests = dataList.map((item) => FriendRequest.fromJson(item)).toList();
         _logger.d('获取到 ${requests.length} 条好友申请');
         return requests;
       } else {
@@ -51,9 +36,7 @@ class FriendService {
         return [];
       }
     } on DioException catch (e) {
-      if (e.response != null &&
-          e.response?.data != null &&
-          e.response?.data is Map) {
+      if (e.response != null && e.response?.data != null && e.response?.data is Map) {
         _logger.e('获取好友申请列表失败: ${e.response?.data['message']}');
       } else {
         _logger.e('网络错误：无法获取好友申请列表');
@@ -65,36 +48,17 @@ class FriendService {
     }
   }
 
-  /// 获取带 Authorization 的 Dio 实例（内部复用方法）
-  Future<Dio?> _getAuthedDio() async {
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('accessToken');
-    if (accessToken == null || accessToken.isEmpty) {
-      _logger.w('未登录，无法执行该操作');
-      return null;
-    }
-    final accountService = AccountService();
-    return await accountService.getDio(
-      extraHeaders: {'Authorization': 'Bearer $accessToken'},
-    );
-  }
-
   /// 接受好友申请
   /// 调用 POST /api/friend/requests/agree
   /// [requestId] 为 Requests 接口返回的申请记录 ID
-  Future<({bool success, String message})> agreeFriendRequest(
-    String requestId,
-  ) async {
+  Future<({bool success, String message})> agreeFriendRequest(String requestId) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       _logger.d('接受好友申请: id=$requestId');
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/friend/requests/agree',
-        data: {'id': requestId},
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/requests/agree', data: {'id': requestId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -113,19 +77,14 @@ class FriendService {
 
   /// 拒绝好友申请
   /// 调用 POST /api/friend/requests/disagree
-  Future<({bool success, String message})> disagreeFriendRequest(
-    String requestId,
-  ) async {
+  Future<({bool success, String message})> disagreeFriendRequest(String requestId) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       _logger.d('拒绝好友申请: id=$requestId');
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/friend/requests/disagree',
-        data: {'id': requestId},
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/requests/disagree', data: {'id': requestId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -144,19 +103,14 @@ class FriendService {
 
   /// 拉黑用户
   /// 调用 POST /api/friend/block
-  Future<({bool success, String message})> blockFriendRequest(
-    String userId,
-  ) async {
+  Future<({bool success, String message})> blockFriendRequest(String userId) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       _logger.d('拉黑用户: id=$userId');
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/friend/blacklist-add',
-        data: {'id': userId},
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/blacklist-add', data: {'id': userId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -177,15 +131,12 @@ class FriendService {
   /// 调用 DELETE /api/friend/block-remove
   Future<({bool success, String message})> removeBlock(String userId) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       _logger.d('移除黑名单: id=$userId');
 
-      final response = await dio.delete(
-        '${ApiConfig.baseUrl}/api/friend/blacklist-remove',
-        data: {'id': userId},
-      );
+      final response = await dio.delete('${ApiConfig.baseUrl}/api/friend/blacklist-remove', data: {'id': userId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -206,8 +157,8 @@ class FriendService {
   /// 调用 DELETE /api/friend/delete
   Future<({bool success, String message})> deleteFriend(String userId) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       _logger.d('删除好友: ids=[$userId]');
 
@@ -237,12 +188,10 @@ class FriendService {
   /// 调用 GET /api/friend/requests/count
   Future<int> getRequestsCount() async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return 0;
+      final dio = await accountService.getDio();
+      // if (dio == null) return 0;
 
-      final response = await dio.get(
-        '${ApiConfig.baseUrl}/api/friend/requests/count',
-      );
+      final response = await dio.get('${ApiConfig.baseUrl}/api/friend/requests/count');
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -262,15 +211,12 @@ class FriendService {
   /// [account] 可以是 ID / 账号 / 手机号
   Future<({bool success, String message})> addFriend(String account) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       _logger.d('添加好友: account=$account');
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/friend/add',
-        data: {'account': account},
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/add', data: {'account': account});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -291,8 +237,8 @@ class FriendService {
   /// 调用 GET /api/friend/list
   Future<List<Map<String, dynamic>>> getFriendList() async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return [];
+      final dio = await accountService.getDio();
+      // if (dio == null) return [];
 
       _logger.d('请求好友列表: ${ApiConfig.baseUrl}/api/friend/list');
 

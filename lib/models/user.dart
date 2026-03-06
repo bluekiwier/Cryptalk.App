@@ -7,6 +7,9 @@ class User {
   final String? mobile;
   final String? email;
   final String? signature;
+  final String? inviteCode;
+  final int? friendRequestCount; // 好友申请数量（可选）
+  final int? messageUnreadCount; // 消息未读数量（可选）
   final bool isOnline;
   final DateTime? lastSeen;
 
@@ -18,6 +21,9 @@ class User {
     this.mobile,
     this.email,
     this.signature,
+    this.inviteCode,
+    this.friendRequestCount,
+    this.messageUnreadCount,
     this.isOnline = false,
     this.lastSeen,
   });
@@ -27,13 +33,14 @@ class User {
     return User(
       id: json['id']?.toString() ?? '',
       account: json['account']?.toString() ?? '',
-      nickname: json['alias']?.toString().isNotEmpty == true
-          ? json['alias'].toString()
-          : (json['nickname']?.toString() ?? '未知'),
+      nickname: json['nickname']?.toString() ?? '未知',
       avatar: json['avatar']?.toString() ?? '',
       mobile: json['mobile']?.toString(),
       email: json['email']?.toString(),
       signature: json['signature']?.toString(),
+      inviteCode: json['inviteCode']?.toString(),
+      friendRequestCount: json['friendRequestCount'] is int ? json['friendRequestCount'] : null,
+      messageUnreadCount: json['messageUnreadCount'] is int ? json['messageUnreadCount'] : null,
       isOnline: json['isOnline'] == 1 || json['isOnline'] == true,
     );
   }

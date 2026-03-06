@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../services/user_service.dart';
 import '../../models/user.dart';
@@ -16,6 +17,7 @@ class AddFriendPage extends StatefulWidget {
 class _AddFriendPageState extends State<AddFriendPage> {
   final TextEditingController _searchController = TextEditingController();
   final UserService _userService = UserService();
+  final _logger = Logger();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -31,17 +33,14 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
     try {
       final results = await _userService.searchUser(key);
-
+      _logger.d('搜索结果: $results');
       if (!mounted) return;
 
       if (results != null && results.isNotEmpty) {
         final userData = results.first;
         final user = User.fromJson(userData);
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => UserDetailPage(user: user)),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailPage(user: user)));
       } else {
         setState(() {
           _errorMessage = '该用户不存在';
@@ -79,18 +78,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
             pinned: true,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.headerGradient,
-                ),
+                decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
                 child: const SafeArea(
                   child: Center(
                     child: Text(
@@ -135,35 +128,22 @@ class _AddFriendPageState extends State<AddFriendPage> {
                           height: 32,
                           child: CircularProgressIndicator(
                             strokeWidth: 3,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppTheme.primaryColor,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                           ),
                         ),
                         SizedBox(height: 16),
-                        Text(
-                          '正在搜索...',
-                          style: TextStyle(color: AppTheme.textHint),
-                        ),
+                        Text('正在搜索...', style: TextStyle(color: AppTheme.textHint)),
                       ],
                     )
                   : _errorMessage != null
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 64,
-                          color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                        ),
+                        Icon(Icons.search_off_rounded, size: 64, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
                         const SizedBox(height: 16),
                         Text(
                           _errorMessage!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: AppTheme.textHint,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: const TextStyle(fontSize: 16, color: AppTheme.textHint, fontWeight: FontWeight.w500),
                         ),
                       ],
                     )
@@ -173,15 +153,10 @@ class _AddFriendPageState extends State<AddFriendPage> {
                         Icon(
                           Icons.person_search_rounded,
                           size: 80,
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          '搜索对方账号即可添加',
-                          style: TextStyle(color: AppTheme.textHint),
-                        ),
+                        const Text('搜索对方账号即可添加', style: TextStyle(color: AppTheme.textHint)),
                       ],
                     ),
             ),

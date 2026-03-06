@@ -43,21 +43,13 @@ class ProfilePage extends StatelessWidget {
                         // 左侧头像
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ChangeAvatarPage(),
-                              ),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangeAvatarPage()));
                           },
                           child: Stack(
                             children: [
                               Hero(
                                 tag: 'avatar_large',
-                                child: AvatarWidget(
-                                  avatar: loggedInUser?.avatar ?? '',
-                                  size: 80,
-                                ),
+                                child: AvatarWidget(avatar: loggedInUser?.avatar ?? '', size: 80),
                               ),
                               Positioned(
                                 right: 0,
@@ -67,20 +59,9 @@ class ProfilePage extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
+                                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
                                   ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    size: 16,
-                                    color: AppTheme.primaryColor,
-                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded, size: 16, color: AppTheme.primaryColor),
                                 ),
                               ),
                             ],
@@ -95,21 +76,14 @@ class ProfilePage extends StatelessWidget {
                             children: [
                               Text(
                                 loggedInUser?.nickname ?? '我',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 '账号: ${loggedInUser?.account ?? ""}',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 14,
-                                ),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -148,11 +122,7 @@ class ProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark
-                  ? 0.2
-                  : 0.03,
-            ),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -165,10 +135,7 @@ class ProfilePage extends StatelessWidget {
             iconColor: const Color(0xFF6C63FF),
             label: '个人信息',
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const UserInfoPage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const UserInfoPage()));
             },
           ),
           _buildMenuDivider(),
@@ -177,10 +144,7 @@ class ProfilePage extends StatelessWidget {
             iconColor: const Color(0xFF00D9A6),
             label: '我的二维码',
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyQrCodePage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const MyQrCodePage()));
             },
           ),
           // _buildMenuDivider(),
@@ -218,11 +182,7 @@ class ProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark
-                  ? 0.2
-                  : 0.03,
-            ),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -235,10 +195,7 @@ class ProfilePage extends StatelessWidget {
             iconColor: const Color(0xFF6B7280),
             label: '设置',
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
             },
           ),
           _buildMenuDivider(),
@@ -247,12 +204,7 @@ class ProfilePage extends StatelessWidget {
             iconColor: const Color(0xFFEF4444),
             label: '修改密码',
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ChangePasswordPage(),
-                ),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangePasswordPage()));
             },
           ),
           _buildMenuDivider(),
@@ -284,10 +236,7 @@ class ProfilePage extends StatelessWidget {
                 label: '关于闲聊',
                 subtitle: '版本 $version',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AboutPage()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutPage()));
                 },
               );
             },
@@ -306,16 +255,11 @@ class ProfilePage extends StatelessWidget {
           showDialog(
             context: context,
             builder: (dialogContext) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('退出登录'),
               content: const Text('确定要退出当前账号吗？'),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('取消'),
-                ),
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
                 TextButton(
                   onPressed: () async {
                     // 关闭对话框
@@ -323,17 +267,13 @@ class ProfilePage extends StatelessWidget {
                     // 关闭 WebSocket 连接
                     ChatService().disconnect();
                     // 退出登录
-                    await AccountService().logout();
+                    await AccountService().signOut();
                     // 这里判断外层的 context 是否依然挂载
                     if (context.mounted) {
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/login', (route) => false);
+                      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                     }
                   },
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.badgeColor,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: AppTheme.badgeColor),
                   child: const Text('退出'),
                 ),
               ],
@@ -348,11 +288,7 @@ class ProfilePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? 0.2
-                      : 0.03,
-                ),
+                color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.03),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -361,11 +297,7 @@ class ProfilePage extends StatelessWidget {
           child: const Center(
             child: Text(
               '退出登录',
-              style: TextStyle(
-                color: AppTheme.badgeColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: AppTheme.badgeColor, fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
         ),
@@ -385,38 +317,20 @@ class ProfilePage extends StatelessWidget {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
+        decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: iconColor, size: 20),
       ),
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-      ),
+      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
       subtitle: subtitle != null
-          ? Text(
-              subtitle,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textHint),
-            )
+          ? Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textHint))
           : null,
-      trailing:
-          trailing ??
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppTheme.textHint,
-            size: 20,
-          ),
+      trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
       onTap: onTap,
     );
   }
 
   /// 菜单分割线
   Widget _buildMenuDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 72),
-      child: Divider(height: 0.8),
-    );
+    return const Padding(padding: EdgeInsets.only(left: 72), child: Divider(height: 0.8));
   }
 }

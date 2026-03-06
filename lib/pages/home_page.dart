@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/friend_service.dart';
 import '../services/chat_service.dart';
+import '../services/account_service.dart';
 import 'chat/chat_list_page.dart';
 import 'contacts/contacts_page.dart';
 import 'profile/profile_page.dart';
@@ -21,6 +22,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final AnimationController _fabController;
   final FriendService _friendService = FriendService();
   final ChatService _chatService = ChatService();
+  final AccountService _accountService = AccountService();
 
   /// 好友申请数量，用于通讯录 tab 角标
   int _friendRequestCount = 0;
@@ -123,7 +125,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Icons.chat_bubble_rounded,
                 Icons.chat_bubble_outline_rounded,
                 '聊天',
-                18,
+                _accountService.currentUser?.messageUnreadCount ?? 0,
               ),
               _buildNavItem(
                 1,

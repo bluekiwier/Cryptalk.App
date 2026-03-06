@@ -1,5 +1,4 @@
-import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'http_service.dart';
 import 'package:logger/logger.dart';
 import '../models/user.dart';
 import '../config/api_config.dart';
@@ -12,30 +11,13 @@ class UserService {
   UserService._internal();
 
   final _logger = Logger();
-
-  /// 获取带 Authorization 的 Dio 实例（内部复用方法）
-  Future<Dio?> _getAuthedDio() async {
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('accessToken');
-    if (accessToken == null || accessToken.isEmpty) {
-      _logger.w('未登录，无法执行该操作');
-      return null;
-    }
-    final accountService = AccountService();
-    return await accountService.getDio(
-      extraHeaders: {'Authorization': 'Bearer $accessToken'},
-    );
-  }
+  final accountService = AccountService();
 
   /// 获取当前用户的个人资料
   /// 调用 GET /api/user/me
   Future<User?> getMe() async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return null;
-
-      _logger.d('请求当前个人资料: ${ApiConfig.baseUrl}/api/user/me');
-
+      final dio = await accountService.getDio();
       final response = await dio.get('${ApiConfig.baseUrl}/api/user/me');
 
       final responseData = response.data;
@@ -57,15 +39,8 @@ class UserService {
   /// 调用 GET /api/user/profile/:id
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return null;
-
-      _logger.d('请求用户详情: ${ApiConfig.baseUrl}/api/user/profile/$userId');
-
-      final response = await dio.get(
-        '${ApiConfig.baseUrl}/api/user/profile/$userId',
-      );
-
+      final dio = await accountService.getDio();
+      final response = await dio.get('${ApiConfig.baseUrl}/api/user/profile/$userId');
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         _logger.d('获取用户详情成功');
@@ -90,8 +65,8 @@ class UserService {
     String? signature,
   }) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       final Map<String, dynamic> data = {};
       if (nickname != null) data['Nickname'] = nickname;
@@ -101,10 +76,7 @@ class UserService {
 
       _logger.d('请求修改用户信息: $data');
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/user/change-info',
-        data: data,
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/user/change-info', data: data);
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '提交完成';
@@ -129,8 +101,8 @@ class UserService {
     required String newPassword,
   }) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return (success: false, message: '未登录');
+      final dio = await accountService.getDio();
+      // if (dio == null) return (success: false, message: '未登录');
 
       final response = await dio.post(
         '${ApiConfig.baseUrl}/api/user/change-password',
@@ -156,21 +128,17 @@ class UserService {
   /// 调用 POST /api/user/search
   Future<List<Map<String, dynamic>>?> searchUser(String keyword) async {
     try {
-      final dio = await _getAuthedDio();
-      if (dio == null) return null;
+      final dio = await accountService.getDio();
+      // if (dio == null) return null;
 
       _logger.d('搜索用户 keyword: $keyword');
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/user/search',
-        data: {'keyword': keyword},
-      );
+      final response = await dio.post('${ApiConfig.baseUrl}/api/user/search', data: {'keyword': keyword});
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         _logger.d('搜索用户成功');
-        return (responseData['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>();
+        return (responseData['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>();
       } else {
         _logger.e('搜索用户失败: ${responseData?['message']}');
         return null;
