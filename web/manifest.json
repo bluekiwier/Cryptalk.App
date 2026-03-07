@@ -1,11 +1,11 @@
 {
-  "name": "Cryptalk",
-  "short_name": "Cryptalk",
+  "name": "闲聊",
+  "short_name": "闲聊",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0175C2",
   "theme_color": "#0175C2",
-  "description": "Cryptalk专注于“极致隐私”与“纯粹沟通”的加密聊天应用.",
+  "description": "闲聊专注于“极致隐私”与“纯粹沟通”的加密聊天应用.",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [
