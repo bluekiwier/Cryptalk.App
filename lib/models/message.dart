@@ -6,6 +6,7 @@ class Message {
   final MessageType type;
   final DateTime createdAt;
   final bool isRead;
+  final String? quoteId;
 
   const Message({
     required this.id,
@@ -14,6 +15,7 @@ class Message {
     this.type = MessageType.text,
     required this.createdAt,
     this.isRead = false,
+    this.quoteId,
   });
 }
 

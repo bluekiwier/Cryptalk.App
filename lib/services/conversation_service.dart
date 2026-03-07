@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import 'database_service.dart';
 import 'account_service.dart';
@@ -275,8 +276,16 @@ class ConversationService extends ChangeNotifier {
         },
       );
       return response.data;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _logger.e('获取消息列表超时: $e');
+        return {'success': false, 'error': 'connection_timeout', 'message': '网络连接超时，请检查网络后重试'};
+      } else {
+        _logger.e('获取消息列表失败: $e');
+        return null;
+      }
     } catch (e) {
-      _logger.e('获取消息列表失败: $e');
+      _logger.e('获取消息列表异常: $e');
       return null;
     }
   }

@@ -435,24 +435,29 @@ class ChatService extends ChangeNotifier {
   /// [senderId] 发送者 ID
   /// [receiverId] 接收者 ID
   /// [message] 消息内容
+  /// [quoteId] 引用的消息 ID
   Future<String> sendPrivateMessage({
     required dynamic conversationId,
     required dynamic senderId,
     required dynamic receiverId,
     required String message,
+    String? quoteId,
   }) async {
     try {
       final dio = await AccountService().getDio();
 
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/chat/send-private-message',
-        data: {
-          'conversationId': conversationId.toString(),
-          'senderId': senderId is String ? int.tryParse(senderId) ?? senderId : senderId,
-          'receiverId': receiverId is String ? int.tryParse(receiverId) ?? receiverId : receiverId,
-          'message': message,
-        },
-      );
+      final data = <String, dynamic>{
+        'conversationId': conversationId.toString(),
+        'senderId': senderId is String ? int.tryParse(senderId) ?? senderId : senderId,
+        'receiverId': receiverId is String ? int.tryParse(receiverId) ?? receiverId : receiverId,
+        'message': message,
+      };
+
+      if (quoteId != null) {
+        data['quoteId'] = quoteId is String ? int.tryParse(quoteId) ?? quoteId : quoteId;
+      }
+
+      final response = await dio.post('${ApiConfig.baseUrl}/api/chat/send-private-message', data: data);
 
       final responseData = response.data;
       // _logger.d('发送私聊消息响应: $responseData');
