@@ -151,7 +151,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
 
     final newMessages = messageMaps.map((map) {
-      _logger.d('从数据库读取消息: $map');
+      // _logger.d('从数据库读取消息: $map');
       final quoteIdInt = map['quote_id'] as int?;
       return Message(
         id: map['id']?.toString() ?? '',
@@ -356,7 +356,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       listenable: _accountService,
       builder: (context, child) {
         final currentUserId = _accountService.currentUser?.id;
-        _logger.d('当前用户ID: $currentUserId, 消息数量: ${_messages.length}');
+        //_logger.d('当前用户ID: $currentUserId, 消息数量: ${_messages.length}');
 
         return RefreshIndicator(
           onRefresh: () => _loadMessages(isLoadMore: true),
@@ -421,10 +421,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   gradient: isMe ? AppTheme.headerGradient : null,
                   color: isMe ? null : Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: Radius.circular(isMe ? 16 : 4),
-                    bottomRight: Radius.circular(isMe ? 4 : 16),
+                    topLeft: const Radius.circular(10),
+                    topRight: const Radius.circular(10),
+                    bottomLeft: Radius.circular(isMe ? 10 : 4),
+                    bottomRight: Radius.circular(isMe ? 4 : 10),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -497,9 +497,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     double left = offset.dx; // 菜单左侧与气泡左侧对齐
     double top = offset.dy + size.height - 20; // 菜单位于气泡下方，刚好贴近
+    bool isMenuAbove = false;
 
     if (top + menuHeight > screenSize.height - inputBarHeight) {
       top = offset.dy - menuHeight - 35; // 如果下方空间不足，将菜单移至气泡上方，刚好贴近
+      isMenuAbove = true;
     }
 
     final menuWidth = itemWidth * itemCount + menuPadding * 2; // 计算菜单总宽度
@@ -529,55 +531,62 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           Positioned(
             left: left,
             top: top,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                    offset: Offset(0, isMenuAbove ? -4 : 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildMenuButton(
+                    icon: Icons.format_quote_sharp,
+                    label: '引用',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _quoteMessage(message);
+                    },
+                  ),
+                  _buildMenuButton(
+                    icon: Icons.copy_sharp,
+                    label: '复制',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Clipboard.setData(ClipboardData(text: message.content));
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制到剪贴板')));
+                      }
+                    },
+                  ),
+                  if (isMe)
                     _buildMenuButton(
-                      icon: Icons.format_quote_rounded,
-                      label: '引用',
-                      onTap: () {
+                      icon: Icons.delete_sharp,
+                      label: '删除',
+                      labelColor: Colors.red,
+                      iconColor: Colors.red,
+                      onTap: () async {
                         Navigator.pop(context);
-                        _quoteMessage(message);
-                      },
-                    ),
-                    _buildMenuButton(
-                      icon: Icons.copy_rounded,
-                      label: '复制',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Clipboard.setData(ClipboardData(text: message.content));
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制到剪贴板')));
+                        final success = await MessageService().deleteMessage(message.id);
+                        if (success && mounted) {
+                          setState(() {
+                            _messages.removeWhere((m) => m.id == message.id);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('消息已删除')));
+                        } else if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('删除失败，请稍后重试')));
                         }
                       },
                     ),
-                    if (isMe)
-                      _buildMenuButton(
-                        icon: Icons.delete_rounded,
-                        label: '删除',
-                        labelColor: Colors.red,
-                        iconColor: Colors.red,
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final success = await MessageService().deleteMessage(message.id);
-                          if (success && mounted) {
-                            setState(() {
-                              _messages.removeWhere((m) => m.id == message.id);
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('消息已删除')));
-                          } else if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('删除失败，请稍后重试')));
-                          }
-                        },
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -594,20 +603,24 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     Color? labelColor,
     Color? iconColor,
   }) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        width: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        width: 50,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 20, color: iconColor ?? AppTheme.textPrimary),
-            const SizedBox(height: 3),
+            const SizedBox(height: 1),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: labelColor ?? AppTheme.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                color: labelColor ?? AppTheme.textPrimary,
+                fontWeight: FontWeight(500),
+                decoration: TextDecoration.none,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -640,7 +653,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceBg,
+                color: AppTheme.dividerColor,
                 border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
               ),
               child: Row(
