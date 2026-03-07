@@ -10,10 +10,29 @@ import '../config/api_config.dart';
 import 'database_service.dart';
 import 'conversation_service.dart';
 
-/// WebSocket统一消息结构
-class ChatMessageDto {
-  // 类型: chat / ack / system / notify
+/// 统一消息模型
+class MessageResult {
   final String type;
+  final String event;
+  final int timestamp;
+  final Map<String, dynamic>? data;
+  final Map<String, dynamic>? extra;
+
+  MessageResult({required this.type, required this.event, required this.timestamp, this.data, this.extra});
+
+  factory MessageResult.fromJson(Map<String, dynamic> json) {
+    return MessageResult(
+      type: json['type'],
+      event: json['event'],
+      timestamp: json['timestamp'],
+      data: json['data'],
+      extra: json['extra'],
+    );
+  }
+}
+
+/// 聊天消息结构
+class ChatMessageDto {
   // 会话ID
   final String conversationId;
   // 会话类型: 1=私聊,2=群聊,3=广播
@@ -30,7 +49,6 @@ class ChatMessageDto {
   final bool isReceipt;
 
   ChatMessageDto({
-    required this.type,
     required this.conversationId,
     required this.conversationType,
     required this.senderId,
@@ -42,7 +60,6 @@ class ChatMessageDto {
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     return ChatMessageDto(
-      type: json['type'] ?? '',
       conversationId: json['conversationId'] ?? '',
       conversationType: json['conversationType'] ?? 0,
       senderId: json['senderId'] ?? '',
@@ -225,39 +242,57 @@ class ChatService extends ChangeNotifier {
       }
 
       _logger.i('收到 WebSocket 消息: $message');
+
       // 尝试解析JSON
       try {
         final Map<String, dynamic> jsonMessage = json.decode(message);
-        final ChatMessageDto chatMessage = ChatMessageDto.fromJson(jsonMessage);
+        final MessageResult messageResult = MessageResult.fromJson(jsonMessage);
 
         // 根据消息类型处理
-        switch (chatMessage.type) {
+        switch (messageResult.type) {
           case 'chat':
-            _handleChatMessage(chatMessage);
+            handleChatEvent(messageResult);
             break;
-          case 'ack':
-            _handleAckMessage(chatMessage);
+          case 'group':
+            _handleGroupEvent(messageResult);
+            break;
+          case 'user':
+            _handleUserEvent(messageResult);
             break;
           case 'system':
-            _handleSystemMessage(chatMessage);
-            break;
-          case 'notify':
-            _handleNotifyMessage(chatMessage);
-            break;
-          case 'delete_message':
-            _logger.i('处理删除消息: $message');
-            break;
-          case 'revoke_message':
-            _logger.w('撤回消息: ${chatMessage.payload.id}');
+            _handleSystemEvent(messageResult);
             break;
           default:
-            _logger.w('未知消息类型: ${chatMessage.type}');
+            _logger.w('未知消息类型: ${messageResult.type}');
         }
       } catch (e) {
         _logger.e('消息解析失败: $e');
       }
     } else {
       _logger.w('未知消息格式: $message');
+    }
+  }
+
+  void handleChatEvent(MessageResult message) {
+    switch (message.event) {
+      case "message":
+        final chat = ChatMessageDto.fromJson(message.data!);
+        _handleChatMessage(chat);
+        break;
+
+      // case "delete":
+      //   final del = DeleteMessage.fromJson(message.data!);
+      //   onDeleteMessage(del);
+      //   break;
+
+      // case "recall":
+      //   final recall = RecallMessage.fromJson(message.data!);
+      //   onRecallMessage(recall);
+      //   break;
+
+      // case "ack":
+      //   handleAck(message.data!);
+      //   break;
     }
   }
 
@@ -328,24 +363,24 @@ class ChatService extends ChangeNotifier {
     _receivedMessages.clear();
   }
 
-  /// 处理确认消息
-  void _handleAckMessage(ChatMessageDto message) {
-    _logger.i('处理确认消息: ${message.payload.id}');
-    // 处理消息送达确认
+  /// 处理用户事件
+  void _handleUserEvent(MessageResult message) {
+    _logger.i('处理用户事件: ${message.data}');
+    // 处理用户事件
     notifyListeners();
   }
 
   /// 处理系统消息
-  void _handleSystemMessage(ChatMessageDto message) {
-    _logger.i('处理系统消息: ${message.payload.content}');
+  void _handleSystemEvent(MessageResult message) {
+    _logger.i('处理系统消息: ${message.data}');
     // 处理系统通知
     notifyListeners();
   }
 
-  /// 处理通知消息
-  void _handleNotifyMessage(ChatMessageDto message) {
-    _logger.i('处理通知消息: ${message.payload.content}');
-    // 处理其他通知
+  /// 处理群组消息
+  void _handleGroupEvent(MessageResult message) {
+    _logger.i('处理群组消息: ${message.data}');
+    // 处理群组通知
     notifyListeners();
   }
 
