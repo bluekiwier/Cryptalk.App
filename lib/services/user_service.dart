@@ -1,4 +1,3 @@
-import 'http_service.dart';
 import 'package:logger/logger.dart';
 import '../models/user.dart';
 import '../config/api_config.dart';

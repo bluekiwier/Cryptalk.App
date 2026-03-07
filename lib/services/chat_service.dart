@@ -5,7 +5,6 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
-import 'http_service.dart';
 import 'account_service.dart';
 import '../config/api_config.dart';
 import 'database_service.dart';
@@ -246,7 +245,7 @@ class ChatService extends ChangeNotifier {
             _handleNotifyMessage(chatMessage);
             break;
           case 'delete_message':
-            _logger.w('删除消息: ${chatMessage.payload.id}');
+            _logger.i('处理删除消息: $message');
             break;
           case 'revoke_message':
             _logger.w('撤回消息: ${chatMessage.payload.id}');
@@ -454,7 +453,7 @@ class ChatService extends ChangeNotifier {
       };
 
       if (quoteId != null) {
-        data['quoteId'] = quoteId is String ? int.tryParse(quoteId) ?? quoteId : quoteId;
+        data['quoteId'] = int.tryParse(quoteId) ?? quoteId;
       }
 
       final response = await dio.post('${ApiConfig.baseUrl}/api/chat/send-private-message', data: data);

@@ -1,3 +1,10 @@
+/// 消息状态枚举
+enum MessageStatus {
+  normal, // 正常
+  recalled, // 撤回
+  deleted, // 删除
+}
+
 /// 消息模型
 class Message {
   final String id;
@@ -7,6 +14,7 @@ class Message {
   final DateTime createdAt;
   final bool isRead;
   final String? quoteId;
+  final MessageStatus status;
 
   const Message({
     required this.id,
@@ -16,6 +24,7 @@ class Message {
     required this.createdAt,
     this.isRead = false,
     this.quoteId,
+    this.status = MessageStatus.normal,
   });
 }
 

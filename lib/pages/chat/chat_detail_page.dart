@@ -99,6 +99,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             createdAt: DateTime.tryParse(chatMessage.payload.createdAt) ?? DateTime.now(),
             isRead: true,
             quoteId: quoteIdStr.isNotEmpty ? quoteIdStr : null,
+            status: MessageStatus.values[chatMessage.payload.status],
           );
           // 检查消息是否已经存在
           if (!_messages.any((m) => m.id == message.id)) {
@@ -153,6 +154,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final newMessages = messageMaps.map((map) {
       // _logger.d('从数据库读取消息: $map');
       final quoteIdInt = map['quote_id'] as int?;
+      final statusInt = map['status'] as int? ?? 0;
       return Message(
         id: map['id']?.toString() ?? '',
         senderId: map['sender_id']?.toString() ?? '',
@@ -163,6 +165,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             : DateTime.now(),
         isRead: true, // 默认设为已读
         quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
       );
     }).toList();
 
@@ -250,6 +253,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
       final newMessages = list.map((json) {
         final quoteIdInt = json['quoteId'] as int?;
+        final statusInt = json['status'] as int? ?? 0;
         return Message(
           id: json['id']?.toString() ?? '',
           senderId: json['senderId']?.toString() ?? '',
@@ -260,6 +264,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               : DateTime.now(),
           isRead: true, // 默认设为已读
           quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+          status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
         );
       }).toList();
 
@@ -396,6 +401,24 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   /// 消息气泡
   Widget _buildMessageBubble(Message message, bool isMe) {
+    if (message.status == MessageStatus.recalled) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: Text(isMe ? '你撤回了一条消息' : '对方撤回了一条消息', style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
+        ),
+      );
+    }
+
+    if (message.status == MessageStatus.deleted) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: Text('消息已被删除', style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
+        ),
+      );
+    }
+
     final key = GlobalKey();
     final quotedMessage = message.quoteId != null
         ? _messages.firstWhere(
