@@ -9,6 +9,7 @@ import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'chat_service.dart';
+import 'database_service.dart';
 
 /// 认证服务 - 管理用户登录/注册状态
 class AccountService extends ChangeNotifier {
@@ -211,6 +212,11 @@ class AccountService extends ChangeNotifier {
       isOnline: prefs.getBool('userIsOnline') ?? false,
     );
     _logger.d('加载用户信息成功: $_currentUser');
+
+    // 初始化用户独立数据库
+    await DatabaseService().initForUser(_currentUser!.id);
+    _logger.d('用户数据库初始化完成');
+
     notifyListeners();
   }
 
@@ -277,6 +283,10 @@ class AccountService extends ChangeNotifier {
         _logger.d('登录成功，保存用户信息: $_currentUser');
         await _saveUserToLocal(_currentUser!);
         _logger.d('用户信息保存完成');
+
+        // 初始化用户独立数据库
+        await DatabaseService().initForUser(_currentUser!.id);
+        _logger.d('用户数据库初始化完成');
 
         // 连接 WebSocket
         await ChatService().checkAndReconnect();
@@ -466,6 +476,9 @@ class AccountService extends ChangeNotifier {
       await prefs.remove('userMobile');
       await prefs.remove('userSignature');
       await prefs.remove('userIsOnline');
+
+      // 清理用户数据库
+      await DatabaseService().clearForCurrentUser();
 
       // 断开 WebSocket
       ChatService().disconnect();

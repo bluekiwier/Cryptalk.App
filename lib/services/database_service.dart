@@ -12,6 +12,7 @@ class DatabaseService {
 
   Database? _database;
   final _logger = Logger();
+  String? _currentUserId;
 
   /// 截断字符串到指定长度
   String _truncate(String text, int maxLength) {
@@ -30,12 +31,40 @@ class DatabaseService {
   /// 初始化数据库
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'cryptalk.db');
+    final dbName = _currentUserId != null ? 'cryptalk_$_currentUserId.db' : 'cryptalk.db';
+    final path = join(dbPath, dbName);
 
     final db = await openDatabase(path, version: 1, onCreate: _onCreate);
 
     _logger.i('sqflite 数据库初始化成功: $path');
     return db;
+  }
+
+  /// 为指定用户初始化数据库（登录时调用）
+  Future<void> initForUser(String userId) async {
+    await close();
+    _currentUserId = userId;
+    _database = await _initDatabase();
+    _logger.i('已为用户初始化独立数据库: $_currentUserId');
+  }
+
+  /// 清理当前用户数据库（登出时调用）
+  /// 只关闭连接，保留数据库文件，以便用户切换账号后再回来时数据仍在
+  Future<void> clearForCurrentUser() async {
+    await close();
+
+    // final dbPath = await getDatabasesPath();
+    // final dbName = 'cryptalk_$_currentUserId.db';
+    // final path = join(dbPath, dbName);
+
+    // try {
+    //   await deleteDatabase(path);
+    //   _logger.i('已删除用户数据库: $path');
+    // } catch (e) {
+    //   _logger.w('删除数据库失败: $e');
+    // }
+
+    _currentUserId = null;
   }
 
   /// 创建表
