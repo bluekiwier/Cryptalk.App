@@ -80,6 +80,12 @@ class ConversationService extends ChangeNotifier {
     await _syncFromNetwork();
   }
 
+  /// 通知会话列表更新（用于本地修改后刷新 UI）
+  Future<void> notifyConversationListChanged() async {
+    await _loadFromLocal();
+    notifyListeners();
+  }
+
   // ─────────────────────────────────────────────
   // 加载更多（上拉分页）
   // ─────────────────────────────────────────────
@@ -285,6 +291,57 @@ class ConversationService extends ChangeNotifier {
       }
     } catch (e) {
       _logger.e('获取消息列表异常: $e');
+      return null;
+    }
+  }
+
+  /// 获取聊天设置信息
+  Future<Map<String, dynamic>?> getChatSettings(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.get('/api/conversation/setting/$conversationId');
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('获取聊天设置失败: $e');
+      return null;
+    } catch (e) {
+      _logger.e('获取聊天设置异常: $e');
+      return null;
+    }
+  }
+
+  /// 置顶聊天
+  Future<Map<String, dynamic>?> pinTopConversation(String conversationId, int type) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post(
+        '/api/conversation/pin-top',
+        data: {'conversationId': int.tryParse(conversationId) ?? 0, 'type': type},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('置顶聊天失败: $e');
+      return null;
+    } catch (e) {
+      _logger.e('置顶聊天异常: $e');
+      return null;
+    }
+  }
+
+  /// 设置消息免打扰
+  Future<Map<String, dynamic>?> muteConversation(String conversationId, int type) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post(
+        '/api/conversation/mute',
+        data: {'conversationId': int.tryParse(conversationId) ?? 0, 'type': type},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('设置消息免打扰失败: $e');
+      return null;
+    } catch (e) {
+      _logger.e('设置消息免打扰异常: $e');
       return null;
     }
   }

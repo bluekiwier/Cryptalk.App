@@ -4,7 +4,6 @@ import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../models/conversation.dart';
 import '../../models/message.dart';
-import '../../models/user.dart';
 import '../../models/db/conversation_entity.dart';
 import '../../models/db/conversation_message_entity.dart';
 import '../../services/account_service.dart';
@@ -12,7 +11,7 @@ import '../../services/chat_service.dart';
 import '../../services/conversation_service.dart';
 import '../../services/message_service.dart';
 import '../../services/database_service.dart';
-import '../../pages/contacts/user_detail_page.dart';
+import 'chat_settings_page.dart';
 
 /// 聊天详情页面
 /// 展示与某人或某群的具体聊天内容
@@ -486,7 +485,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             // ),
             IconButton(
               icon: const Icon(Icons.more_horiz_rounded, size: 22, color: Colors.white),
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ChatSettingsPage(conversation: widget.conversation)),
+                );
+              },
             ),
           ],
         ),
