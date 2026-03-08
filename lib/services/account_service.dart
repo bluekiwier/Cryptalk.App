@@ -72,6 +72,7 @@ class AccountService extends ChangeNotifier {
     }
     return Dio(
       BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
         connectTimeout: const Duration(milliseconds: ApiConfig.timeout),
         receiveTimeout: const Duration(milliseconds: ApiConfig.timeout),
         sendTimeout: const Duration(milliseconds: ApiConfig.timeout),
@@ -239,10 +240,7 @@ class AccountService extends ChangeNotifier {
     try {
       final dio = await getDio();
       // 请求接口
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/account/sign-in',
-        data: {'account': account, 'password': password},
-      );
+      final response = await dio.post('/api/account/sign-in', data: {'account': account, 'password': password});
 
       final responseData = response.data;
       // _logger.d('登录返回数据: $responseData');
@@ -337,7 +335,7 @@ class AccountService extends ChangeNotifier {
         requestData['inviteCode'] = invitationCode;
       }
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/account/sign-up', data: requestData);
+      final response = await dio.post('/api/account/sign-up', data: requestData);
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -394,10 +392,7 @@ class AccountService extends ChangeNotifier {
       final dio = await _getBaseDio();
 
       _logger.i('开始刷新refreshToken');
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/account/refresh-token',
-        data: {'refreshToken': currentRefreshToken},
-      );
+      final response = await dio.post('/api/account/refresh-token', data: {'refreshToken': currentRefreshToken});
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -445,10 +440,8 @@ class AccountService extends ChangeNotifier {
       if (accessToken != null && accessToken.isNotEmpty) {
         final dio = await getDio(extraHeaders: {'Authorization': 'Bearer $accessToken'});
 
-        final url = '${ApiConfig.baseUrl}/api/account/sign-out';
-
         // 调用退出登录接口
-        final response = await dio.post(url);
+        final response = await dio.post('/api/account/sign-out');
 
         final responseData = response.data;
         if (responseData != null && responseData['success'] == true) {

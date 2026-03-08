@@ -224,7 +224,7 @@ class ConversationService extends ChangeNotifier {
       final dio = await AccountService().getDio();
 
       final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/conversation/list',
+        '/api/conversation/list',
         data: (cursor ?? const ConversationListInputDto()).toJson(),
       );
       final responseData = response.data;
@@ -243,7 +243,7 @@ class ConversationService extends ChangeNotifier {
     try {
       final dio = await AccountService().getDio();
 
-      final response = await dio.get('${ApiConfig.baseUrl}/api/conversation/$conversationId');
+      final response = await dio.get('/api/conversation/$conversationId');
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         final data = responseData['data'];
@@ -268,7 +268,7 @@ class ConversationService extends ChangeNotifier {
       final dio = await AccountService().getDio();
 
       final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/conversation/messages',
+        '/api/conversation/messages',
         data: {
           'conversationId': conversationId is String ? int.tryParse(conversationId) ?? 0 : (conversationId ?? 0),
           'messageId': messageId,

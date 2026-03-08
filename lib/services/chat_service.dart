@@ -428,7 +428,7 @@ class ChatService extends ChangeNotifier {
       }
 
       final dio = await AccountService().getDio();
-      final response = await dio.post('${ApiConfig.baseUrl}/api/chat/create-server-url');
+      final response = await dio.post('/api/chat/create-server-url');
       final responseData = response.data;
 
       if (responseData != null && responseData['success'] == true) {
@@ -491,7 +491,7 @@ class ChatService extends ChangeNotifier {
         data['quoteId'] = int.tryParse(quoteId) ?? quoteId;
       }
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/chat/send-private-message', data: data);
+      final response = await dio.post('/api/chat/send-private-message', data: data);
 
       final responseData = response.data;
       // _logger.d('发送私聊消息响应: $responseData');

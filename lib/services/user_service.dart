@@ -17,7 +17,7 @@ class UserService {
   Future<User?> getMe() async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.get('${ApiConfig.baseUrl}/api/user/me');
+      final response = await dio.get('/api/user/me');
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -39,7 +39,7 @@ class UserService {
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.get('${ApiConfig.baseUrl}/api/user/profile/$userId');
+      final response = await dio.get('/api/user/profile/$userId');
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         _logger.d('获取用户详情成功');
@@ -75,7 +75,7 @@ class UserService {
 
       _logger.d('请求修改用户信息: $data');
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/user/change-info', data: data);
+      final response = await dio.post('/api/user/change-info', data: data);
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '提交完成';
@@ -104,7 +104,7 @@ class UserService {
       // if (dio == null) return (success: false, message: '未登录');
 
       final response = await dio.post(
-        '${ApiConfig.baseUrl}/api/user/change-password',
+        '/api/user/change-password',
         data: {'oldpassword': oldPassword, 'newpassword': newPassword},
       );
 
@@ -132,7 +132,7 @@ class UserService {
 
       _logger.d('搜索用户 keyword: $keyword');
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/user/search', data: {'keyword': keyword});
+      final response = await dio.post('/api/user/search', data: {'keyword': keyword});
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
