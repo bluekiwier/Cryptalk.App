@@ -57,7 +57,7 @@ class FriendService {
 
       _logger.d('接受好友申请: id=$requestId');
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/requests/agree', data: {'id': requestId});
+      final response = await dio.post('/api/friend/requests/agree', data: {'id': requestId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -83,7 +83,7 @@ class FriendService {
 
       _logger.d('拒绝好友申请: id=$requestId');
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/requests/disagree', data: {'id': requestId});
+      final response = await dio.post('/api/friend/requests/disagree', data: {'id': requestId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -109,7 +109,7 @@ class FriendService {
 
       _logger.d('拉黑用户: id=$userId');
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/blacklist-add', data: {'id': userId});
+      final response = await dio.post('/api/friend/blacklist-add', data: {'id': userId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -135,7 +135,7 @@ class FriendService {
 
       _logger.d('移除黑名单: id=$userId');
 
-      final response = await dio.delete('${ApiConfig.baseUrl}/api/friend/blacklist-remove', data: {'id': userId});
+      final response = await dio.delete('/api/friend/blacklist-remove', data: {'id': userId});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -162,7 +162,7 @@ class FriendService {
       _logger.d('删除好友: ids=[$userId]');
 
       final response = await dio.delete(
-        '${ApiConfig.baseUrl}/api/friend/delete',
+        '/api/friend/delete',
         data: {
           'ids': [userId],
         },
@@ -190,7 +190,7 @@ class FriendService {
       final dio = await accountService.getDio();
       // if (dio == null) return 0;
 
-      final response = await dio.get('${ApiConfig.baseUrl}/api/friend/requests/count');
+      final response = await dio.get('/api/friend/requests/count');
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -215,7 +215,7 @@ class FriendService {
 
       _logger.d('添加好友: account=$account');
 
-      final response = await dio.post('${ApiConfig.baseUrl}/api/friend/add', data: {'account': account});
+      final response = await dio.post('/api/friend/add', data: {'account': account});
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
@@ -239,9 +239,9 @@ class FriendService {
       final dio = await accountService.getDio();
       // if (dio == null) return [];
 
-      _logger.d('请求好友列表: ${ApiConfig.baseUrl}/api/friend/list');
+      _logger.d('请求好友列表: /api/friend/list');
 
-      final response = await dio.get('${ApiConfig.baseUrl}/api/friend/list');
+      final response = await dio.get('/api/friend/list');
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
