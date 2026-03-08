@@ -14,7 +14,6 @@ class MessageService {
     try {
       // 调用后端撤回API
       final dio = await AccountService().getDio();
-
       final response = await dio.delete('/api/message/recall', data: {'id': messageId});
       return response.statusCode == 200;
     } catch (e) {
@@ -28,7 +27,6 @@ class MessageService {
     try {
       // 调用后端删除API
       final dio = await AccountService().getDio();
-
       final response = await dio.delete('/api/message/delete', data: {'id': messageId});
       return response.statusCode == 200;
     } catch (e) {

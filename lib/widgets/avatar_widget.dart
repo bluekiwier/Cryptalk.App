@@ -70,7 +70,7 @@ class AvatarWidget extends StatelessWidget {
   Widget _buildAvatarContent() {
     // 1. 如果头像为空，使用默认图片
     if (avatar.isEmpty) {
-      return Image.asset('assets/images/default_avatar.png', width: size, height: size, fit: BoxFit.cover);
+      return Image.asset('assets/images/default_user_avatar.png', width: size, height: size, fit: BoxFit.cover);
     }
 
     // 2. 如果是网络图片
@@ -103,6 +103,6 @@ class AvatarWidget extends StatelessWidget {
 
   /// 渲染错误时的兜底头像
   Widget _buildErrorAvatar() {
-    return Image.asset('assets/images/default_avatar.png', width: size, height: size, fit: BoxFit.cover);
+    return Image.asset('assets/images/default_user_avatar.png', width: size, height: size, fit: BoxFit.cover);
   }
 }

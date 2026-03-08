@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
-import '../../data/mock_data.dart';
 import '../../models/conversation.dart';
 import '../../models/message.dart';
-import '../../widgets/avatar_widget.dart';
+import '../../models/user.dart';
+import '../../models/db/conversation_entity.dart';
+import '../../models/db/conversation_message_entity.dart';
 import '../../services/account_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/conversation_service.dart';
 import '../../services/message_service.dart';
 import '../../services/database_service.dart';
+import '../../pages/contacts/user_detail_page.dart';
 
 /// 聊天详情页面
 /// 展示与某人或某群的具体聊天内容
@@ -66,10 +68,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     super.dispose();
   }
 
-  /// 处理ChatService更新
+  /// 处理ChatService更新（收到新消息或删除消息等事件）
   void _onChatServiceUpdated() async {
     // 从ChatService获取当前会话的新消息
     final newMessages = _chatService.getMessagesForConversation(widget.conversation.id);
+
+    // 保存到本地数据库并更新UI（无论是否有新消息，都需要更新UI以反映删除等状态变化）
     if (newMessages.isNotEmpty) {
       // 保存到本地数据库
       for (final chatMessage in newMessages) {
@@ -87,43 +91,48 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'created_at': chatMessage.payload.createdAt,
         });
       }
+    }
 
+    // 从数据库重新读取所有消息（包括状态变化，如删除）
+    final messageMaps = await DatabaseService().getMessages(int.parse(widget.conversation.id), limit: 1000);
+
+    final updatedMessages = messageMaps.map((map) {
+      final quoteIdInt = map['quote_id'] as int?;
+      final statusInt = map['status'] as int? ?? 0;
+      return Message(
+        id: map['id']?.toString() ?? '',
+        senderId: map['sender_id']?.toString() ?? '',
+        content: map['content']?.toString() ?? '',
+        type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
+        createdAt: map['created_at'] != null
+            ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+            : DateTime.now(),
+        isRead: true,
+        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
+      );
+    }).toList();
+
+    // 对消息按ID升序排序
+    updatedMessages.sort((a, b) {
+      final aId = int.tryParse(a.id) ?? 0;
+      final bId = int.tryParse(b.id) ?? 0;
+      return aId.compareTo(bId);
+    });
+
+    if (mounted) {
       setState(() {
-        // 将新消息转换为Message对象并添加到列表中
-        for (final chatMessage in newMessages) {
-          final quoteIdStr = chatMessage.payload.quoteId;
-          final message = Message(
-            id: chatMessage.payload.id,
-            senderId: chatMessage.payload.senderId,
-            content: chatMessage.payload.content,
-            createdAt: DateTime.tryParse(chatMessage.payload.createdAt) ?? DateTime.now(),
-            isRead: true,
-            quoteId: quoteIdStr.isNotEmpty ? quoteIdStr : null,
-            status: MessageStatus.values[chatMessage.payload.status],
-          );
-          // 检查消息是否已经存在
-          if (!_messages.any((m) => m.id == message.id)) {
-            _messages.add(message);
-          }
-        }
-        // 对消息按ID排序（升序，旧在前、新在后），安全处理非数字ID
-        _messages.sort((a, b) {
-          final aId = int.tryParse(a.id) ?? 0;
-          final bId = int.tryParse(b.id) ?? 0;
-          return aId.compareTo(bId);
-        });
+        _messages = updatedMessages;
       });
 
       // 滚动到底部
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
+      if (newMessages.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
+      }
     }
   }
 
@@ -293,6 +302,123 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
+  /// 处理消息删除后的本地数据库更新（与收消息人删除逻辑保持一致）
+  /// 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
+  /// 2. 如果删除的消息是会话的最后一条消息，则更新会话表中的 last_message_id, last_message_at, last_message_preview, last_sender_id 为最新消息信息
+  Future<void> _handleMessageDeleted(String messageId, String conversationId) async {
+    // 解析消息ID和会话ID
+    final msgId = int.tryParse(messageId) ?? 0;
+    final convId = int.tryParse(conversationId) ?? 0;
+
+    if (msgId == 0 || convId == 0) return;
+
+    try {
+      final dbService = DatabaseService();
+      final db = await dbService.database;
+
+      // 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
+      await db.update(
+        ConversationMessageEntity.tableName,
+        {ConversationMessageEntity.status: 2},
+        where: '${ConversationMessageEntity.id} = ?',
+        whereArgs: [msgId],
+      );
+
+      // 2. 查询会话表，获取当前会话信息
+      final conversationResult = await db.query(
+        ConversationEntity.tableName,
+        where: '${ConversationEntity.id} = ?',
+        whereArgs: [convId],
+      );
+
+      // 如果会话存在
+      if (conversationResult.isNotEmpty) {
+        final conversation = conversationResult.first;
+        final lastMessageId = conversation[ConversationEntity.lastMessageId] as int?;
+
+        // 判断删除的消息是否为会话的最后一条消息
+        if (lastMessageId == msgId) {
+          // 查询该会话中未删除的最新一条消息
+          final latestMessages = await db.query(
+            ConversationMessageEntity.tableName,
+            where: '${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.status} != 2',
+            whereArgs: [convId],
+            orderBy: '${ConversationMessageEntity.id} DESC',
+            limit: 1,
+          );
+
+          // 如果还有未删除的消息，则更新会话的最后一条消息信息
+          if (latestMessages.isNotEmpty) {
+            final latestMessage = latestMessages.first;
+            final newLastMessageId = latestMessage[ConversationMessageEntity.id] as int;
+            final newLastMessageAt = latestMessage[ConversationMessageEntity.createdAt] as String;
+            final newLastMessagePreview = _truncate(
+              latestMessage[ConversationMessageEntity.content] as String? ?? '',
+              50,
+            );
+            final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as int;
+
+            await db.update(
+              ConversationEntity.tableName,
+              {
+                ConversationEntity.lastMessageId: newLastMessageId,
+                ConversationEntity.lastMessageAt: newLastMessageAt,
+                ConversationEntity.lastMessagePreview: newLastMessagePreview,
+                ConversationEntity.lastSenderId: newLastSenderId,
+                ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
+              },
+              where: '${ConversationEntity.id} = ?',
+              whereArgs: [convId],
+            );
+          } else {
+            // 如果该会话所有消息都已删除，则将会话的最后一条消息信息置空
+            await db.update(
+              ConversationEntity.tableName,
+              {
+                ConversationEntity.lastMessageId: 0,
+                ConversationEntity.lastMessageAt: '',
+                ConversationEntity.lastMessagePreview: '',
+                ConversationEntity.lastSenderId: 0,
+                ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
+              },
+              where: '${ConversationEntity.id} = ?',
+              whereArgs: [convId],
+            );
+          }
+        }
+      }
+    } catch (e) {
+      _logger.e('处理消息删除失败: $e');
+    }
+  }
+
+  /// 截断字符串到指定长度，超过部分用省略号替代
+  String _truncate(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    return '${text.substring(0, maxLength)}...';
+  }
+
+  /// 滚动到指定消息的位置
+  Future<void> _scrollToMessage(String messageId) async {
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    // 计算消息在列表中的位置（假设每条消息高度约为 80 像素）
+    const estimatedItemHeight = 80.0;
+    final targetPosition = index * estimatedItemHeight;
+
+    // 确保滚动位置不超过最大滚动范围
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final finalPosition = targetPosition > maxScroll ? maxScroll : targetPosition;
+
+    // 滚动到指定位置
+    await _scrollController.animateTo(
+      finalPosition,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -323,25 +449,41 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
-          title: Column(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                widget.conversation.title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundImage: widget.conversation.avatar.isNotEmpty
+                    ? NetworkImage(widget.conversation.avatar)
+                    : null,
+                child: widget.conversation.avatar.isEmpty
+                    ? const Icon(Icons.person, size: 18, color: Colors.white)
+                    : null,
               ),
-              if (widget.conversation.isGroup)
-                Text(
-                  '${widget.conversation.members.length}人',
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.7)),
-                ),
+              const SizedBox(width: 8),
+              Column(
+                children: [
+                  Text(
+                    widget.conversation.title,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  if (widget.conversation.isGroup)
+                    Text(
+                      '${widget.conversation.members.length}人',
+                      style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.7)),
+                    ),
+                ],
+              ),
             ],
           ),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.phone_outlined, size: 22, color: Colors.white),
-              onPressed: () {},
-            ),
+            // IconButton(
+            //   icon: const Icon(Icons.phone_outlined, size: 22, color: Colors.white),
+            //   onPressed: () {},
+            // ),
             IconButton(
               icon: const Icon(Icons.more_horiz_rounded, size: 22, color: Colors.white),
               onPressed: () {},
@@ -410,22 +552,27 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       );
     }
 
-    if (message.status == MessageStatus.deleted) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Center(
-          child: Text('消息已被删除', style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
-        ),
-      );
-    }
+    // 被删除的消息显示提示文案，但不隐藏消息气泡（保留引用等信息）
+    final isDeleted = message.status == MessageStatus.deleted;
 
     final key = GlobalKey();
     final quotedMessage = message.quoteId != null
         ? _messages.firstWhere(
             (m) => m.id == message.quoteId,
-            orElse: () => Message(id: '', content: '消息已删除', createdAt: DateTime.now()),
+            orElse: () =>
+                Message(id: '', content: '', senderId: '', createdAt: DateTime.now(), status: MessageStatus.deleted),
           )
         : null;
+
+    // 获取被引用消息的发送者昵称
+    String quotedSenderName = '';
+    if (quotedMessage != null && quotedMessage.id.isNotEmpty) {
+      if (quotedMessage.senderId == _accountService.currentUser?.id) {
+        quotedSenderName = '你';
+      } else {
+        quotedSenderName = widget.conversation.title;
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -433,7 +580,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isMe) ...[AvatarWidget(avatar: widget.conversation.avatar, size: 36), const SizedBox(width: 8)],
+          // if (!isMe) ...[AvatarWidget(avatar: widget.conversation.avatar, size: 36), const SizedBox(width: 8)],
           Flexible(
             child: GestureDetector(
               key: key,
@@ -441,8 +588,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  gradient: isMe ? AppTheme.headerGradient : null,
-                  color: isMe ? null : Colors.white,
+                  gradient: isMe && !isDeleted ? AppTheme.headerGradient : null,
+                  color: isDeleted ? Colors.grey[300] : (isMe ? null : Colors.white),
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(10),
                     topRight: const Radius.circular(10),
@@ -462,42 +609,72 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (quotedMessage != null && quotedMessage.id.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: (isMe ? Colors.white : AppTheme.surfaceBg).withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border(
-                            left: BorderSide(
-                              color: isMe ? Colors.white.withValues(alpha: 0.8) : AppTheme.primaryColor,
-                              width: 3,
+                      GestureDetector(
+                        onTap: () {
+                          final quotedIndex = _messages.indexWhere((m) => m.id == quotedMessage.id);
+                          if (quotedIndex != -1) {
+                            _scrollToMessage(quotedMessage.id);
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: (isMe ? Colors.white : AppTheme.surfaceBg).withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border(
+                              left: BorderSide(
+                                color: isMe ? Colors.white.withValues(alpha: 0.8) : AppTheme.primaryColor,
+                                width: 3,
+                              ),
                             ),
                           ),
-                        ),
-                        child: Text(
-                          quotedMessage.content,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (quotedSenderName.isNotEmpty)
+                                Text(
+                                  quotedSenderName,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                        ? Colors.grey[400]
+                                        : (isMe ? Colors.white.withValues(alpha: 0.9) : AppTheme.primaryColor),
+                                  ),
+                                ),
+                              Text(
+                                quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                      ? Colors.grey[350]
+                                      : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     Text(
-                      message.content,
-                      style: TextStyle(fontSize: 15, color: isMe ? Colors.white : AppTheme.textPrimary, height: 1.4),
+                      isDeleted ? '消息已被删除' : message.content,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-          if (isMe) ...[
-            const SizedBox(width: 8),
-            AvatarWidget(avatar: _accountService.currentUser?.avatar ?? MockData.currentUser.avatar, size: 36),
-          ],
+          // if (isMe) ...[
+          //   const SizedBox(width: 8),
+          //   AvatarWidget(avatar: _accountService.currentUser?.avatar ?? '', size: 36),
+          // ],
         ],
       ),
     );
@@ -597,15 +774,32 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       labelColor: Colors.red,
                       iconColor: Colors.red,
                       onTap: () async {
+                        // 在异步操作前获取 ScaffoldMessenger，避免 context 跨异步 gap 使用
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
                         final success = await MessageService().deleteMessage(message.id);
                         if (success && mounted) {
+                          // 异步执行本地数据库操作，与收消息人删除逻辑保持一致
+                          _handleMessageDeleted(message.id, widget.conversation.id);
+                          // 不从消息列表移除消息，只更新状态，这样引用该消息的消息仍然可以找到被引用的消息
                           setState(() {
-                            _messages.removeWhere((m) => m.id == message.id);
+                            final index = _messages.indexWhere((m) => m.id == message.id);
+                            if (index != -1) {
+                              _messages[index] = Message(
+                                id: _messages[index].id,
+                                content: _messages[index].content,
+                                senderId: _messages[index].senderId,
+                                type: _messages[index].type,
+                                createdAt: _messages[index].createdAt,
+                                isRead: _messages[index].isRead,
+                                quoteId: _messages[index].quoteId,
+                                status: MessageStatus.deleted,
+                              );
+                            }
                           });
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('消息已删除')));
+                          scaffoldMessenger.showSnackBar(const SnackBar(content: Text('消息已删除')));
                         } else if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('删除失败，请稍后重试')));
+                          scaffoldMessenger.showSnackBar(const SnackBar(content: Text('删除失败，请稍后重试')));
                         }
                       },
                     ),

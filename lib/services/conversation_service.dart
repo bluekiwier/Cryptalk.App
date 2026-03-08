@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
-import '../config/api_config.dart';
 import 'database_service.dart';
 import 'account_service.dart';
 import '../models/conversation.dart';

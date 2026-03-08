@@ -35,9 +35,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('选择图片失败')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('选择图片失败')));
       }
     }
   }
@@ -56,22 +54,16 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       await Future.delayed(const Duration(seconds: 2));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('头像更新成功（模拟）'),
-            backgroundColor: AppTheme.onlineColor,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('头像更新成功（模拟）'), backgroundColor: AppTheme.onlineColor));
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('更像头像失败'),
-            backgroundColor: AppTheme.badgeColor,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('更像头像失败'), backgroundColor: AppTheme.badgeColor));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -92,21 +84,12 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             title: const Text(
               '个人头像',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
             actions: [
@@ -154,9 +137,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
                               foregroundColor: Colors.white,
                               side: const BorderSide(color: Colors.white54),
                               padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: const Text('取消'),
                           ),
@@ -169,19 +150,14 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
                               backgroundColor: AppTheme.primaryColor,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
                             child: _isUploading
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Text('确定使用'),
                           ),
@@ -192,14 +168,8 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
                 else
                   TextButton.icon(
                     onPressed: () => _showPickerOptions(context),
-                    icon: const Icon(
-                      Icons.camera_alt_rounded,
-                      color: Colors.white70,
-                    ),
-                    label: const Text(
-                      '更换头像',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
+                    icon: const Icon(Icons.camera_alt_rounded, color: Colors.white70),
+                    label: const Text('更换头像', style: TextStyle(color: Colors.white70, fontSize: 16)),
                   ),
               ],
             ),
@@ -212,7 +182,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
   /// 渲染原始头像内容
   Widget _buildOriginalAvatar(String? avatar) {
     if (avatar == null || avatar.isEmpty) {
-      return Image.asset('assets/images/default_avatar.png', fit: BoxFit.cover);
+      return Image.asset('assets/images/default_user_avatar.png', fit: BoxFit.cover);
     }
 
     if (avatar.startsWith('http')) {
@@ -232,34 +202,26 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
     }
 
     return Center(
-      child: Text(
-        avatar,
-        style: const TextStyle(fontSize: 100, color: Colors.white24),
-      ),
+      child: Text(avatar, style: const TextStyle(fontSize: 100, color: Colors.white24)),
     );
   }
 
   /// 默认兜底头像
   Widget _buildDefaultAvatar() {
-    return Image.asset('assets/images/default_avatar.png', fit: BoxFit.cover);
+    return Image.asset('assets/images/default_user_avatar.png', fit: BoxFit.cover);
   }
 
   void _showPickerOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(
-                Icons.photo_library_rounded,
-                color: Colors.white,
-              ),
+              leading: const Icon(Icons.photo_library_rounded, color: Colors.white),
               title: const Text('从相册选择', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
@@ -267,10 +229,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.camera_alt_rounded,
-                color: Colors.white,
-              ),
+              leading: const Icon(Icons.camera_alt_rounded, color: Colors.white),
               title: const Text('拍照', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);

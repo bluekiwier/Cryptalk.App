@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
-import '../config/api_config.dart';
 import '../models/friend_request.dart';
 import '../services/account_service.dart';
 
@@ -53,12 +52,7 @@ class FriendService {
   Future<({bool success, String message})> agreeFriendRequest(String requestId) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
-      _logger.d('接受好友申请: id=$requestId');
-
       final response = await dio.post('/api/friend/requests/agree', data: {'id': requestId});
-
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -79,12 +73,7 @@ class FriendService {
   Future<({bool success, String message})> disagreeFriendRequest(String requestId) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
-      _logger.d('拒绝好友申请: id=$requestId');
-
       final response = await dio.post('/api/friend/requests/disagree', data: {'id': requestId});
-
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -105,12 +94,7 @@ class FriendService {
   Future<({bool success, String message})> blockFriendRequest(String userId) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
-      _logger.d('拉黑用户: id=$userId');
-
       final response = await dio.post('/api/friend/blacklist-add', data: {'id': userId});
-
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -131,12 +115,7 @@ class FriendService {
   Future<({bool success, String message})> removeBlock(String userId) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
-      _logger.d('移除黑名单: id=$userId');
-
       final response = await dio.delete('/api/friend/blacklist-remove', data: {'id': userId});
-
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -157,10 +136,6 @@ class FriendService {
   Future<({bool success, String message})> deleteFriend(String userId) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
-      _logger.d('删除好友: ids=[$userId]');
-
       final response = await dio.delete(
         '/api/friend/delete',
         data: {
@@ -188,10 +163,7 @@ class FriendService {
   Future<int> getRequestsCount() async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return 0;
-
       final response = await dio.get('/api/friend/requests/count');
-
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         final count = responseData['data'];
@@ -211,12 +183,7 @@ class FriendService {
   Future<({bool success, String message})> addFriend(String account) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
-      _logger.d('添加好友: account=$account');
-
       final response = await dio.post('/api/friend/add', data: {'account': account});
-
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -237,12 +204,7 @@ class FriendService {
   Future<List<Map<String, dynamic>>> getFriendList() async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return [];
-
-      _logger.d('请求好友列表: /api/friend/list');
-
       final response = await dio.get('/api/friend/list');
-
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         final List<dynamic> dataList = responseData['data'] ?? [];

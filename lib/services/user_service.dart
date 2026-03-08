@@ -1,6 +1,5 @@
 import 'package:logger/logger.dart';
 import '../models/user.dart';
-import '../config/api_config.dart';
 import 'account_service.dart';
 
 /// 用户服务 - 管理用户信息相关业务

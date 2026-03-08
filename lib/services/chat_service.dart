@@ -6,9 +6,10 @@ import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'account_service.dart';
-import '../config/api_config.dart';
 import 'database_service.dart';
 import 'conversation_service.dart';
+import '../models/db/conversation_entity.dart';
+import '../models/db/conversation_message_entity.dart';
 
 /// 统一消息模型
 class MessageResult {
@@ -44,7 +45,7 @@ class ChatMessageDto {
   // 服务器时间
   final DateTime time;
   // 实际消息体
-  final ConversationMessagePayloadDto payload;
+  final ConversationMessagePayload payload;
   // 是否需要回执
   final bool isReceipt;
 
@@ -65,14 +66,14 @@ class ChatMessageDto {
       senderId: json['senderId'] ?? '',
       receiverId: json['receiverId'] ?? '',
       time: DateTime.parse(json['time'] ?? ''),
-      payload: ConversationMessagePayloadDto.fromJson(json['payload'] ?? {}),
+      payload: ConversationMessagePayload.fromJson(json['payload'] ?? {}),
       isReceipt: json['isReceipt'] ?? false,
     );
   }
 }
 
 /// 实际消息体
-class ConversationMessagePayloadDto {
+class ConversationMessagePayload {
   // 消息ID
   final String id;
 
@@ -100,7 +101,7 @@ class ConversationMessagePayloadDto {
   // 发送时间
   final String createdAt;
 
-  ConversationMessagePayloadDto({
+  ConversationMessagePayload({
     required this.id,
     required this.conversationId,
     required this.conversationType,
@@ -112,8 +113,8 @@ class ConversationMessagePayloadDto {
     required this.createdAt,
   });
 
-  factory ConversationMessagePayloadDto.fromJson(Map<String, dynamic> json) {
-    return ConversationMessagePayloadDto(
+  factory ConversationMessagePayload.fromJson(Map<String, dynamic> json) {
+    return ConversationMessagePayload(
       id: json['id'] ?? '',
       conversationId: json['conversationId'] ?? '',
       conversationType: json['conversationType'] ?? 0,
@@ -124,6 +125,20 @@ class ConversationMessagePayloadDto {
       status: json['status'] ?? 0,
       createdAt: json['createdAt'] ?? '',
     );
+  }
+}
+
+/// 删除消息Dto
+class DeleteMessageDto {
+  // 会话ID
+  final String conversationId;
+  // 删除消息ID
+  final String messageId;
+
+  DeleteMessageDto({required this.conversationId, required this.messageId});
+
+  factory DeleteMessageDto.fromJson(Map<String, dynamic> json) {
+    return DeleteMessageDto(conversationId: json['conversationId'] ?? '', messageId: json['messageId'] ?? '');
   }
 }
 
@@ -280,14 +295,14 @@ class ChatService extends ChangeNotifier {
         _handleChatMessage(chat);
         break;
 
-      // case "delete":
-      //   final del = DeleteMessage.fromJson(message.data!);
-      //   onDeleteMessage(del);
-      //   break;
+      case "delete":
+        final del = DeleteMessageDto.fromJson(message.data!);
+        _handleDeleteMessage(del);
+        break;
 
       // case "recall":
-      //   final recall = RecallMessage.fromJson(message.data!);
-      //   onRecallMessage(recall);
+      //   final recall = RecallMessageDto.fromJson(message.data!);
+      //   _handleRecallMessage(recall);
       //   break;
 
       // case "ack":
@@ -348,6 +363,108 @@ class ChatService extends ChangeNotifier {
     });
 
     notifyListeners();
+  }
+
+  /// 处理删除消息
+  /// 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
+  /// 2. 如果删除的消息是会话的最后一条消息，则更新会话表中的 last_message_id, last_message_at, last_message_preview, last_sender_id 为最新消息信息
+  /// 3. 从内存中的消息列表移除对应消息，并通知 UI 更新
+  void _handleDeleteMessage(DeleteMessageDto message) {
+    // 解析消息ID和会话ID，如果解析失败则直接返回
+    final msgId = int.tryParse(message.messageId) ?? 0;
+    final convId = int.tryParse(message.conversationId) ?? 0;
+
+    if (msgId == 0 || convId == 0) return;
+
+    // 异步执行数据库操作，避免阻塞主线程
+    Future(() async {
+      final dbService = DatabaseService();
+      final db = await dbService.database;
+
+      // 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
+      await db.update(
+        ConversationMessageEntity.tableName,
+        {ConversationMessageEntity.status: 2},
+        where: '${ConversationMessageEntity.id} = ?',
+        whereArgs: [msgId],
+      );
+
+      // 2. 查询会话表，获取当前会话信息
+      final conversationResult = await db.query(
+        ConversationEntity.tableName,
+        where: '${ConversationEntity.id} = ?',
+        whereArgs: [convId],
+      );
+
+      // 如果会话存在
+      if (conversationResult.isNotEmpty) {
+        final conversation = conversationResult.first;
+        final lastMessageId = conversation[ConversationEntity.lastMessageId] as int?;
+
+        // 判断删除的消息是否为会话的最后一条消息
+        if (lastMessageId == msgId) {
+          // 查询该会话中未删除的最新一条消息
+          final latestMessages = await db.query(
+            ConversationMessageEntity.tableName,
+            where: '${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.status} != 2',
+            whereArgs: [convId],
+            orderBy: '${ConversationMessageEntity.id} DESC',
+            limit: 1,
+          );
+
+          // 如果还有未删除的消息，则更新会话的最后一条消息信息
+          if (latestMessages.isNotEmpty) {
+            final latestMessage = latestMessages.first;
+            final newLastMessageId = latestMessage[ConversationMessageEntity.id] as int;
+            final newLastMessageAt = latestMessage[ConversationMessageEntity.createdAt] as String;
+            final newLastMessagePreview = _truncate(
+              latestMessage[ConversationMessageEntity.content] as String? ?? '',
+              50,
+            );
+            final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as int;
+
+            await db.update(
+              ConversationEntity.tableName,
+              {
+                ConversationEntity.lastMessageId: newLastMessageId,
+                ConversationEntity.lastMessageAt: newLastMessageAt,
+                ConversationEntity.lastMessagePreview: newLastMessagePreview,
+                ConversationEntity.lastSenderId: newLastSenderId,
+                ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
+              },
+              where: '${ConversationEntity.id} = ?',
+              whereArgs: [convId],
+            );
+          } else {
+            // 如果该会话所有消息都已删除，则将会话的最后一条消息信息置空
+            await db.update(
+              ConversationEntity.tableName,
+              {
+                ConversationEntity.lastMessageId: 0,
+                ConversationEntity.lastMessageAt: '',
+                ConversationEntity.lastMessagePreview: '',
+                ConversationEntity.lastSenderId: 0,
+                ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
+              },
+              where: '${ConversationEntity.id} = ?',
+              whereArgs: [convId],
+            );
+          }
+        }
+      }
+
+      // 3. 不从内存中的消息列表移除对应消息，只更新数据库中的状态
+      // 这样引用该消息的其他消息（如引用消息）仍然可以通过 _messages 列表找到被引用的消息
+      // 消息的实际内容会在 UI 刷新时从数据库读取（status=2 表示已删除）
+      // 通知 UI 更新
+      notifyListeners();
+    });
+  }
+
+  /// 截断字符串到指定长度，超过部分用省略号替代
+  String _truncate(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    return '${text.substring(0, maxLength)}...';
   }
 
   /// 获取指定会话的消息（按时间升序排列）
