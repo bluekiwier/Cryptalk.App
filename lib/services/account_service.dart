@@ -41,7 +41,7 @@ class AccountService extends ChangeNotifier {
       } else if (Platform.isWindows) {
         final windowsInfo = await deviceInfo.windowsInfo;
         systemInfo =
-            'Windows ${windowsInfo.majorVersion}.${windowsInfo.minorVersion}.${windowsInfo.buildNumber}; Microsoft; PC';
+            'Windows NT ${windowsInfo.majorVersion}.${windowsInfo.minorVersion}.${windowsInfo.buildNumber}; Microsoft; PC';
       } else if (Platform.isMacOS) {
         final macInfo = await deviceInfo.macOsInfo;
         systemInfo = 'macOS ${macInfo.majorVersion}.${macInfo.minorVersion}; Apple; Mac';

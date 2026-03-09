@@ -24,6 +24,8 @@ class ChatDetailPage extends StatefulWidget {
   State<ChatDetailPage> createState() => _ChatDetailPageState();
 }
 
+const _weekDays = {1: '星期一', 2: '星期二', 3: '星期三', 4: '星期四', 5: '星期五', 6: '星期六', 7: '星期日'};
+
 class _ChatDetailPageState extends State<ChatDetailPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -1082,20 +1084,20 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   /// 格式化消息时间
   String _formatMessageTime(DateTime time) {
     final now = DateTime.now();
-    // 获取当前日期的0点（只保留年月日）
     final today = DateTime(now.year, now.month, now.day);
-    // 获取消息日期的0点（只保留年月日）
     final messageDate = DateTime(time.year, time.month, time.day);
-    // 计算日期差（负数表示消息日期早于今天）
     final dateDiff = today.difference(messageDate).inDays;
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour:$minute';
     if (dateDiff == 0) {
-      return '今天 ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      return '今天 $timeStr';
     } else if (dateDiff == 1) {
-      return '昨天 ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    } else if (dateDiff.abs() <= 7) {
-      return '${time.weekday} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      return '昨天 $timeStr';
+    } else if (dateDiff <= 7 && dateDiff > 0) {
+      return '${_weekDays[time.weekday]} $timeStr';
     } else {
-      return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} $timeStr';
     }
   }
 }
