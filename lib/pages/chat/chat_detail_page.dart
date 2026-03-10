@@ -6,6 +6,8 @@ import '../../models/conversation.dart';
 import '../../models/message.dart';
 import '../../models/db/conversation_entity.dart';
 import '../../models/db/conversation_message_entity.dart';
+import '../../widgets/avatar_widget.dart';
+import '../../widgets/bubble_tail_painter.dart';
 import '../../services/account_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/conversation_service.dart';
@@ -33,6 +35,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _isLoading = false;
   bool _hasMore = true;
   Message? _quotedMessage;
+  int _groupMemberCount = 0;
 
   final ChatService _chatService = ChatService();
   final AccountService _accountService = AccountService();
@@ -49,6 +52,21 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _loadMessagesAndSync();
     // 监听WebSocket消息
     _chatService.addListener(_onChatServiceUpdated);
+    // 如果是群聊，加载群成员数量
+    if (widget.conversation.isGroup) {
+      _loadGroupMemberCount();
+      ConversationService().joinGroup(widget.conversation.id);
+    }
+  }
+
+  /// 加载群成员数量
+  Future<void> _loadGroupMemberCount() async {
+    final count = await ConversationService().getGroupMemberCount(widget.conversation.id);
+    if (mounted) {
+      setState(() {
+        _groupMemberCount = count;
+      });
+    }
   }
 
   /// 加载本地消息并同步最新消息
@@ -66,6 +84,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _chatService.removeListener(_onChatServiceUpdated);
     // 清除当前聊天会话ID
     _chatService.setCurrentChatConversation(null);
+    // 如果是群聊，离开群聊室
+    if (widget.conversation.isGroup) {
+      ConversationService().leaveGroup(widget.conversation.id);
+    }
     super.dispose();
   }
 
@@ -85,6 +107,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'conversation_id': int.parse(widget.conversation.id),
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
           'sender_id': chatMessage.payload.senderId,
+          'sender_nickname': chatMessage.payload.senderNickname,
+          'sender_avatar': chatMessage.payload.senderAvatar,
           'quote_id': quoteId,
           'content': chatMessage.payload.content,
           'type': 0,
@@ -103,6 +127,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return Message(
         id: map['id']?.toString() ?? '',
         senderId: map['sender_id']?.toString() ?? '',
+        senderNickname: map['sender_nickname']?.toString(),
+        senderAvatar: map['sender_avatar']?.toString(),
         content: map['content']?.toString() ?? '',
         type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
         createdAt: map['created_at'] != null
@@ -168,12 +194,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return Message(
         id: map['id']?.toString() ?? '',
         senderId: map['sender_id']?.toString() ?? '',
+        senderNickname: map['sender_nickname']?.toString(),
+        senderAvatar: map['sender_avatar']?.toString(),
         content: map['content']?.toString() ?? '',
         type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
         createdAt: map['created_at'] != null
             ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
             : DateTime.now(),
-        isRead: true, // 默认设为已读
+        isRead: true,
         quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
         status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
       );
@@ -250,6 +278,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'conversation_id': int.parse(widget.conversation.id),
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
           'sender_id': json['senderId'],
+          'sender_nickname': json['senderNickname'] ?? '',
+          'sender_avatar': json['senderAvatar'] ?? '',
           'quote_id': json['quoteId'] ?? 0,
           'content': json['content'],
           'type': json['type'] ?? 0,
@@ -267,12 +297,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         return Message(
           id: json['id']?.toString() ?? '',
           senderId: json['senderId']?.toString() ?? '',
+          senderNickname: json['senderNickname']?.toString(),
+          senderAvatar: json['senderAvatar']?.toString(),
           content: json['content']?.toString() ?? '',
           type: MessageType.values.firstWhere((e) => e.index == (json['type'] ?? 0), orElse: () => MessageType.text),
           createdAt: json['createdAt'] != null
               ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
               : DateTime.now(),
-          isRead: true, // 默认设为已读
+          isRead: true,
           quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
           status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
         );
@@ -454,27 +486,30 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 16,
+                radius: 14,
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
                 backgroundImage: widget.conversation.avatar.isNotEmpty
                     ? NetworkImage(widget.conversation.avatar)
                     : null,
                 child: widget.conversation.avatar.isEmpty
-                    ? const Icon(Icons.person, size: 18, color: Colors.white)
+                    ? const Icon(Icons.group, size: 20, color: Colors.white)
                     : null,
               ),
               const SizedBox(width: 8),
-              Column(
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    widget.conversation.title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  if (widget.conversation.isGroup)
-                    Text(
-                      '${widget.conversation.members.length}人',
-                      style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.7)),
+                  Flexible(
+                    child: Text(
+                      widget.conversation.title,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  if (widget.conversation.isGroup) ...[
+                    const SizedBox(width: 4),
+                    Text('($_groupMemberCount人)', style: TextStyle(fontSize: 20, color: Colors.white)),
+                  ],
                 ],
               ),
             ],
@@ -575,6 +610,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (quotedMessage != null && quotedMessage.id.isNotEmpty) {
       if (quotedMessage.senderId == _accountService.currentUser?.id) {
         quotedSenderName = '你';
+      } else if (widget.conversation.isGroup) {
+        quotedSenderName = quotedMessage.senderNickname ?? '未知用户';
       } else {
         quotedSenderName = widget.conversation.title;
       }
@@ -584,103 +621,137 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // if (!isMe) ...[AvatarWidget(avatar: widget.conversation.avatar, size: 36), const SizedBox(width: 8)],
+          if (!isMe && widget.conversation.isGroup)
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onLongPress: () => _showMentionMenu(message.senderNickname ?? '未知用户'),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                child: AvatarWidget(avatar: message.senderAvatar ?? '', size: 36, isGroup: false),
+              ),
+            ),
+          if (!isMe && !widget.conversation.isGroup)
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onLongPress: () => _showMentionMenu(widget.conversation.title),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                child: AvatarWidget(avatar: widget.conversation.avatar, size: 36),
+              ),
+            ),
+          if (!isMe) const SizedBox(width: 8),
           Flexible(
             child: GestureDetector(
               key: key,
               onLongPress: () => _showMessageMenu(message, isMe, key),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: isMe && !isDeleted ? AppTheme.headerGradient : null,
-                  color: isDeleted ? Colors.grey[300] : (isMe ? null : Colors.white),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(10),
-                    topRight: const Radius.circular(10),
-                    bottomLeft: Radius.circular(isMe ? 10 : 4),
-                    bottomRight: Radius.circular(isMe ? 4 : 10),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isMe ? AppTheme.primaryColor : Colors.black).withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+              child: CustomPaint(
+                painter: isMe
+                    ? null
+                    : BubbleTailPainter(
+                        color: isDeleted ? Colors.grey[300]! : Colors.white,
+                        tailDirection: TailDirection.left,
+                      ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: isMe && !isDeleted ? AppTheme.headerGradient : null,
+                    color: isDeleted ? Colors.grey[300] : (isMe ? null : Colors.white),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(10),
+                      topRight: const Radius.circular(10),
+                      bottomLeft: Radius.circular(isMe ? 10 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 10),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (quotedMessage != null && quotedMessage.id.isNotEmpty)
-                      GestureDetector(
-                        onTap: () {
-                          final quotedIndex = _messages.indexWhere((m) => m.id == quotedMessage.id);
-                          if (quotedIndex != -1) {
-                            _scrollToMessage(quotedMessage.id);
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: (isMe ? Colors.white : AppTheme.surfaceBg).withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border(
-                              left: BorderSide(
-                                color: isMe ? Colors.white.withValues(alpha: 0.8) : AppTheme.primaryColor,
-                                width: 3,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (quotedSenderName.isNotEmpty)
-                                Text(
-                                  quotedSenderName,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
-                                        ? Colors.grey[400]
-                                        : (isMe ? Colors.white.withValues(alpha: 0.9) : AppTheme.primaryColor),
-                                  ),
-                                ),
-                              Text(
-                                quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
-                                      ? Colors.grey[350]
-                                      : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isMe ? AppTheme.primaryColor : Colors.black).withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!isMe && widget.conversation.isGroup)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            message.senderNickname?.isNotEmpty == true ? message.senderNickname! : '未知用户',
+                            style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
                           ),
                         ),
+                      if (quotedMessage != null && quotedMessage.id.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            final quotedIndex = _messages.indexWhere((m) => m.id == quotedMessage.id);
+                            if (quotedIndex != -1) {
+                              _scrollToMessage(quotedMessage.id);
+                            }
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: (isMe ? Colors.white : AppTheme.surfaceBg).withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border(
+                                left: BorderSide(
+                                  color: isMe ? Colors.white.withValues(alpha: 0.8) : AppTheme.primaryColor,
+                                  width: 3,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (quotedSenderName.isNotEmpty)
+                                  Text(
+                                    quotedSenderName,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                          ? Colors.grey[400]
+                                          : (isMe ? Colors.white.withValues(alpha: 0.9) : AppTheme.primaryColor),
+                                    ),
+                                  ),
+                                Text(
+                                  quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                        ? Colors.grey[350]
+                                        : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      Text(
+                        isDeleted ? '消息已被删除' : message.content,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
+                          height: 1.4,
+                        ),
                       ),
-                    Text(
-                      isDeleted ? '消息已被删除' : message.content,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          // if (isMe) ...[
-          //   const SizedBox(width: 8),
-          //   AvatarWidget(avatar: _accountService.currentUser?.avatar ?? '', size: 36),
-          // ],
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            AvatarWidget(avatar: _accountService.currentUser?.avatar ?? '', size: 36),
+          ],
         ],
       ),
     );
@@ -860,6 +931,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     });
   }
 
+  /// 显示@提及菜单
+  void _showMentionMenu(String nickname) {
+    if (widget.conversation.isGroup) {
+      final text = '@$nickname ';
+      _messageController.text = text;
+      _messageController.selection = TextSelection.fromPosition(TextPosition(offset: text.length));
+      FocusScope.of(context).requestFocus(FocusNode());
+    }
+  }
+
   /// 底部输入栏
   Widget _buildInputBar() {
     return Container(
@@ -1007,15 +1088,22 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return;
     }
 
-    // conversation.id 这里我们假定，如果是从联系人详情页进来，它是对方的 receiverId；
-    // 如果是从会话列表进来，它可能是 conversationId。暂时都传对方ID，具体根据后端逻辑判断。
-    final messageId = await ChatService().sendPrivateMessage(
-      conversationId: widget.conversation.id, // 如果后端接收0表示新会话，这里可以根据具体情况调整
-      senderId: currentUser.id,
-      receiverId: widget.conversation.chatUserId, // 私聊的接收者
-      message: text,
-      quoteId: _quotedMessage?.id,
-    );
+    String messageId = '';
+    if (widget.conversation.isGroup) {
+      messageId = await ChatService().sendGroupMessage(
+        conversationId: widget.conversation.id,
+        message: text,
+        quoteId: _quotedMessage?.id,
+      );
+    } else {
+      messageId = await ChatService().sendPrivateMessage(
+        conversationId: widget.conversation.id,
+        senderId: currentUser.id,
+        receiverId: widget.conversation.chatUserId,
+        message: text,
+        quoteId: _quotedMessage?.id,
+      );
+    }
 
     if (messageId.isNotEmpty) {
       final now = DateTime.now();
@@ -1029,6 +1117,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         'conversation_id': convId,
         'conversation_type': widget.conversation.isGroup ? 2 : 1,
         'sender_id': currentUser.id,
+        'sender_nickname': currentUser.nickname,
+        'sender_avatar': currentUser.avatar,
         'quote_id': _quotedMessage != null ? (int.tryParse(_quotedMessage!.id) ?? 0) : 0,
         'content': text,
         'type': 0,

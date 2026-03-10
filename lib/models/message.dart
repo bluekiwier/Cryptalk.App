@@ -10,6 +10,8 @@ class Message {
   final String id;
   final String content;
   final String senderId;
+  final String? senderNickname;
+  final String? senderAvatar;
   final MessageType type;
   final DateTime createdAt;
   final bool isRead;
@@ -20,6 +22,8 @@ class Message {
     required this.id,
     required this.content,
     this.senderId = '',
+    this.senderNickname,
+    this.senderAvatar,
     this.type = MessageType.text,
     required this.createdAt,
     this.isRead = false,

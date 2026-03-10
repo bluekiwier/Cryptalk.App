@@ -299,7 +299,7 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> getChatSettings(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.get('/api/conversation/setting/$conversationId');
+      final response = await dio.get('/api/conversation/$conversationId/settings');
       return response.data;
     } on DioException catch (e) {
       _logger.e('获取聊天设置失败: $e');
@@ -343,6 +343,90 @@ class ConversationService extends ChangeNotifier {
     } catch (e) {
       _logger.e('设置消息免打扰异常: $e');
       return null;
+    }
+  }
+
+  /// 获取群成员列表
+  Future<Map<String, dynamic>?> getGroupMembers(
+    String conversationId, {
+    int page = 1,
+    int pageSize = 30,
+    String keyword = '',
+  }) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.get(
+        '/api/conversation/$conversationId/members',
+        queryParameters: {'page': page, 'pageSize': pageSize, 'keyword': keyword},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('获取群成员列表失败: $e');
+      return null;
+    } catch (e) {
+      _logger.e('获取群成员列表异常: $e');
+      return null;
+    }
+  }
+
+  /// 获取群成员数量
+  Future<int> getGroupMemberCount(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.get('/api/conversation/$conversationId/members/count');
+      final data = response.data;
+      if (data != null && data['success'] == true) {
+        return data['data'] as int? ?? 0;
+      }
+      return 0;
+    } on DioException catch (e) {
+      _logger.e('获取群成员数量失败: $e');
+      return 0;
+    } catch (e) {
+      _logger.e('获取群成员数量异常: $e');
+      return 0;
+    }
+  }
+
+  /// 进入群聊室
+  Future<bool> joinGroup(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/join-group', data: {'id': conversationId});
+      final data = response.data;
+      if (data != null && data['success'] == true) {
+        _logger.d('进入群聊室成功');
+        return true;
+      }
+      _logger.e('进入群聊室失败: ${data?['message']}');
+      return false;
+    } on DioException catch (e) {
+      _logger.e('进入群聊室失败: $e');
+      return false;
+    } catch (e) {
+      _logger.e('进入群聊室异常: $e');
+      return false;
+    }
+  }
+
+  /// 离开群聊室
+  Future<bool> leaveGroup(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/leave-group', data: {'id': conversationId});
+      final data = response.data;
+      if (data != null && data['success'] == true) {
+        _logger.d('离开群聊室成功');
+        return true;
+      }
+      _logger.e('离开群聊室失败: ${data?['message']}');
+      return false;
+    } on DioException catch (e) {
+      _logger.e('离开群聊室失败: $e');
+      return false;
+    } catch (e) {
+      _logger.e('离开群聊室异常: $e');
+      return false;
     }
   }
 

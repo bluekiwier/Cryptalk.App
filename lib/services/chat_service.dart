@@ -87,6 +87,12 @@ class ConversationMessagePayload {
   // 发送者ID
   final String senderId;
 
+  // 发送者昵称
+  final String? senderNickname;
+
+  // 发送者头像
+  final String? senderAvatar;
+
   // 引用会话消息ID
   final String quoteId;
 
@@ -107,6 +113,8 @@ class ConversationMessagePayload {
     required this.conversationId,
     required this.conversationType,
     required this.senderId,
+    this.senderNickname,
+    this.senderAvatar,
     required this.quoteId,
     required this.content,
     required this.type,
@@ -120,6 +128,8 @@ class ConversationMessagePayload {
       conversationId: json['conversationId'] ?? '',
       conversationType: json['conversationType'] ?? 0,
       senderId: json['senderId'] ?? '',
+      senderNickname: json['senderNickname']?.toString(),
+      senderAvatar: json['senderAvatar']?.toString(),
       quoteId: json['quoteId'] ?? '',
       content: json['content'] ?? '',
       type: json['type'] ?? 0,
@@ -344,6 +354,8 @@ class ChatService extends ChangeNotifier {
         'conversation_id': convId,
         'conversation_type': payload.conversationType,
         'sender_id': senderId,
+        'sender_nickname': payload.senderNickname,
+        'sender_avatar': payload.senderAvatar,
         'quote_id': int.tryParse(payload.quoteId) ?? 0,
         'content': payload.content,
         'type': payload.type,
@@ -498,8 +510,12 @@ class ChatService extends ChangeNotifier {
   /// 处理群组消息
   void _handleGroupEvent(MessageResult message) {
     _logger.i('处理群组消息: ${message.data}');
-    // 处理群组通知
-    notifyListeners();
+    switch (message.event) {
+      case "message":
+        final chat = ChatMessageDto.fromJson(message.data!);
+        _handleChatMessage(chat);
+        break;
+    }
   }
 
   /// 发送消息
@@ -622,6 +638,43 @@ class ChatService extends ChangeNotifier {
       }
     } catch (e) {
       _logger.e('发送私聊消息异常: $e');
+      return "";
+    }
+  }
+
+  /// 发送群聊消息（通过 HTTP API）
+  /// [conversationId] 会话 ID
+  /// [message] 消息内容
+  /// [quoteId] 引用的消息 ID
+  /// [type] 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=表情,6=位置,7=名片,8=红包,9=系统通知
+  Future<String> sendGroupMessage({
+    required dynamic conversationId,
+    required String message,
+    String? quoteId,
+    int type = 0,
+  }) async {
+    try {
+      final dio = await AccountService().getDio();
+
+      final Map<String, dynamic> data = {'conversationId': conversationId.toString(), 'message': message, 'type': type};
+
+      if (quoteId != null) {
+        data['quoteId'] = int.tryParse(quoteId) ?? quoteId;
+      }
+
+      final response = await dio.post('/api/chat/send-group-message', data: data);
+
+      final responseData = response.data;
+      // _logger.d('发送群聊消息响应: $responseData');
+      if (responseData != null && responseData['success'] == true) {
+        // _logger.d('发送群聊消息成功');
+        return responseData["data"]?.toString() ?? "";
+      } else {
+        _logger.e('发送群聊消息失败: ${responseData?['message']}');
+        return "";
+      }
+    } catch (e) {
+      _logger.e('发送群聊消息异常: $e');
       return "";
     }
   }
