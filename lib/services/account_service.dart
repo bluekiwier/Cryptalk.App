@@ -391,8 +391,8 @@ class AccountService extends ChangeNotifier {
 
   /// 使用 Refresh Token 换取新的 Access Token
   Future<bool> refreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
     try {
-      final prefs = await SharedPreferences.getInstance();
       final currentRefreshToken = prefs.getString('refreshToken');
       if (currentRefreshToken == null || currentRefreshToken.isEmpty) {
         // _logger.e('未找到 refreshToken，无法刷新');
@@ -429,13 +429,19 @@ class AccountService extends ChangeNotifier {
       } else {
         _logger.e('刷新令牌失败: ${responseData?['message']}');
         // 刷新失败可考虑强制退出
-        await signOut();
+        // await signOut();
+
+        await clearLocalData();
         return false;
       }
     } catch (e) {
       _logger.e('刷新令牌异常: $e');
       // 刷新异常也退出登录
-      await signOut();
+      // await signOut();
+
+      // 清除本地存储的 Token 和用户信息
+      await clearLocalData();
+
       return false;
     }
   }
@@ -465,29 +471,35 @@ class AccountService extends ChangeNotifier {
       _logger.e('退出登录接口调用失败：$e');
     } finally {
       // 清除本地存储的 Token 和用户信息
-      await prefs.remove('accessToken');
-      await prefs.remove('refreshToken');
-      await prefs.remove('wsServer');
-      await prefs.remove('userId');
-      await prefs.remove('userAccount');
-      await prefs.remove('userNickname');
-      await prefs.remove('userAvatar');
-      await prefs.remove('userEmail');
-      await prefs.remove('userMobile');
-      await prefs.remove('userSignature');
-      await prefs.remove('userIsOnline');
-
-      // 清理用户数据库
-      await DatabaseService().clearForCurrentUser();
-
-      // 断开 WebSocket
-      ChatService().disconnect();
-
-      _currentUser = null;
-      _errorMessage = null;
+      await clearLocalData();
       // 回收状态通知
       notifyListeners();
     }
+  }
+
+  /// 清除本地数据
+  Future<void> clearLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('accessToken');
+    await prefs.remove('refreshToken');
+    await prefs.remove('wsServer');
+    await prefs.remove('userId');
+    await prefs.remove('userAccount');
+    await prefs.remove('userNickname');
+    await prefs.remove('userAvatar');
+    await prefs.remove('userEmail');
+    await prefs.remove('userMobile');
+    await prefs.remove('userSignature');
+    await prefs.remove('userIsOnline');
+
+    // 清理用户数据库
+    await DatabaseService().clearForCurrentUser();
+
+    // 断开 WebSocket
+    ChatService().disconnect();
+
+    _currentUser = null;
+    _errorMessage = null;
   }
 
   /// 清除错误信息

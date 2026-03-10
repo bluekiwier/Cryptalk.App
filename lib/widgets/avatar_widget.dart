@@ -68,9 +68,12 @@ class AvatarWidget extends StatelessWidget {
 
   /// 渲染头像内容
   Widget _buildAvatarContent() {
-    // 1. 如果头像为空，使用默认图片
+    // 1. 如果头像为空，根据是否为群组使用对应的默认头像
     if (avatar.isEmpty) {
-      return Image.asset('assets/images/default_user_avatar.png', width: size, height: size, fit: BoxFit.cover);
+      final defaultAvatar = isGroup
+          ? 'assets/images/default_group_avatar.png'
+          : 'assets/images/default_user_avatar.png';
+      return Image.asset(defaultAvatar, width: size, height: size, fit: BoxFit.cover);
     }
 
     // 2. 如果是网络图片
@@ -103,6 +106,7 @@ class AvatarWidget extends StatelessWidget {
 
   /// 渲染错误时的兜底头像
   Widget _buildErrorAvatar() {
-    return Image.asset('assets/images/default_user_avatar.png', width: size, height: size, fit: BoxFit.cover);
+    final defaultAvatar = isGroup ? 'assets/images/default_group_avatar.png' : 'assets/images/default_user_avatar.png';
+    return Image.asset(defaultAvatar, width: size, height: size, fit: BoxFit.cover);
   }
 }

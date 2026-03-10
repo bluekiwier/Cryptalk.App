@@ -8,6 +8,7 @@ import '../../services/account_service.dart';
 import 'chat_detail_page.dart';
 import '../contacts/scanner_page.dart';
 import '../contacts/add_friend_page.dart';
+import '../contacts/select_friends_page.dart';
 import '../profile/my_qr_code_page.dart';
 
 /// 聊天列表页面
@@ -199,6 +200,9 @@ class _ChatListPageState extends State<ChatListPage> {
         child: _buildHeaderAction(const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 24)),
         onSelected: (value) {
           switch (value) {
+            case 'create_group':
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const SelectFriendsPage()));
+              break;
             case 'add_friend':
               Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFriendPage()));
               break;
@@ -211,6 +215,8 @@ class _ChatListPageState extends State<ChatListPage> {
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+          _buildPopupItem('create_group', Icons.group_add_rounded, '发起群聊'),
+          const PopupMenuDivider(height: 1),
           _buildPopupItem('add_friend', Icons.person_add_outlined, '添加好友'),
           const PopupMenuDivider(height: 1),
           _buildPopupItem('scanner', Icons.qr_code_scanner_rounded, '扫一扫'),
