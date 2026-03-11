@@ -35,6 +35,8 @@ class ConversationService extends ChangeNotifier {
     await _loadFromLocal();
     // 后台非阻塞同步网络
     _syncFromNetwork();
+    // 后台非阻塞同步会话数据（增量更新）
+    syncConversations();
   }
 
   /// 从本地 DB 加载第一页会话
@@ -78,6 +80,47 @@ class ConversationService extends ChangeNotifier {
     _hasMore = false;
     _nextCursor = null;
     await _syncFromNetwork();
+  }
+
+  /// 同步会话数据（APP启动时调用）
+  /// 读取本地last_sync_conversation_time，调用同步接口，更新本地数据库
+  Future<void> syncConversations() async {
+    try {
+      final lastSyncTimeStr = await _db.getConfig('last_sync_conversation_time');
+      final since = lastSyncTimeStr != null ? int.tryParse(lastSyncTimeStr) ?? 0 : 0;
+
+      _logger.d('开始同步会话数据 since=$since');
+
+      final dio = await AccountService().getDio();
+      final response = await dio.get('/api/conversation/sync', queryParameters: {'since': since});
+
+      final responseData = response.data;
+      if (responseData != null && responseData['success'] == true) {
+        final data = responseData['data'];
+        if (data != null) {
+          final list = data['list'] as List<dynamic>?;
+          if (list != null && list.isNotEmpty) {
+            final conversations = list.map((item) => Map<String, dynamic>.from(item)).toList();
+            _logger.i('同步会话数据: ${data}');
+            // await _db.batchUpdateConversations(conversations);
+            await _db.upsertConversations(conversations);
+            _logger.d('同步会话数据成功，更新了 ${conversations.length} 条');
+          }
+
+          final serverTime = data['serverTime'];
+          if (serverTime != null) {
+            await _db.setConfig('last_sync_conversation_time', serverTime.toString());
+            _logger.d('已保存同步时间: $serverTime');
+          }
+
+          await _loadFromLocal();
+        }
+      } else {
+        _logger.w('同步会话数据失败: ${responseData?['message']}');
+      }
+    } catch (e) {
+      _logger.e('同步会话数据异常: $e');
+    }
   }
 
   /// 通知会话列表更新（用于本地修改后刷新 UI）
@@ -138,7 +181,7 @@ class ConversationService extends ChangeNotifier {
     // 若本地不存在该会话，先从网络拉取会话详情写入 DB
     final exists = await _db.conversationExists(conversationId);
     if (!exists) {
-      await _fetchAndCacheConversationDetail(conversationId);
+      await fetchAndCacheConversationDetail(conversationId.toString(), cacheToDb: true);
     }
 
     // 更新 DB（unread_count + 1，最新消息信息）
@@ -243,29 +286,41 @@ class ConversationService extends ChangeNotifier {
     return null;
   }
 
-  /// 拉取单个会话详情并缓存到本地
-  Future<void> _fetchAndCacheConversationDetail(int conversationId) async {
-    try {
-      final dio = await AccountService().getDio();
-
-      final response = await dio.get('/api/conversation/$conversationId');
-      final responseData = response.data;
-      if (responseData != null && responseData['success'] == true) {
-        final data = responseData['data'];
-        if (data != null) {
-          final detail = ConversationDetailResult.fromJson(data);
-          await _db.insertConversationIfAbsent(_detailResultToRow(detail));
-          _logger.d('缓存会话详情: $conversationId');
-        }
+  /// 拉取单个会话详情并缓存到本地，同时返回数据
+  /// 用于：1. 收到新消息时本地不存在会话 2. 获取会话详情
+  Future<Map<String, dynamic>?> fetchAndCacheConversationDetail(String conversationId, {bool cacheToDb = true}) async {
+    final responseData = await getConversationDetail(conversationId);
+    if (responseData != null && responseData['success'] == true) {
+      final data = responseData['data'];
+      if (data != null && cacheToDb) {
+        final detail = ConversationDetailResult.fromJson(data);
+        await _db.insertConversationIfAbsent(_detailResultToRow(detail));
+        _logger.d('缓存会话详情: $conversationId');
       }
-    } catch (e) {
-      _logger.e('获取会话详情失败: $e');
+      return responseData;
     }
+    return responseData;
   }
 
-  // ─────────────────────────────────────────────
-  // 旧接口兼容（供 conversation_service.dart 过渡期使用）
-  // ─────────────────────────────────────────────
+  /// 获取私聊会话设置信息
+  Future<Map<String, dynamic>?> getConversationDetail(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.get('/api/conversation/$conversationId/detail');
+      return response.data;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        _logger.e('获取会话设置信息超时: $e');
+        return {'success': false, 'error': 'connection_timeout', 'message': '网络连接超时，请检查网络后重试'};
+      } else {
+        _logger.e('获取会话设置信息失败: $e');
+        return null;
+      }
+    } catch (e) {
+      _logger.e('获取会话设置信息异常: $e');
+      return null;
+    }
+  }
 
   /// 获取会话的聊天消息列表（网络）
   Future<Map<String, dynamic>?> getMessages(dynamic conversationId, {int messageId = 0, int pageSize = 20}) async {
@@ -291,21 +346,6 @@ class ConversationService extends ChangeNotifier {
       }
     } catch (e) {
       _logger.e('获取消息列表异常: $e');
-      return null;
-    }
-  }
-
-  /// 获取聊天设置信息
-  Future<Map<String, dynamic>?> getChatSettings(String conversationId) async {
-    try {
-      final dio = await AccountService().getDio();
-      final response = await dio.get('/api/conversation/$conversationId/settings');
-      return response.data;
-    } on DioException catch (e) {
-      _logger.e('获取聊天设置失败: $e');
-      return null;
-    } catch (e) {
-      _logger.e('获取聊天设置异常: $e');
       return null;
     }
   }
@@ -389,10 +429,10 @@ class ConversationService extends ChangeNotifier {
   }
 
   /// 进入群聊室
-  Future<bool> joinGroup(String conversationId) async {
+  Future<bool> enterGroup(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/join-group', data: {'id': conversationId});
+      final response = await dio.post('/api/conversation/enter-group', data: {'id': conversationId});
       final data = response.data;
       if (data != null && data['success'] == true) {
         _logger.d('进入群聊室成功');
@@ -410,10 +450,10 @@ class ConversationService extends ChangeNotifier {
   }
 
   /// 离开群聊室
-  Future<bool> leaveGroup(String conversationId) async {
+  Future<bool> exitGroup(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/leave-group', data: {'id': conversationId});
+      final response = await dio.post('/api/conversation/exit-group', data: {'id': conversationId});
       final data = response.data;
       if (data != null && data['success'] == true) {
         _logger.d('离开群聊室成功');
@@ -428,6 +468,94 @@ class ConversationService extends ChangeNotifier {
       _logger.e('离开群聊室异常: $e');
       return false;
     }
+  }
+
+  /// 加入群聊
+  Future<({bool success, String message})> joinGroup(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/join-group', data: {'id': conversationId});
+      final responseData = response.data;
+      final message = responseData?['message']?.toString() ?? '操作完成';
+      if (responseData != null && responseData['success'] == true) {
+        return (success: true, message: message);
+      } else {
+        return (success: false, message: message);
+      }
+    } on DioException catch (e) {
+      _logger.e('加入群聊失败: $e');
+      return (success: false, message: '网络错误，请稍后重试');
+    } catch (e) {
+      _logger.e('加入群聊异常: $e');
+      return (success: false, message: '未知错误');
+    }
+  }
+
+  /// 退出群聊
+  Future<({bool success, String message})> quitGroup(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.delete('/api/conversation/quit-group', data: {'id': conversationId});
+      final responseData = response.data;
+      final message = responseData?['message']?.toString() ?? '操作完成';
+      if (responseData != null && responseData['success'] == true) {
+        return (success: true, message: message);
+      } else {
+        return (success: false, message: message);
+      }
+    } on DioException catch (e) {
+      _logger.e('退出群聊失败: $e');
+      return (success: false, message: '网络错误，请稍后重试');
+    } catch (e) {
+      _logger.e('退出群聊异常: $e');
+      return (success: false, message: '未知错误');
+    }
+  }
+
+  /// 修改群名称
+  /// url: /api/conversation/{conversationId}/change-title
+  /// action: post
+  /// 请求数据: {title: "群名称"}
+  Future<Map<String, dynamic>?> updateGroupName(String conversationId, String name) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/change-title', data: {'title': name});
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('修改群名称失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    } catch (e) {
+      _logger.e('修改群名称异常: $e');
+      return {'success': false, 'message': '未知错误', 'code': 200};
+    }
+  }
+
+  /// 修改群公告
+  /// url: /api/conversation/{conversationId}/change-announcement
+  /// action: post
+  /// 请求数据: {content: "公告内容"}
+  Future<Map<String, dynamic>?> updateGroupAnnouncement(String conversationId, String announcement) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post(
+        '/api/conversation/$conversationId/change-announcement',
+        data: {'content': announcement},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('修改群公告失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    } catch (e) {
+      _logger.e('修改群公告异常: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 更新本地会话的群名称（用于WebSocket事件）
+  Future<void> updateConversationTitle(String conversationId, String title) async {
+    final db = await _db.database;
+    await db.update('conversations', {'title': title}, where: 'id = ?', whereArgs: [int.tryParse(conversationId) ?? 0]);
+    await notifyConversationListChanged();
   }
 
   // ─────────────────────────────────────────────

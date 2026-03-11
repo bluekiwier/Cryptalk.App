@@ -515,6 +515,22 @@ class ChatService extends ChangeNotifier {
         final chat = ChatMessageDto.fromJson(message.data!);
         _handleChatMessage(chat);
         break;
+      case "change_title":
+        _handleChangeTitleEvent(message.data!);
+        break;
+    }
+  }
+
+  /// 处理群名称变更事件
+  void _handleChangeTitleEvent(Map<String, dynamic> data) async {
+    final conversationId = data['conversationId']?.toString();
+    final title = data['title']?.toString();
+    if (conversationId != null && title != null) {
+      _logger.i('收到群名称变更: conversationId=$conversationId, title=$title');
+      await ConversationService().updateConversationTitle(conversationId, title);
+      if (isInChatPage(conversationId)) {
+        notifyListeners();
+      }
     }
   }
 

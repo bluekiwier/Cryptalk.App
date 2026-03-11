@@ -115,6 +115,13 @@ class DatabaseService {
       CREATE INDEX idx_message_conversation_id ON ${ConversationMessageEntity.tableName} (${ConversationMessageEntity.conversationId})
     ''');
 
+    await db.execute('''
+      CREATE TABLE configs (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
+
     _logger.i('数据库表创建成功');
   }
 
@@ -123,44 +130,104 @@ class DatabaseService {
   // ─────────────────────────────────────────────
 
   /// 批量 upsert 会话（插入或更新，保留本地 unread_count）
+  /// 支持两种数据格式：本地格式 和 API 同步格式
   Future<void> upsertConversations(List<Map<String, dynamic>> rows) async {
     final db = await database;
     await db.transaction((txn) async {
       for (final row in rows) {
+        final conversationId = row['id'];
+        if (conversationId == null) continue;
+
         final existing = await txn.query(
           ConversationEntity.tableName,
           where: '${ConversationEntity.id} = ?',
-          whereArgs: [row['id']],
+          whereArgs: [conversationId],
         );
 
-        final data = {
-          ConversationEntity.type: row['type'],
-          ConversationEntity.chatUserId: row['chat_user_id'],
-          ConversationEntity.title: row['title'],
-          ConversationEntity.avatar: row['avatar'],
-          ConversationEntity.lastSenderId: row['last_sender_id'],
-          ConversationEntity.lastMessageId: row['last_message_id'],
-          ConversationEntity.lastMessageAt: row['last_message_at'],
-          ConversationEntity.lastMessagePreview: row['last_message_preview'] != null
-              ? _truncate(row['last_message_preview'] as String, 50)
-              : null,
-          ConversationEntity.unreadCount: existing.isNotEmpty
-              ? existing[0][ConversationEntity.unreadCount]
-              : (row['unread_count'] ?? 0),
-          ConversationEntity.isPinned: (row['is_pinned'] ?? 0) == 1 ? 1 : 0,
-          ConversationEntity.isMuted: (row['is_muted'] ?? 0) == 1 ? 1 : 0,
-          ConversationEntity.updatedAt: DateTime.now().toIso8601String(),
-        };
+        final data = <String, dynamic>{};
+
+        // 处理 type 字段（API 可能不返回，使用默认值1）
+        if (row.containsKey('type') && row['type'] != null) {
+          data[ConversationEntity.type] = row['type'];
+        } else if (existing.isEmpty) {
+          data[ConversationEntity.type] = 1;
+        }
+
+        // 处理 chat_user_id 字段
+        if (row.containsKey('chat_user_id') && row['chat_user_id'] != null) {
+          data[ConversationEntity.chatUserId] = row['chat_user_id'];
+        } else if (existing.isEmpty) {
+          data[ConversationEntity.chatUserId] = 0;
+        }
+
+        // 处理 title 字段
+        if (row.containsKey('title') && row['title'] != null) {
+          data[ConversationEntity.title] = row['title'];
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.title] = existing.first[ConversationEntity.title];
+        }
+
+        // 处理 avatar 字段
+        if (row.containsKey('avatar') && row['avatar'] != null) {
+          data[ConversationEntity.avatar] = row['avatar'];
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.avatar] = existing.first[ConversationEntity.avatar];
+        }
+
+        // 处理 lastSenderId / last_sender_id 字段
+        final lastSenderId = row['lastSenderId'] ?? row['last_sender_id'];
+        if (lastSenderId != null) {
+          data[ConversationEntity.lastSenderId] = lastSenderId;
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.lastSenderId] = existing.first[ConversationEntity.lastSenderId];
+        }
+
+        // 处理 lastMessageId / last_message_id 字段
+        final lastMessageId = row['lastMessageId'] ?? row['last_message_id'];
+        if (lastMessageId != null) {
+          data[ConversationEntity.lastMessageId] = lastMessageId;
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.lastMessageId] = existing.first[ConversationEntity.lastMessageId];
+        }
+
+        // 处理 lastMessageAt / last_message_at 字段
+        final lastMessageAt = row['lastMessageAt'] ?? row['last_message_at'];
+        if (lastMessageAt != null) {
+          data[ConversationEntity.lastMessageAt] = lastMessageAt;
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.lastMessageAt] = existing.first[ConversationEntity.lastMessageAt];
+        }
+
+        // 处理 lastMessagePreview / last_message_preview 字段
+        final lastMessagePreview = row['lastMessagePreview'] ?? row['last_message_preview'];
+        if (lastMessagePreview != null) {
+          data[ConversationEntity.lastMessagePreview] = _truncate(lastMessagePreview.toString(), 50);
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.lastMessagePreview] = existing.first[ConversationEntity.lastMessagePreview];
+        }
+
+        // 保留本地的 unread_count、is_pinned、is_muted
+        if (existing.isNotEmpty) {
+          data[ConversationEntity.unreadCount] = existing.first[ConversationEntity.unreadCount];
+          data[ConversationEntity.isPinned] = existing.first[ConversationEntity.isPinned];
+          data[ConversationEntity.isMuted] = existing.first[ConversationEntity.isMuted];
+        } else {
+          data[ConversationEntity.unreadCount] = row['unread_count'] ?? 0;
+          data[ConversationEntity.isPinned] = (row['is_pinned'] ?? 0) == 1 ? 1 : 0;
+          data[ConversationEntity.isMuted] = (row['is_muted'] ?? 0) == 1 ? 1 : 0;
+        }
+
+        data[ConversationEntity.updatedAt] = DateTime.now().toIso8601String();
 
         if (existing.isNotEmpty) {
           await txn.update(
             ConversationEntity.tableName,
             data,
             where: '${ConversationEntity.id} = ?',
-            whereArgs: [row['id']],
+            whereArgs: [conversationId],
           );
         } else {
-          data[ConversationEntity.id] = row['id'];
+          data[ConversationEntity.id] = conversationId;
           await txn.insert(ConversationEntity.tableName, data);
         }
       }
@@ -186,6 +253,80 @@ class DatabaseService {
         ? [senderId, messageId, messageAt, truncatedPreview, DateTime.now().toUtc().toString(), conversationId]
         : [senderId, messageId, messageAt, truncatedPreview, DateTime.now().toUtc().toString(), conversationId];
     await db.rawUpdate(sql, params);
+  }
+
+  /// 更新群名称（收到WebSocket事件或手动修改时调用）
+  Future<void> updateConversationTitle(int conversationId, String title) async {
+    final db = await database;
+    await db.update(
+      ConversationEntity.tableName,
+      {ConversationEntity.title: title, ConversationEntity.updatedAt: DateTime.now().toUtc().toString()},
+      where: '${ConversationEntity.id} = ?',
+      whereArgs: [conversationId],
+    );
+  }
+
+  /// 批量更新会话信息（用于数据同步）
+  Future<void> batchUpdateConversations(List<Map<String, dynamic>> conversations) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final item in conversations) {
+        final conversationId = item['id'];
+        if (conversationId == null) continue;
+
+        final existing = await txn.query(
+          ConversationEntity.tableName,
+          where: '${ConversationEntity.id} = ?',
+          whereArgs: [conversationId],
+        );
+
+        if (existing.isEmpty) continue;
+
+        final data = <String, dynamic>{};
+        if (item.containsKey('title')) {
+          data[ConversationEntity.title] = item['title'];
+        }
+        if (item.containsKey('avatar')) {
+          data[ConversationEntity.avatar] = item['avatar'];
+        }
+        if (item.containsKey('lastSenderId')) {
+          data[ConversationEntity.lastSenderId] = item['lastSenderId'];
+        }
+        if (item.containsKey('lastMessageId')) {
+          data[ConversationEntity.lastMessageId] = item['lastMessageId'];
+        }
+        if (item.containsKey('lastMessageAt')) {
+          data[ConversationEntity.lastMessageAt] = item['lastMessageAt'];
+        }
+        if (item.containsKey('lastMessagePreview')) {
+          data[ConversationEntity.lastMessagePreview] = _truncate(item['lastMessagePreview'] ?? '', 50);
+        }
+        data[ConversationEntity.updatedAt] = DateTime.now().toUtc().toString();
+
+        await txn.update(
+          ConversationEntity.tableName,
+          data,
+          where: '${ConversationEntity.id} = ?',
+          whereArgs: [conversationId],
+        );
+      }
+    });
+  }
+
+  /// 获取配置值
+  Future<String?> getConfig(String key) async {
+    final db = await database;
+    final result = await db.query('configs', where: 'key = ?', whereArgs: [key]);
+    if (result.isNotEmpty) {
+      return result.first['value'] as String?;
+    }
+    return null;
+  }
+
+  /// 设置配置值
+  Future<void> setConfig(String key, String value) async {
+    final db = await database;
+    await db.insert('configs', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// 获取指定会话的消息

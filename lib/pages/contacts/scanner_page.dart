@@ -1,3 +1,4 @@
+import 'package:cryptalk/services/conversation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,10 +14,10 @@ class ScannerPage extends StatefulWidget {
   State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage>
-    with SingleTickerProviderStateMixin {
+class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStateMixin {
   final MobileScannerController _controller = MobileScannerController();
   final FriendService _friendService = FriendService();
+  final ConversationService _conversationService = ConversationService();
   final ImagePicker _picker = ImagePicker();
   bool _isProcessing = false;
 
@@ -26,14 +27,13 @@ class _ScannerPageState extends State<ScannerPage>
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    _animationController = AnimationController(vsync: this, duration: const Duration(seconds: 2))
+      ..repeat(reverse: true);
 
-    _scanAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
+    _scanAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
   }
 
   @override
@@ -71,9 +71,31 @@ class _ScannerPageState extends State<ScannerPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.message),
-              backgroundColor: result.success
-                  ? AppTheme.onlineColor
-                  : AppTheme.badgeColor,
+              backgroundColor: result.success ? AppTheme.onlineColor : AppTheme.badgeColor,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          if (result.success) {
+            Navigator.pop(context, true);
+          } else {
+            setState(() => _isProcessing = false);
+          }
+        }
+      } else {
+        setState(() => _isProcessing = false);
+      }
+    } else if (uri.scheme == 'cryptalk' && uri.path == 'join_group') {
+      // 解析内容 cryptalk:join_group?id=${conversationId}
+      final String? conversationId = uri.queryParameters['id'];
+      if (conversationId != null) {
+        // 尝试加入群聊
+        final result = await _conversationService.joinGroup(conversationId);
+
+        if (result.success == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: result.success ? AppTheme.onlineColor : AppTheme.badgeColor,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -97,9 +119,7 @@ class _ScannerPageState extends State<ScannerPage>
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image == null) return;
 
-      final BarcodeCapture? capture = await _controller.analyzeImage(
-        image.path,
-      );
+      final BarcodeCapture? capture = await _controller.analyzeImage(image.path);
       if (capture != null && capture.barcodes.isNotEmpty) {
         await _handleBarcode(capture);
       } else {
@@ -133,24 +153,13 @@ class _ScannerPageState extends State<ScannerPage>
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: AppBar(
-          title: const Text(
-            '扫一扫',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
+          title: const Text('扫一扫', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
           actions: [
@@ -161,22 +170,15 @@ class _ScannerPageState extends State<ScannerPage>
                 final torchState = state.torchState;
                 return IconButton(
                   icon: Icon(
-                    torchState == TorchState.on
-                        ? Icons.flash_on
-                        : Icons.flash_off,
-                    color: torchState == TorchState.on
-                        ? Colors.yellow
-                        : Colors.white,
+                    torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
+                    color: torchState == TorchState.on ? Colors.yellow : Colors.white,
                   ),
                   onPressed: () => _controller.toggleTorch(),
                 );
               },
             ),
             // 切换镜头
-            IconButton(
-              icon: const Icon(Icons.cameraswitch_rounded),
-              onPressed: () => _controller.switchCamera(),
-            ),
+            IconButton(icon: const Icon(Icons.cameraswitch_rounded), onPressed: () => _controller.switchCamera()),
           ],
         ),
       ),
@@ -193,10 +195,7 @@ class _ScannerPageState extends State<ScannerPage>
                   width: 250,
                   height: 250,
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Stack(
@@ -216,20 +215,14 @@ class _ScannerPageState extends State<ScannerPage>
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    AppTheme.primaryColor.withValues(
-                                      alpha: 0.1,
-                                    ),
+                                    AppTheme.primaryColor.withValues(alpha: 0.1),
                                     AppTheme.primaryColor,
-                                    AppTheme.primaryColor.withValues(
-                                      alpha: 0.1,
-                                    ),
+                                    AppTheme.primaryColor.withValues(alpha: 0.1),
                                   ],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryColor.withValues(
-                                      alpha: 0.5,
-                                    ),
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.5),
                                     blurRadius: 10,
                                     spreadRadius: 2,
                                   ),
@@ -257,20 +250,11 @@ class _ScannerPageState extends State<ScannerPage>
                       icon: Icons.qr_code_rounded,
                       label: '我的二维码',
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MyQrCodePage(),
-                          ),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyQrCodePage()));
                       },
                     ),
                     const SizedBox(width: 60),
-                    _buildBottomButton(
-                      icon: Icons.photo_library_rounded,
-                      label: '相册',
-                      onTap: _pickAndScanImage,
-                    ),
+                    _buildBottomButton(icon: Icons.photo_library_rounded, label: '相册', onTap: _pickAndScanImage),
                   ],
                 ),
               ],
@@ -279,20 +263,14 @@ class _ScannerPageState extends State<ScannerPage>
           if (_isProcessing)
             Container(
               color: Colors.black.withValues(alpha: 0.5),
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildBottomButton({required IconData icon, required String label, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       child: Column(
@@ -300,17 +278,11 @@ class _ScannerPageState extends State<ScannerPage>
         children: [
           Container(
             padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
             child: Icon(icon, color: Colors.white, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
         ],
       ),
     );
@@ -347,29 +319,16 @@ class _ScannerPageState extends State<ScannerPage>
     ];
   }
 
-  Widget _cornerBlock({
-    required bool top,
-    required bool left,
-    required double l,
-    required double w,
-  }) {
+  Widget _cornerBlock({required bool top, required bool left, required double l, required double w}) {
     return Container(
       width: l,
       height: l,
       decoration: BoxDecoration(
         border: Border(
-          top: top
-              ? BorderSide(color: AppTheme.primaryColor, width: w)
-              : BorderSide.none,
-          bottom: !top
-              ? BorderSide(color: AppTheme.primaryColor, width: w)
-              : BorderSide.none,
-          left: left
-              ? BorderSide(color: AppTheme.primaryColor, width: w)
-              : BorderSide.none,
-          right: !left
-              ? BorderSide(color: AppTheme.primaryColor, width: w)
-              : BorderSide.none,
+          top: top ? BorderSide(color: AppTheme.primaryColor, width: w) : BorderSide.none,
+          bottom: !top ? BorderSide(color: AppTheme.primaryColor, width: w) : BorderSide.none,
+          left: left ? BorderSide(color: AppTheme.primaryColor, width: w) : BorderSide.none,
+          right: !left ? BorderSide(color: AppTheme.primaryColor, width: w) : BorderSide.none,
         ),
       ),
     );

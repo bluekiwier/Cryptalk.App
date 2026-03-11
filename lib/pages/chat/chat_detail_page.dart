@@ -36,6 +36,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _hasMore = true;
   Message? _quotedMessage;
   int _groupMemberCount = 0;
+  String _currentTitle = '';
 
   final ChatService _chatService = ChatService();
   final AccountService _accountService = AccountService();
@@ -45,6 +46,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   void initState() {
     super.initState();
     _messages = [];
+    _currentTitle = widget.conversation.title;
     // 设置当前聊天会话ID
     _chatService.setCurrentChatConversation(widget.conversation.id);
     // 进入聊天页时清零未读数
@@ -55,7 +57,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     // 如果是群聊，加载群成员数量
     if (widget.conversation.isGroup) {
       _loadGroupMemberCount();
-      ConversationService().joinGroup(widget.conversation.id);
+      ConversationService().enterGroup(widget.conversation.id);
     }
   }
 
@@ -86,7 +88,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _chatService.setCurrentChatConversation(null);
     // 如果是群聊，离开群聊室
     if (widget.conversation.isGroup) {
-      ConversationService().leaveGroup(widget.conversation.id);
+      ConversationService().exitGroup(widget.conversation.id);
     }
     super.dispose();
   }
@@ -158,6 +160,30 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           if (_scrollController.hasClients) {
             _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
           }
+        });
+      }
+
+      // 更新群名称（如果有变化）
+      if (widget.conversation.isGroup) {
+        _updateGroupTitle();
+      }
+    }
+  }
+
+  /// 从数据库更新群名称
+  Future<void> _updateGroupTitle() async {
+    final db = await DatabaseService().database;
+    final result = await db.query(
+      'conversations',
+      columns: ['title'],
+      where: 'id = ?',
+      whereArgs: [int.tryParse(widget.conversation.id) ?? 0],
+    );
+    if (result.isNotEmpty && mounted) {
+      final newTitle = result.first['title']?.toString() ?? '';
+      if (newTitle.isNotEmpty && newTitle != _currentTitle) {
+        setState(() {
+          _currentTitle = newTitle;
         });
       }
     }
@@ -501,7 +527,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 children: [
                   Flexible(
                     child: Text(
-                      widget.conversation.title,
+                      _currentTitle,
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),

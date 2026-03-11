@@ -8,6 +8,7 @@ class ConversationDetailResult {
   final int lastMessageId;
   final DateTime? lastMessageAt;
   final String? lastMessagePreview;
+  final String? announcement;
   final int unreadCount;
   final bool isPinned;
   final bool isMuted;
@@ -22,6 +23,7 @@ class ConversationDetailResult {
     required this.lastMessageId,
     this.lastMessageAt,
     this.lastMessagePreview,
+    this.announcement,
     required this.unreadCount,
     required this.isPinned,
     required this.isMuted,
@@ -38,6 +40,7 @@ class ConversationDetailResult {
       lastMessageId: json['lastMessageId'] as int? ?? 0,
       lastMessageAt: json['lastMessageAt'] != null ? DateTime.tryParse(json['lastMessageAt'].toString()) : null,
       lastMessagePreview: json['lastMessagePreview']?.toString(),
+      announcement: json['announcement']?.toString(),
       unreadCount: (json['unreadCount'] is int)
           ? json['unreadCount']
           : int.tryParse(json['unreadCount']?.toString() ?? '0') ?? 0,

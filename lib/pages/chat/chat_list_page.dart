@@ -21,8 +21,8 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  final ConversationService _service = ConversationService();
   final AccountService _accountService = AccountService();
+  final ConversationService _conversationService = ConversationService();
   final ScrollController _scrollController = ScrollController();
 
   // 是否正在初始化（首次从 DB 加载）
@@ -32,7 +32,7 @@ class _ChatListPageState extends State<ChatListPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _service.addListener(_onServiceChanged);
+    _conversationService.addListener(_onServiceChanged);
     _init();
   }
 
@@ -40,13 +40,13 @@ class _ChatListPageState extends State<ChatListPage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _service.removeListener(_onServiceChanged);
+    _conversationService.removeListener(_onServiceChanged);
     super.dispose();
   }
 
   /// 初始化：加载本地 DB（秒开），后台同步网络
   Future<void> _init() async {
-    await _service.initialize();
+    await _conversationService.initialize();
     if (mounted) setState(() => _initializing = false);
   }
 
@@ -59,16 +59,16 @@ class _ChatListPageState extends State<ChatListPage> {
   void _onScroll() {
     if (_initializing) return;
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
-      _service.loadMore();
+      _conversationService.loadMore();
     }
   }
 
   /// 下拉刷新
-  Future<void> _onRefresh() => _service.refresh();
+  Future<void> _onRefresh() => _conversationService.refresh();
 
   @override
   Widget build(BuildContext context) {
-    final conversations = _service.conversations;
+    final conversations = _conversationService.conversations;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
@@ -112,7 +112,7 @@ class _ChatListPageState extends State<ChatListPage> {
                     conversation: conversations[index],
                     onTap: () async {
                       // 进入聊天页时清零未读数
-                      await _service.clearUnread(conversations[index].id);
+                      await _conversationService.clearUnread(conversations[index].id);
                       if (!mounted) return;
                       // 用局部变量捕获 context，避免跨异步使用
                       // ignore: use_build_context_synchronously
@@ -130,13 +130,13 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   Widget _buildLoadMoreIndicator() {
-    if (_service.isLoadingMore) {
+    if (_conversationService.isLoadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
-    if (_service.hasMore) return const SizedBox.shrink();
+    if (_conversationService.hasMore) return const SizedBox.shrink();
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 16),
       child: Center(
