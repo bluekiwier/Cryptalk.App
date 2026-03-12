@@ -4,6 +4,7 @@ import '../../models/conversation.dart';
 import '../../services/database_service.dart';
 import '../../services/conversation_service.dart';
 import '../../theme/app_theme.dart';
+import 'group_management_page.dart';
 
 class ChatSettingsPage extends StatefulWidget {
   final Conversation conversation;
@@ -34,18 +35,15 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
 
   Future<void> _loadChatSettings() async {
     final result = await ConversationService().getConversationDetail(widget.conversation.id);
-    if (result != null && result['success'] == true && mounted) {
-      final data = result['data'];
-      if (data != null) {
-        setState(() {
-          _isMuted = data['isMuted'];
-          _isPinned = data['isPinned'];
-          _groupName = data['title'] ?? widget.conversation.title;
-          _groupAnnouncement = data['announcement'] ?? '';
-          _isLoading = false;
-        });
-        await _updateLocalDatabase();
-      }
+    if (result != null && mounted) {
+      setState(() {
+        _isMuted = result.isMuted;
+        _isPinned = result.isPinned;
+        _groupName = result.title.isNotEmpty ? result.title : widget.conversation.title;
+        _groupAnnouncement = result.announcement ?? '';
+        _isLoading = false;
+      });
+      await _updateLocalDatabase();
     }
     if (mounted) {
       setState(() => _isLoading = false);
@@ -208,11 +206,41 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     );
   }
 
-  void _navigateToGroupManagement() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => GroupManagementPage(conversation: widget.conversation)),
+  Future<void> _navigateToGroupManagement() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
+
+    try {
+      final result = await ConversationService().getMyRole(widget.conversation.id);
+      if (!mounted) return;
+
+      Navigator.of(context, rootNavigator: true).pop(); // 关闭 loading
+
+      if (result != null && result['success'] == true) {
+        final role = result['data'];
+        if (role == 1 || role == 2) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => GroupManagementPage(conversation: widget.conversation)),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('仅限群主或管理员才能进入群管理')));
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '获取角色权限失败')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // 发生异常时关闭 loading
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取角色权限异常')));
+    }
   }
 
   Future<void> _quitGroup() async {
@@ -336,7 +364,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
                     onTap: _navigateToGroupManagement,
                   ),
                 ],
-                const SizedBox(height: 30),
+                const SizedBox(height: 80),
                 if (isGroup)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -384,38 +412,6 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: onTap,
       ),
-    );
-  }
-}
-
-class GroupManagementPage extends StatefulWidget {
-  final Conversation conversation;
-
-  const GroupManagementPage({super.key, required this.conversation});
-
-  @override
-  State<GroupManagementPage> createState() => _GroupManagementPageState();
-}
-
-class _GroupManagementPageState extends State<GroupManagementPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          '群管理',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: const Center(child: Text('群管理页面')),
     );
   }
 }

@@ -12,6 +12,7 @@ class ConversationDetailResult {
   final int unreadCount;
   final bool isPinned;
   final bool isMuted;
+  final bool isAllMuted;
 
   const ConversationDetailResult({
     required this.id,
@@ -27,6 +28,7 @@ class ConversationDetailResult {
     required this.unreadCount,
     required this.isPinned,
     required this.isMuted,
+    this.isAllMuted = false,
   });
 
   factory ConversationDetailResult.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class ConversationDetailResult {
           : int.tryParse(json['unreadCount']?.toString() ?? '0') ?? 0,
       isPinned: json['isPinned'] == true || json['isPinned'] == 1,
       isMuted: json['isMuted'] == true || json['isMuted'] == 1,
+      isAllMuted: json['isAllMuted'] == true || json['isAllMuted'] == 1,
     );
   }
 }

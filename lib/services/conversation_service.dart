@@ -101,7 +101,7 @@ class ConversationService extends ChangeNotifier {
           final list = data['list'] as List<dynamic>?;
           if (list != null && list.isNotEmpty) {
             final conversations = list.map((item) => Map<String, dynamic>.from(item)).toList();
-            _logger.i('同步会话数据: ${data}');
+            _logger.i('同步会话数据: $data');
             // await _db.batchUpdateConversations(conversations);
             await _db.upsertConversations(conversations);
             _logger.d('同步会话数据成功，更新了 ${conversations.length} 条');
@@ -288,36 +288,41 @@ class ConversationService extends ChangeNotifier {
 
   /// 拉取单个会话详情并缓存到本地，同时返回数据
   /// 用于：1. 收到新消息时本地不存在会话 2. 获取会话详情
-  Future<Map<String, dynamic>?> fetchAndCacheConversationDetail(String conversationId, {bool cacheToDb = true}) async {
-    final responseData = await getConversationDetail(conversationId);
-    if (responseData != null && responseData['success'] == true) {
-      final data = responseData['data'];
-      if (data != null && cacheToDb) {
-        final detail = ConversationDetailResult.fromJson(data);
-        await _db.insertConversationIfAbsent(_detailResultToRow(detail));
-        _logger.d('缓存会话详情: $conversationId');
-      }
-      return responseData;
+  Future<ConversationDetailResult?> fetchAndCacheConversationDetail(
+    String conversationId, {
+    bool cacheToDb = true,
+  }) async {
+    final detail = await getConversationDetail(conversationId);
+    if (detail != null && cacheToDb) {
+      await _db.insertConversationIfAbsent(_detailResultToRow(detail));
+      _logger.d('缓存会话详情: $conversationId');
     }
-    return responseData;
+    return detail;
   }
 
-  /// 获取私聊会话设置信息
-  Future<Map<String, dynamic>?> getConversationDetail(String conversationId) async {
+  /// 获取会话详情
+  /// 返回 ConversationDetailResult 对象
+  Future<ConversationDetailResult?> getConversationDetail(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
       final response = await dio.get('/api/conversation/$conversationId/detail');
-      return response.data;
+      final responseData = response.data;
+      if (responseData != null && responseData['success'] == true) {
+        final data = responseData['data'];
+        if (data != null) {
+          return ConversationDetailResult.fromJson(data);
+        }
+      }
+      return null;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout) {
-        _logger.e('获取会话设置信息超时: $e');
-        return {'success': false, 'error': 'connection_timeout', 'message': '网络连接超时，请检查网络后重试'};
+        _logger.e('获取会话详情超时: $e');
       } else {
-        _logger.e('获取会话设置信息失败: $e');
-        return null;
+        _logger.e('获取会话详情失败: $e');
       }
+      return null;
     } catch (e) {
-      _logger.e('获取会话设置信息异常: $e');
+      _logger.e('获取会话详情异常: $e');
       return null;
     }
   }
@@ -328,12 +333,8 @@ class ConversationService extends ChangeNotifier {
       final dio = await AccountService().getDio();
 
       final response = await dio.post(
-        '/api/conversation/messages',
-        data: {
-          'conversationId': conversationId is String ? int.tryParse(conversationId) ?? 0 : (conversationId ?? 0),
-          'messageId': messageId,
-          'pageSize': pageSize,
-        },
+        '/api/conversation/$conversationId/messages',
+        data: {'messageId': messageId, 'pageSize': pageSize},
       );
       return response.data;
     } on DioException catch (e) {
@@ -354,10 +355,7 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> pinTopConversation(String conversationId, int type) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post(
-        '/api/conversation/pin-top',
-        data: {'conversationId': int.tryParse(conversationId) ?? 0, 'type': type},
-      );
+      final response = await dio.post('/api/conversation/$conversationId/pin-top', data: {'type': type});
       return response.data;
     } on DioException catch (e) {
       _logger.e('置顶聊天失败: $e');
@@ -372,10 +370,7 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> muteConversation(String conversationId, int type) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post(
-        '/api/conversation/mute',
-        data: {'conversationId': int.tryParse(conversationId) ?? 0, 'type': type},
-      );
+      final response = await dio.post('/api/conversation/$conversationId/mute', data: {'type': type});
       return response.data;
     } on DioException catch (e) {
       _logger.e('设置消息免打扰失败: $e');
@@ -384,6 +379,54 @@ class ConversationService extends ChangeNotifier {
       _logger.e('设置消息免打扰异常: $e');
       return null;
     }
+  }
+
+  /// 创建群组
+  /// [userIds] 群成员用户ID列表（不包含当前用户）
+  /// 返回创建的会话详情
+  Future<ConversationDetailResult?> createGroup(List<String> userIds) async {
+    try {
+      final dio = await AccountService().getDio();
+
+      final response = await dio.post('/api/conversation/create-group', data: {'userIds': userIds});
+
+      final responseData = response.data;
+      _logger.d('创建群组响应: $responseData');
+
+      if (responseData['success'] == true && responseData['data'] != null) {
+        final data = responseData['data'] as Map<String, dynamic>;
+        final conversationDetail = ConversationDetailResult.fromJson(data);
+
+        final row = _conversationDetailToRow(conversationDetail);
+        await DatabaseService().insertConversationIfAbsent(row);
+
+        _logger.d('群组会话已写入本地数据库: ${conversationDetail.id}');
+        return conversationDetail;
+      } else {
+        _logger.e('创建群组失败: ${responseData['message']}');
+        return null;
+      }
+    } catch (e) {
+      _logger.e('创建群组异常: $e');
+      return null;
+    }
+  }
+
+  Map<String, dynamic> _conversationDetailToRow(ConversationDetailResult dto) {
+    return {
+      'id': dto.id,
+      'type': dto.type,
+      'chat_user_id': dto.chatUserId,
+      'title': dto.title,
+      'avatar': dto.avatar,
+      'last_sender_id': dto.lastSenderId,
+      'last_message_id': dto.lastMessageId,
+      'last_message_at': dto.lastMessageAt?.toIso8601String(),
+      'last_message_preview': dto.lastMessagePreview,
+      'unread_count': dto.unreadCount,
+      'is_pinned': dto.isPinned ? 1 : 0,
+      'is_muted': dto.isMuted ? 1 : 0,
+    };
   }
 
   /// 获取群成员列表
@@ -432,7 +475,7 @@ class ConversationService extends ChangeNotifier {
   Future<bool> enterGroup(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/enter-group', data: {'id': conversationId});
+      final response = await dio.post('/api/conversation/$conversationId/enter');
       final data = response.data;
       if (data != null && data['success'] == true) {
         _logger.d('进入群聊室成功');
@@ -453,7 +496,7 @@ class ConversationService extends ChangeNotifier {
   Future<bool> exitGroup(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/exit-group', data: {'id': conversationId});
+      final response = await dio.post('/api/conversation/$conversationId/exit');
       final data = response.data;
       if (data != null && data['success'] == true) {
         _logger.d('离开群聊室成功');
@@ -474,7 +517,7 @@ class ConversationService extends ChangeNotifier {
   Future<({bool success, String message})> joinGroup(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/join-group', data: {'id': conversationId});
+      final response = await dio.post('/api/conversation/$conversationId/join');
       final responseData = response.data;
       final message = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -495,7 +538,7 @@ class ConversationService extends ChangeNotifier {
   Future<({bool success, String message})> quitGroup(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.delete('/api/conversation/quit-group', data: {'id': conversationId});
+      final response = await dio.delete('/api/conversation/$conversationId/quit');
       final responseData = response.data;
       final message = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
@@ -556,6 +599,168 @@ class ConversationService extends ChangeNotifier {
     final db = await _db.database;
     await db.update('conversations', {'title': title}, where: 'id = ?', whereArgs: [int.tryParse(conversationId) ?? 0]);
     await notifyConversationListChanged();
+  }
+
+  /// 获取我的角色: 1=群主,2=管理员,3=成员
+  Future<Map<String, dynamic>?> getMyRole(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.get('/api/conversation/$conversationId/my-role');
+      return response.data;
+    } catch (e) {
+      _logger.e('获取我的角色失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 添加群管理员
+  Future<Map<String, dynamic>?> addGroupAdmin(String conversationId, dynamic userId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/add-admin', data: {'userId': userId});
+      return response.data;
+    } catch (e) {
+      _logger.e('添加群管理员失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 移除群管理员
+  Future<Map<String, dynamic>?> removeGroupAdmin(String conversationId, dynamic userId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/remove-admin', data: {'userId': userId});
+      return response.data;
+    } catch (e) {
+      _logger.e('移除群管理员失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 转让群主
+  Future<Map<String, dynamic>?> transferGroupOwner(String conversationId, dynamic userId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/transfer-owner', data: {'userId': userId});
+      return response.data;
+    } catch (e) {
+      _logger.e('转让群主失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 解散群聊
+  Future<Map<String, dynamic>?> dissolveGroup(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.delete('/api/conversation/$conversationId/dissolve');
+      return response.data;
+    } catch (e) {
+      _logger.e('解散群聊失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 设置群内禁言
+  Future<Map<String, dynamic>?> setGroupMute(String conversationId, dynamic userId, int duration) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post(
+        '/api/conversation/$conversationId/set-mute',
+        data: {'userId': userId, 'duration': duration},
+      );
+      return response.data;
+    } catch (e) {
+      _logger.e('设置群内禁言失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 取消群内禁言
+  Future<Map<String, dynamic>?> cancelGroupMute(String conversationId, dynamic userId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/cancel-mute', data: {'userId': userId});
+      return response.data;
+    } catch (e) {
+      _logger.e('取消群内禁言失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 踢出群成员
+  Future<Map<String, dynamic>?> removeGroupMember(String conversationId, dynamic userId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/remove-member', data: {'userId': userId});
+      return response.data;
+    } catch (e) {
+      _logger.e('踢出群成员失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 邀请成员加入群聊
+  Future<Map<String, dynamic>?> addGroupMember(String conversationId, String account) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/add-member', data: {'account': account});
+      return response.data;
+    } catch (e) {
+      _logger.e('邀请成员失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 禁言成员
+  Future<Map<String, dynamic>?> muteMember(String conversationId, dynamic userId, int minutes) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post(
+        '/api/conversation/$conversationId/mute-member',
+        data: {'userId': userId, 'minutes': minutes},
+      );
+      return response.data;
+    } catch (e) {
+      _logger.e('禁言成员失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 解除成员禁言
+  Future<Map<String, dynamic>?> unmuteMember(String conversationId, dynamic userId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/unmute-member', data: {'userId': userId});
+      return response.data;
+    } catch (e) {
+      _logger.e('解除禁言失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 开启全体禁言
+  Future<Map<String, dynamic>?> muteAll(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/mute-all');
+      return response.data;
+    } catch (e) {
+      _logger.e('开启全体禁言失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
+  }
+
+  /// 关闭全体禁言
+  Future<Map<String, dynamic>?> unmuteAll(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/conversation/$conversationId/unmute-all');
+      return response.data;
+    } catch (e) {
+      _logger.e('关闭全体禁言失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    }
   }
 
   // ─────────────────────────────────────────────

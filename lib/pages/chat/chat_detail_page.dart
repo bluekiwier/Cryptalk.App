@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../models/conversation.dart';
 import '../../models/message.dart';
+import '../../models/send_message_result.dart';
 import '../../models/db/conversation_entity.dart';
 import '../../models/db/conversation_message_entity.dart';
 import '../../widgets/avatar_widget.dart';
@@ -57,7 +58,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     // 如果是群聊，加载群成员数量
     if (widget.conversation.isGroup) {
       _loadGroupMemberCount();
-      ConversationService().enterGroup(widget.conversation.id);
+      // ConversationService().enterGroup(widget.conversation.id);
     }
   }
 
@@ -86,10 +87,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _chatService.removeListener(_onChatServiceUpdated);
     // 清除当前聊天会话ID
     _chatService.setCurrentChatConversation(null);
-    // 如果是群聊，离开群聊室
-    if (widget.conversation.isGroup) {
-      ConversationService().exitGroup(widget.conversation.id);
-    }
+    // // 如果是群聊，离开群聊室
+    // if (widget.conversation.isGroup) {
+    //   ConversationService().exitGroup(widget.conversation.id);
+    // }
     super.dispose();
   }
 
@@ -1114,15 +1115,15 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return;
     }
 
-    String messageId = '';
+    SendMessageResult result;
     if (widget.conversation.isGroup) {
-      messageId = await ChatService().sendGroupMessage(
+      result = await ChatService().sendGroupMessage(
         conversationId: widget.conversation.id,
         message: text,
         quoteId: _quotedMessage?.id,
       );
     } else {
-      messageId = await ChatService().sendPrivateMessage(
+      result = await ChatService().sendPrivateMessage(
         conversationId: widget.conversation.id,
         senderId: currentUser.id,
         receiverId: widget.conversation.chatUserId,
@@ -1131,7 +1132,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       );
     }
 
-    if (messageId.isNotEmpty) {
+    if (result.isSuccess) {
+      final messageId = result.messageId!;
       final now = DateTime.now();
       final convId = int.parse(widget.conversation.id);
       final senderIdInt = int.tryParse(currentUser.id) ?? 0;
@@ -1192,7 +1194,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('消息发送失败，请重试')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result.message ?? '消息发送失败'), backgroundColor: AppTheme.badgeColor));
       }
     }
   }

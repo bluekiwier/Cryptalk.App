@@ -40,18 +40,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             pinned: true,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.headerGradient,
-                ),
+                decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
                 child: const SafeArea(
                   child: Center(
                     child: Text(
@@ -83,17 +77,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       decoration: BoxDecoration(
                         color: AppTheme.primaryColor.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                        ),
+                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.security_rounded,
-                            color: AppTheme.primaryColor,
-                            size: 24,
-                          ),
+                          Icon(Icons.security_rounded, color: AppTheme.primaryColor, size: 24),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -101,9 +89,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 建议使用字母、数字和特殊字符的组合。''',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: AppTheme.primaryColor.withValues(
-                                  alpha: 0.8,
-                                ),
+                                color: AppTheme.primaryColor.withValues(alpha: 0.8),
                                 height: 1.5,
                               ),
                             ),
@@ -121,8 +107,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       controller: _oldPasswordController,
                       hintText: '请输入当前密码',
                       isVisible: _showOldPassword,
-                      onToggle: () =>
-                          setState(() => _showOldPassword = !_showOldPassword),
+                      onToggle: () => setState(() => _showOldPassword = !_showOldPassword),
                       validator: (v) {
                         if (v == null || v.isEmpty) return '请输入当前密码';
                         return null;
@@ -138,8 +123,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       controller: _newPasswordController,
                       hintText: '请输入新密码（6~20位）',
                       isVisible: _showNewPassword,
-                      onToggle: () =>
-                          setState(() => _showNewPassword = !_showNewPassword),
+                      onToggle: () => setState(() => _showNewPassword = !_showNewPassword),
                       validator: (v) {
                         if (v == null || v.isEmpty) return '请输入新密码';
                         if (v.length < 6) return '密码不能少于 6 个字符';
@@ -157,9 +141,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       controller: _confirmPasswordController,
                       hintText: '请再次输入新密码',
                       isVisible: _showConfirmPassword,
-                      onToggle: () => setState(
-                        () => _showConfirmPassword = !_showConfirmPassword,
-                      ),
+                      onToggle: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
                       validator: (v) {
                         if (v == null || v.isEmpty) return '请确认新密码';
                         if (v != _newPasswordController.text) {
@@ -181,9 +163,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.3,
-                              ),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -195,26 +175,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                             disabledBackgroundColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                           child: _isLoading
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
+                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                                 )
                               : const Text(
                                   '确认修改',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
                                 ),
                         ),
                       ),
@@ -233,11 +204,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: AppTheme.textPrimary,
-      ),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
     );
   }
 
@@ -253,13 +220,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: TextFormField(
         controller: controller,
@@ -269,40 +230,25 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           hintText: hintText,
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: AppTheme.primaryColor.withValues(alpha: 0.5),
-              width: 1.5,
-            ),
+            borderSide: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.5), width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: AppTheme.badgeColor, width: 1),
           ),
-          prefixIcon: const Icon(
-            Icons.lock_outline_rounded,
-            color: AppTheme.textHint,
-            size: 20,
-          ),
+          prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textHint, size: 20),
           suffixIcon: IconButton(
             icon: Icon(
-              isVisible
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
+              isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
               color: AppTheme.textHint,
               size: 20,
             ),
             onPressed: onToggle,
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         style: const TextStyle(fontSize: 15),
       ),
@@ -329,10 +275,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           SnackBar(
             content: Text(result.message),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.accentColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            backgroundColor: AppTheme.onlineColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Future.delayed(const Duration(seconds: 1), () {
@@ -345,9 +289,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             content: Text(result.message),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppTheme.badgeColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -358,9 +300,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           content: const Text('网络异常，请检查网络后重试'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.badgeColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } finally {

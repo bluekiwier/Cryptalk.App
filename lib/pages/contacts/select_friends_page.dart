@@ -3,7 +3,6 @@ import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/friend_service.dart';
-import '../../services/chat_service.dart';
 import '../../services/conversation_service.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/search_bar_widget.dart';
@@ -18,7 +17,8 @@ class SelectFriendsPage extends StatefulWidget {
 
 class _SelectFriendsPageState extends State<SelectFriendsPage> {
   final FriendService _friendService = FriendService();
-  final ChatService _chatService = ChatService();
+  final ConversationService _conversationService = ConversationService();
+
   final _logger = Logger();
 
   List<User> _friends = [];
@@ -133,7 +133,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
     );
 
     try {
-      final conversation = await _chatService.createGroup(userIds);
+      final conversation = await _conversationService.createGroup(userIds);
 
       if (!mounted) return;
       Navigator.pop(context);

@@ -10,7 +10,7 @@ import 'database_service.dart';
 import 'conversation_service.dart';
 import '../models/db/conversation_entity.dart';
 import '../models/db/conversation_message_entity.dart';
-import '../models/conversation_detail_result.dart';
+import '../models/send_message_result.dart';
 
 /// 统一消息模型
 class MessageResult {
@@ -620,7 +620,7 @@ class ChatService extends ChangeNotifier {
   /// [receiverId] 接收者 ID
   /// [message] 消息内容
   /// [quoteId] 引用的消息 ID
-  Future<String> sendPrivateMessage({
+  Future<SendMessageResult> sendPrivateMessage({
     required dynamic conversationId,
     required dynamic senderId,
     required dynamic receiverId,
@@ -644,17 +644,15 @@ class ChatService extends ChangeNotifier {
       final response = await dio.post('/api/chat/send-private-message', data: data);
 
       final responseData = response.data;
-      // _logger.d('发送私聊消息响应: $responseData');
       if (responseData != null && responseData['success'] == true) {
-        // _logger.d('发送私聊消息成功');
-        return responseData["data"];
+        return SendMessageResult(success: true, messageId: responseData["data"]?.toString());
       } else {
         _logger.e('发送私聊消息失败: ${responseData?['message']}');
-        return "";
+        return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败');
       }
     } catch (e) {
       _logger.e('发送私聊消息异常: $e');
-      return "";
+      return SendMessageResult(success: false, message: '网络异常');
     }
   }
 
@@ -663,7 +661,7 @@ class ChatService extends ChangeNotifier {
   /// [message] 消息内容
   /// [quoteId] 引用的消息 ID
   /// [type] 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=表情,6=位置,7=名片,8=红包,9=系统通知
-  Future<String> sendGroupMessage({
+  Future<SendMessageResult> sendGroupMessage({
     required dynamic conversationId,
     required String message,
     String? quoteId,
@@ -681,66 +679,16 @@ class ChatService extends ChangeNotifier {
       final response = await dio.post('/api/chat/send-group-message', data: data);
 
       final responseData = response.data;
-      // _logger.d('发送群聊消息响应: $responseData');
       if (responseData != null && responseData['success'] == true) {
-        // _logger.d('发送群聊消息成功');
-        return responseData["data"]?.toString() ?? "";
+        return SendMessageResult(success: true, messageId: responseData["data"]?.toString());
       } else {
         _logger.e('发送群聊消息失败: ${responseData?['message']}');
-        return "";
+        return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败');
       }
     } catch (e) {
       _logger.e('发送群聊消息异常: $e');
-      return "";
+      return SendMessageResult(success: false, message: '网络异常');
     }
-  }
-
-  /// 创建群组
-  /// [userIds] 群成员用户ID列表（不包含当前用户）
-  /// 返回创建的会话详情
-  Future<ConversationDetailResult?> createGroup(List<String> userIds) async {
-    try {
-      final dio = await AccountService().getDio();
-
-      final response = await dio.post('/api/chat/create-group', data: {'userIds': userIds});
-
-      final responseData = response.data;
-      _logger.d('创建群组响应: $responseData');
-
-      if (responseData['success'] == true && responseData['data'] != null) {
-        final data = responseData['data'] as Map<String, dynamic>;
-        final conversationDetail = ConversationDetailResult.fromJson(data);
-
-        final row = _conversationDetailToRow(conversationDetail);
-        await DatabaseService().insertConversationIfAbsent(row);
-
-        _logger.d('群组会话已写入本地数据库: ${conversationDetail.id}');
-        return conversationDetail;
-      } else {
-        _logger.e('创建群组失败: ${responseData['message']}');
-        return null;
-      }
-    } catch (e) {
-      _logger.e('创建群组异常: $e');
-      return null;
-    }
-  }
-
-  Map<String, dynamic> _conversationDetailToRow(ConversationDetailResult dto) {
-    return {
-      'id': dto.id,
-      'type': dto.type,
-      'chat_user_id': dto.chatUserId,
-      'title': dto.title,
-      'avatar': dto.avatar,
-      'last_sender_id': dto.lastSenderId,
-      'last_message_id': dto.lastMessageId,
-      'last_message_at': dto.lastMessageAt?.toIso8601String(),
-      'last_message_preview': dto.lastMessagePreview,
-      'unread_count': dto.unreadCount,
-      'is_pinned': dto.isPinned ? 1 : 0,
-      'is_muted': dto.isMuted ? 1 : 0,
-    };
   }
 
   /// 断开连接（例如登出时调用）
