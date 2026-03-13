@@ -849,13 +849,23 @@ class ConversationService extends ChangeNotifier {
       case 1:
         return MessageType.image;
       case 2:
-        return MessageType.voice;
+        return MessageType.audio;
       case 3:
         return MessageType.video;
       case 4:
         return MessageType.file;
-      case 9:
+      case 5:
+        return MessageType.location;
+      case 6:
+        return MessageType.contact;
+      case 7:
+        return MessageType.hongBao;
+      case 8:
         return MessageType.system;
+      case 9:
+        return MessageType.broadcast;
+      case 10:
+        return MessageType.groupNotify;
       default:
         return MessageType.text;
     }

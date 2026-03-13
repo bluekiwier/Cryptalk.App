@@ -518,6 +518,12 @@ class ChatService extends ChangeNotifier {
       case "change_title":
         _handleChangeTitleEvent(message.data!);
         break;
+      case "join":
+        _handleJoinEvent(message.data!);
+        break;
+      case "quit":
+        _handleQuitEvent(message.data!);
+        break;
     }
   }
 
@@ -532,6 +538,100 @@ class ChatService extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  /// 处理加入群聊事件
+  void _handleJoinEvent(Map<String, dynamic> data) async {
+    final conversationId = data['conversationId']?.toString();
+    final payload = data['payload'];
+    if (conversationId != null && payload != null) {
+      _logger.i('收到加入群聊事件: conversationId=$conversationId');
+      await _handleGroupNotifyMessage(conversationId, payload);
+      if (isInChatPage(conversationId)) {
+        notifyListeners();
+      }
+    }
+  }
+
+  /// 处理退出群聊事件
+  void _handleQuitEvent(Map<String, dynamic> data) async {
+    final conversationId = data['conversationId']?.toString();
+    final payload = data['payload'];
+    if (conversationId != null && payload != null) {
+      _logger.i('收到退出群聊事件: conversationId=$conversationId');
+      await _handleGroupNotifyMessage(conversationId, payload);
+      if (isInChatPage(conversationId)) {
+        notifyListeners();
+      }
+    }
+  }
+
+  /// 处理群通知消息（加入/退出群等）
+  Future<void> _handleGroupNotifyMessage(String conversationId, Map<String, dynamic> payload) async {
+    final msgId = int.tryParse(payload['id']?.toString() ?? '') ?? 0;
+    final senderId = int.tryParse(payload['senderId']?.toString() ?? '') ?? 0;
+    final content = payload['content']?.toString() ?? '';
+    final createdAtStr = payload['createdAt']?.toString() ?? DateTime.now().toIso8601String();
+    final convId = int.tryParse(conversationId) ?? 0;
+
+    if (msgId == 0 || convId == 0) {
+      _logger.w('群通知消息无效，跳过处理');
+      return;
+    }
+
+    final notifyMessage = ChatMessageDto(
+      conversationId: conversationId,
+      conversationType: 2,
+      senderId: senderId.toString(),
+      receiverId: conversationId,
+      time: DateTime.tryParse(createdAtStr) ?? DateTime.now(),
+      payload: ConversationMessagePayload(
+        id: msgId.toString(),
+        conversationId: conversationId,
+        conversationType: 2,
+        senderId: senderId.toString(),
+        senderNickname: payload['senderNickname']?.toString(),
+        senderAvatar: payload['senderAvatar']?.toString(),
+        quoteId: '0',
+        content: content,
+        type: int.tryParse(payload['type']?.toString() ?? '10') ?? 10,
+        status: int.tryParse(payload['status']?.toString() ?? '0') ?? 0,
+        createdAt: createdAtStr,
+      ),
+      isReceipt: false,
+    );
+
+    final isDuplicate = _receivedMessages.any((msg) => msg.payload.id == notifyMessage.payload.id);
+    if (!isDuplicate) {
+      _receivedMessages.add(notifyMessage);
+      _receivedMessages.sort((a, b) => a.time.compareTo(b.time));
+    }
+
+    Future(() async {
+      await DatabaseService().insertMessage({
+        'id': msgId,
+        'conversation_id': convId,
+        'conversation_type': 2,
+        'sender_id': senderId,
+        'sender_nickname': payload['senderNickname'] ?? '',
+        'sender_avatar': payload['senderAvatar'] ?? '',
+        'quote_id': 0,
+        'content': content,
+        'type': notifyMessage.payload.type,
+        'status': notifyMessage.payload.status,
+        'created_at': createdAtStr,
+      });
+
+      await ConversationService().onNewMessage(
+        conversationId: convId,
+        senderId: senderId,
+        messageId: msgId,
+        messageAt: createdAtStr,
+        messagePreview: content,
+        messageType: notifyMessage.payload.type,
+        isInChatPage: isInChatPage(conversationId),
+      );
+    });
   }
 
   /// 发送消息

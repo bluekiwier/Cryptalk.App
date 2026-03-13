@@ -114,8 +114,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'sender_avatar': chatMessage.payload.senderAvatar,
           'quote_id': quoteId,
           'content': chatMessage.payload.content,
-          'type': 0,
-          'status': 0,
+          'type': chatMessage.payload.type,
+          'status': chatMessage.payload.status,
           'created_at': chatMessage.payload.createdAt,
         });
       }
@@ -587,6 +587,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               final showTime =
                   index == 0 || _messages[index].createdAt.difference(_messages[index - 1].createdAt).inMinutes > 1;
 
+              // 群通知消息（系统消息）居中显示
+              if (widget.conversation.isGroup && message.type == MessageType.groupNotify) {
+                return Column(
+                  children: [if (showTime) _buildTimeLabel(message.createdAt), _buildGroupNotifyMessage(message)],
+                );
+              }
+
               return Column(
                 children: [if (showTime) _buildTimeLabel(message.createdAt), _buildMessageBubble(message, isMe)],
               );
@@ -605,6 +612,20 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
         child: Text(_formatMessageTime(time.toLocal()), style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+      ),
+    );
+  }
+
+  /// 群通知消息（居中显示，灰色背景）
+  Widget _buildGroupNotifyMessage(Message message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(16)),
+          child: Text(message.content, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/conversation.dart';
 import '../../services/conversation_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/avatar_widget.dart';
 
 /// 群管理页面，用于管理群成员、群设置等
 class GroupManagementPage extends StatefulWidget {
@@ -121,7 +122,8 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
 
   Future<void> _showMemberActions(BuildContext context, dynamic member) async {
     final userId = member['userId'];
-    final nickname = member['nickname'] ?? member['name'] ?? '未知成员';
+    final nickname = member['nickname'] ?? '';
+    final avatar = member['avatar'] ?? '';
     final isOwner = member['role'] == 1;
     final isAdmin = member['role'] == 2;
 
@@ -132,7 +134,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.person),
+              leading: AvatarWidget(avatar: avatar ?? '', size: 40),
               title: Text(nickname),
               subtitle: Text(isOwner ? '群主' : (isAdmin ? '管理员' : '成员')),
             ),
@@ -391,12 +393,12 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                 Expanded(
                   child: ListView(
                     children: [
-                      const SizedBox(height: 10),
-                      _buildActionButtons(),
-                      const SizedBox(height: 10),
+                      // const SizedBox(height: 10),
                       _buildSectionHeader('群成员 (${_filteredMembers.length})'),
                       _buildMemberList(),
                       _buildLoadMoreButton(),
+                      const SizedBox(height: 10),
+                      _buildMuteAllSwitch(),
                       const SizedBox(height: 80),
                       _buildManagementSection(),
                     ],
@@ -429,6 +431,60 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
+    if (_searchKeyword.isNotEmpty) return const SizedBox.shrink();
+    if (!_hasMore || _members.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: _isLoadingMore
+            ? const CircularProgressIndicator()
+            : TextButton(onPressed: _loadMoreMembers, child: const Text('点击加载更多')),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+    );
+  }
+
+  /// 构建群成员列表
+  Widget _buildMemberList() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: _filteredMembers.map((member) {
+          final nickname = member['nickname'] ?? member['name'] ?? '未知';
+          final avatar = member['avatar'] ?? '';
+          final isOwner = member['role'] == 1;
+          final isAdmin = member['role'] == 2;
+
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
+              child: avatar.isEmpty ? const Icon(Icons.person) : null,
+            ),
+            title: Text(nickname),
+            subtitle: Text(isOwner ? '群主' : (isAdmin ? '管理员' : '')),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            onTap: () => _showMemberActions(context, member),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildMuteAllSwitch() {
+    return Column(
+      children: [
         Container(
           color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -465,56 +521,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     );
   }
 
-  Widget _buildLoadMoreButton() {
-    if (_searchKeyword.isNotEmpty) return const SizedBox.shrink();
-    if (!_hasMore || _members.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Center(
-        child: _isLoadingMore
-            ? const CircularProgressIndicator()
-            : TextButton(onPressed: _loadMoreMembers, child: const Text('点击加载更多')),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-    );
-  }
-
-  Widget _buildMemberList() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        children: _filteredMembers.map((member) {
-          final nickname = member['nickname'] ?? member['name'] ?? '未知';
-          final avatar = member['avatar'] ?? '';
-          final isOwner = member['role'] == 1;
-          final isAdmin = member['role'] == 2;
-
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
-              child: avatar.isEmpty ? const Icon(Icons.person) : null,
-            ),
-            title: Text(nickname),
-            subtitle: Text(isOwner ? '群主' : (isAdmin ? '管理员' : '')),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            onTap: () => _showMemberActions(context, member),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
+  /// 构建群管理操作按钮
   Widget _buildManagementSection() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),

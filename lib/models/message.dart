@@ -36,8 +36,13 @@ class Message {
 enum MessageType {
   text, // 文本消息
   image, // 图片消息
-  voice, // 语音消息
+  audio, // 语音消息
   video, // 视频消息
   file, // 文件消息
+  location, // 位置消息
+  contact, // 联系人消息
+  hongBao, // 红包消息
   system, // 系统消息
+  broadcast, // 广播消息
+  groupNotify, // 群通知消息
 }
