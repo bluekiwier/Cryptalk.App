@@ -99,7 +99,7 @@ class ConversationMessagePayload {
   // 加密后的消息内容（二进制）
   final String content;
 
-  // 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=表情,6=位置,7=名片,8=红包,9=系统通知,10=撤回
+  // 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=位置,6=名片,7=红包,8=系统通知,9=广播,10=群通知消息
   final int type;
 
   // 消息状态：0=正常,1=撤回,2=删除
@@ -363,13 +363,29 @@ class ChatService extends ChangeNotifier {
         'created_at': createdAt,
       });
 
+      String messagePreview = payload.content;
+      if (payload.type == 1) {
+        messagePreview = '[图片]';
+      } else if (payload.type == 2) {
+        messagePreview = '[语音]';
+      } else if (payload.type == 3) {
+        messagePreview = '[视频]';
+      } else if (payload.type == 4) {
+        messagePreview = '[文件]';
+      } else if (payload.type == 5) {
+        messagePreview = '[位置]';
+      } else if (payload.type == 6) {
+        messagePreview = '[名片]';
+      } else if (payload.type == 7) {
+        messagePreview = '[红包]';
+      }
       // 2. 更新会话缓存（unread_count + 1，最新消息）
       await ConversationService().onNewMessage(
         conversationId: convId,
         senderId: senderId,
         messageId: msgId,
         messageAt: createdAt,
-        messagePreview: payload.content,
+        messagePreview: messagePreview,
         messageType: payload.type,
         isInChatPage: isInChatPage(convId.toString()),
       );
@@ -716,25 +732,25 @@ class ChatService extends ChangeNotifier {
 
   /// 发送私聊消息（通过 HTTP API）
   /// [conversationId] 会话 ID
-  /// [senderId] 发送者 ID
   /// [receiverId] 接收者 ID
   /// [message] 消息内容
   /// [quoteId] 引用的消息 ID
+  /// [type] 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=表情,6=位置,7=名片,8=红包,9=系统通知
   Future<SendMessageResult> sendPrivateMessage({
     required dynamic conversationId,
-    required dynamic senderId,
     required dynamic receiverId,
     required String message,
     String? quoteId,
+    int type = 0,
   }) async {
     try {
       final dio = await AccountService().getDio();
 
       final data = <String, dynamic>{
         'conversationId': conversationId.toString(),
-        'senderId': senderId is String ? int.tryParse(senderId) ?? senderId : senderId,
         'receiverId': receiverId is String ? int.tryParse(receiverId) ?? receiverId : receiverId,
         'message': message,
+        'type': type,
       };
 
       if (quoteId != null) {

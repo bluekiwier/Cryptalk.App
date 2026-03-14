@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:io';
+import 'dart:convert';
 import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../models/conversation.dart';
@@ -14,6 +18,7 @@ import '../../services/chat_service.dart';
 import '../../services/conversation_service.dart';
 import '../../services/message_service.dart';
 import '../../services/database_service.dart';
+import '../../services/file_service.dart';
 import 'chat_settings_page.dart';
 
 /// 聊天详情页面
@@ -571,7 +576,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       listenable: _accountService,
       builder: (context, child) {
         final currentUserId = _accountService.currentUser?.id;
-        //_logger.d('当前用户ID: $currentUserId, 消息数量: ${_messages.length}');
 
         return RefreshIndicator(
           onRefresh: () => _loadMessages(isLoadMore: true),
@@ -587,7 +591,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               final showTime =
                   index == 0 || _messages[index].createdAt.difference(_messages[index - 1].createdAt).inMinutes > 1;
 
-              // 群通知消息（系统消息）居中显示
+              // 群通知消息（系统消息/加入群，退出群）居中显示
               if (widget.conversation.isGroup && message.type == MessageType.groupNotify) {
                 return Column(
                   children: [if (showTime) _buildTimeLabel(message.createdAt), _buildGroupNotifyMessage(message)],
@@ -756,6 +760,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // 引用消息
                                 if (quotedSenderName.isNotEmpty)
                                   Text(
                                     quotedSenderName,
@@ -767,29 +772,35 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                           : (isMe ? Colors.white.withValues(alpha: 0.9) : AppTheme.primaryColor),
                                     ),
                                   ),
-                                Text(
-                                  quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
-                                        ? Colors.grey[350]
-                                        : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
+                                if (quotedMessage.type == MessageType.image)
+                                  _buildImageMessage(quotedMessage.content)
+                                else
+                                  Text(
+                                    quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                          ? Colors.grey[350]
+                                          : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
                               ],
                             ),
                           ),
                         ),
-                      Text(
-                        isDeleted ? '消息已被删除' : message.content,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
-                          height: 1.4,
+                      if (message.type == MessageType.image)
+                        _buildImageMessage(message.content)
+                      else
+                        Text(
+                          isDeleted ? '消息已被删除' : message.content,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
+                            height: 1.4,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -805,7 +816,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
-  /// 显示消息操作菜单
+  /// 长按消息显示操作菜单
   void _showMessageMenu(Message message, bool isMe, GlobalKey key) async {
     // 获取消息控件的位置和大小
     final RenderBox? renderBox = key.currentContext?.findRenderObject() as RenderBox?;
@@ -979,6 +990,60 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     });
   }
 
+  Widget _buildImageMessage(String content) {
+    try {
+      final data = jsonDecode(content);
+      final url = data['url'] as String?;
+      final width = (data['width'] as num?)?.toDouble() ?? 120;
+      final height = (data['height'] as num?)?.toDouble() ?? 120;
+
+      if (url == null) {
+        return Text(content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
+      }
+
+      final displayWidth = width > 120 ? 120.0 : width;
+      final displayHeight = displayWidth * height / width;
+
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: GestureDetector(
+          onTap: () => _showFullScreenImage(url),
+          child: Image.network(
+            url,
+            width: displayWidth,
+            height: displayHeight,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                width: displayWidth,
+                height: displayHeight,
+                color: Colors.grey[200],
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: displayWidth,
+                height: displayHeight,
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, color: Colors.grey),
+              );
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      return Text(content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
+    }
+  }
+
   /// 显示@提及菜单
   void _showMentionMenu(String nickname) {
     if (widget.conversation.isGroup) {
@@ -1083,8 +1148,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                // 表情按钮
-                _buildInputAction(Icons.emoji_emotions_outlined),
+                // +按钮
+                _buildInputAction(Icons.add, () => _showMoreOptions()),
                 const SizedBox(width: 4),
                 // 更多/发送按钮
                 GestureDetector(
@@ -1113,15 +1178,358 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
-  /// 输入栏操作按钮
-  Widget _buildInputAction(IconData icon) {
-    return IconButton(
-      icon: Icon(icon, color: AppTheme.textSecondary, size: 24),
-      onPressed: () {},
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      padding: EdgeInsets.zero,
+  Widget _buildInputAction(IconData icon, [VoidCallback? onTap]) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Icon(icon, size: 26, color: AppTheme.textSecondary),
+      ),
     );
   }
+
+  void _showMoreOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildMoreOption(Icons.image, '图片', () {
+                    Navigator.pop(context);
+                    _sendImage();
+                  }),
+                  _buildMoreOption(Icons.insert_drive_file, '文件', () {
+                    Navigator.pop(context);
+                    _sendFile();
+                  }),
+                  // _buildMoreOption(Icons.monetization_on, '红包', () {
+                  //   Navigator.pop(context);
+                  //   _showRedEnvelopeDialog();
+                  // }),
+                  // _buildMoreOption(Icons.location_on, '位置', () {
+                  //   Navigator.pop(context);
+                  //   _shareLocation();
+                  // }),
+                  // _buildMoreOption(Icons.contact_page, '名片', () {
+                  //   Navigator.pop(context);
+                  //   _shareContact();
+                  // }),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreOption(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppTheme.scaffoldBg, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: AppTheme.primaryColor, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
+        ],
+      ),
+    );
+  }
+
+  void _sendImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+
+    final file = File(pickedFile.path);
+    final fileSize = await file.length();
+    final maxSize = 20 * 1024 * 1024;
+    if (fileSize > maxSize) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('图片大小不能超过20MB')));
+      }
+      return;
+    }
+
+    bool? result;
+    bool isOriginal = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.black,
+            child: Column(
+              children: [
+                Container(
+                  height: 56,
+                  color: Colors.black.withValues(alpha: 0.8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '图片和视频',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Center(child: Image.file(file, fit: BoxFit.contain)),
+                ),
+                Container(
+                  height: 60,
+                  color: Colors.black.withValues(alpha: 0.8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      const Text('预览', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isOriginal = !isOriginal;
+                          });
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Checkbox(
+                              value: isOriginal,
+                              onChanged: (value) {
+                                setState(() {
+                                  isOriginal = value ?? false;
+                                });
+                              },
+                              checkColor: Colors.white,
+                              activeColor: AppTheme.primaryColor,
+                              fillColor: WidgetStateProperty.resolveWith((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return AppTheme.primaryColor;
+                                }
+                                return Colors.transparent;
+                              }),
+                              side: const BorderSide(color: Colors.white, width: 2),
+                            ),
+                            const Text('原图', style: TextStyle(color: Colors.white, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      ElevatedButton(
+                        onPressed: () {
+                          result = true;
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
+                        child: const Text(
+                          '发送',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final currentUser = _accountService.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+      }
+      return;
+    }
+
+    if (result == null || !mounted) return;
+
+    Uint8List imageBytes;
+    int width = 0;
+    int height = 0;
+
+    if (!isOriginal && fileSize > 3 * 1024 * 1024) {
+      final compressed = await FlutterImageCompress.compressWithFile(
+        file.absolute.path,
+        quality: 80,
+        minWidth: 1920,
+        minHeight: 1080,
+      );
+      if (compressed == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('图片压缩失败')));
+        }
+        return;
+      }
+      imageBytes = compressed;
+      final decodedImage = await decodeImageFromList(imageBytes);
+      width = decodedImage.width;
+      height = decodedImage.height;
+    } else {
+      imageBytes = await file.readAsBytes();
+      final decodedImage = await decodeImageFromList(imageBytes);
+      width = decodedImage.width;
+      height = decodedImage.height;
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final fileName = pickedFile.name;
+    final contentType = 'image/${fileName.split('.').last}';
+    _logger.d('准备上传图片, fileName: $fileName, contentType: $contentType, imageBytes.length: ${imageBytes.length}');
+    print('准备上传图片, fileName: $fileName, contentType: $contentType, imageBytes.length: ${imageBytes.length}');
+    final uploadResult = await FileService().createUploadUrl(contentType, fileName, imageBytes.length, 'image');
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (uploadResult == null || !uploadResult.isSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取上传链接失败')));
+      }
+      return;
+    }
+
+    final uploaded = await FileService().uploadToR2(uploadResult.uploadUrl!, imageBytes, contentType);
+    _logger.d('上传图片到R2结果: $uploaded');
+    if (!uploaded) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('上传图片失败'), duration: Duration(seconds: 5)));
+      }
+      return;
+    }
+
+    final imageJsonContent = jsonEncode({'url': uploadResult.fileUrl, 'width': width, 'height': height});
+
+    SendMessageResult sendResult;
+    if (widget.conversation.isGroup) {
+      sendResult = await ChatService().sendGroupMessage(
+        conversationId: widget.conversation.id,
+        message: imageJsonContent,
+        type: 1,
+      );
+      if (!sendResult.isSuccess && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '图片发送失败')));
+      }
+    } else {
+      sendResult = await ChatService().sendPrivateMessage(
+        conversationId: widget.conversation.id,
+        receiverId: widget.conversation.chatUserId,
+        message: imageJsonContent,
+        type: 1,
+      );
+      if (!sendResult.isSuccess && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '图片发送失败')));
+      }
+    }
+
+    if (sendResult.isSuccess) {
+      if (mounted) {
+        setState(() {
+          _quotedMessage = null;
+        });
+      }
+    }
+  }
+
+  void _sendFile() {}
+
+  void _showRedEnvelopeDialog() {}
+
+  void _showFullScreenImage(String url) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Center(child: Icon(Icons.broken_image, color: Colors.white, size: 50)),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareLocation() {}
+
+  void _shareContact() {}
 
   /// 发送消息
   void _sendMessage() async {
@@ -1146,7 +1554,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     } else {
       result = await ChatService().sendPrivateMessage(
         conversationId: widget.conversation.id,
-        senderId: currentUser.id,
         receiverId: widget.conversation.chatUserId,
         message: text,
         quoteId: _quotedMessage?.id,
@@ -1154,63 +1561,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
 
     if (result.isSuccess) {
-      final messageId = result.messageId!;
-      final now = DateTime.now();
-      final convId = int.parse(widget.conversation.id);
-      final senderIdInt = int.tryParse(currentUser.id) ?? 0;
-      final messageIdInt = int.tryParse(messageId) ?? 0;
-
-      // 保存消息到本地数据库
-      await DatabaseService().insertMessage({
-        'id': messageId,
-        'conversation_id': convId,
-        'conversation_type': widget.conversation.isGroup ? 2 : 1,
-        'sender_id': currentUser.id,
-        'sender_nickname': currentUser.nickname,
-        'sender_avatar': currentUser.avatar,
-        'quote_id': _quotedMessage != null ? (int.tryParse(_quotedMessage!.id) ?? 0) : 0,
-        'content': text,
-        'type': 0,
-        'status': 0,
-        'created_at': now.toIso8601String(),
-      });
-
-      // 更新会话表的最新消息信息和内存中的会话列表
-      await ConversationService().onNewMessage(
-        conversationId: convId,
-        senderId: senderIdInt,
-        messageId: messageIdInt,
-        messageAt: now.toIso8601String(),
-        messagePreview: text,
-        messageType: 0,
-        isInChatPage: true, // 当前在聊天页面
-      );
-
       if (mounted) {
         setState(() {
-          _messages.add(
-            Message(
-              id: messageId,
-              senderId: currentUser.id,
-              content: text,
-              createdAt: now,
-              isRead: true,
-              quoteId: _quotedMessage?.id,
-            ),
-          );
           _messageController.clear();
           _quotedMessage = null;
-        });
-
-        // 滚动到底部
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
         });
       }
     } else {
