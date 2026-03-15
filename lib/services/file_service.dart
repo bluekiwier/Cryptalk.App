@@ -45,12 +45,22 @@ class FileService {
     }
   }
 
-  Future<bool> uploadToR2(String uploadUrl, List<int> fileBytes, String contentType) async {
+  Future<bool> uploadToR2(
+    String uploadUrl,
+    List<int> fileBytes,
+    String contentType, {
+    void Function(int sent, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
     int maxRetries = 3;
     int retryDelay = 2000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        if (cancelToken?.isCancelled ?? false) {
+          _logger.d('上传已取消');
+          return false;
+        }
         _logger.d(
           '开始上传到R2 (尝试 $attempt/$maxRetries), URL: $uploadUrl, 大小: ${fileBytes.length}, ContentType: $contentType',
         );
@@ -66,12 +76,14 @@ class FileService {
         final response = await dio.put(
           uploadUrl,
           data: fileBytes,
+          cancelToken: cancelToken,
           options: Options(
             headers: {'Content-Type': contentType, 'Content-Length': fileBytes.length},
             validateStatus: (status) => true,
           ),
           onSendProgress: (sent, total) {
             _logger.d('上传进度: $sent/$total');
+            onProgress?.call(sent, total);
           },
         );
         _logger.d('上传到R2响应: ${response.statusCode}, body: ${response.data}');
@@ -80,6 +92,18 @@ class FileService {
           return true;
         }
         _logger.e('上传到R2失败: ${response.statusCode}');
+      } on DioException catch (e) {
+        if (e.type == DioExceptionType.cancel) {
+          _logger.d('上传被用户取消');
+          return false;
+        }
+        _logger.e('上传到R2失败 (尝试 $attempt/$maxRetries): $e');
+
+        if (attempt < maxRetries) {
+          _logger.d('等待 ${retryDelay}ms 后重试...');
+          await Future.delayed(Duration(milliseconds: retryDelay));
+          retryDelay *= 2;
+        }
       } catch (e) {
         _logger.e('上传到R2失败 (尝试 $attempt/$maxRetries): $e');
 

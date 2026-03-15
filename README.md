@@ -41,6 +41,30 @@ Chatter/lib/
 聊天 — 会话列表（置顶、静音、未读角标）→ 点击进入聊天详情 → 可发送消息
 通讯录 — 按拼音首字母分组 → 快捷入口（新朋友/群聊/标签）→ 联系人详情页
 我的 — 个人信息展示 → 设置（通知/隐私/通用）→ 修改密码（含表单校验）
+
+# 消息推送流程：
+服务器推送消息
+    ↓
+WebSocket 接收 (stream.listen)
+    ↓
+_handleMessage() 解析
+    ↓
+handleChatEvent() 分发
+    ↓
+_handleChatMessage() 处理（存内存、写DB、更新会话）
+    ↓
+notifyListeners() 通知
+    ↓
+_onChatServiceUpdated() UI 更新
+
+### 支持的文件类型
+- 文档类 ：PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF
+- 压缩类 ：ZIP, RAR, 7Z
+- 音频类 ：MP3, WAV
+- 视频类 ：MP4, AVI, MOV
+- 图片类 ：JPG, JPEG, PNG, GIF, WEBP, SVG
+- 其他 ：默认返回 application/octet-stream
+
 📱 运行方式
 Flutter Web 服务器已在后台运行，你可以在浏览器访问：
 

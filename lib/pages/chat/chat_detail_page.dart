@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:logger/logger.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../models/conversation.dart';
 import '../../models/message.dart';
@@ -774,6 +777,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                   ),
                                 if (quotedMessage.type == MessageType.image)
                                   _buildImageMessage(quotedMessage.content)
+                                else if (quotedMessage.type == MessageType.file)
+                                  _buildFileMessage(quotedMessage.content)
                                 else
                                   Text(
                                     quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
@@ -792,6 +797,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         ),
                       if (message.type == MessageType.image)
                         _buildImageMessage(message.content)
+                      else if (message.type == MessageType.file)
+                        _buildFileMessage(message.content)
                       else
                         Text(
                           isDeleted ? '消息已被删除' : message.content,
@@ -1044,6 +1051,112 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
+  Widget _buildFileMessage(String content) {
+    try {
+      final data = jsonDecode(content);
+      final name = data['name'] as String? ?? '未知文件';
+      final size = data['size'] as int? ?? 0;
+      final url = data['url'] as String?;
+
+      if (url == null) {
+        return Text(content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
+      }
+
+      return GestureDetector(
+        onTap: () => _downloadFile(url, name),
+        child: Container(
+          width: 220,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(_getFileIconData(name), color: AppTheme.primaryColor, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(_formatFileSize(size), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              const Icon(Icons.download, color: AppTheme.primaryColor, size: 24),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      return Text(content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
+    }
+  }
+
+  IconData _getFileIconData(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    const iconMap = {
+      'pdf': Icons.picture_as_pdf,
+      'doc': Icons.description,
+      'docx': Icons.description,
+      'xls': Icons.table_chart,
+      'xlsx': Icons.table_chart,
+      'ppt': Icons.slideshow,
+      'pptx': Icons.slideshow,
+      'txt': Icons.text_snippet,
+      'zip': Icons.folder_zip,
+      'rar': Icons.folder_zip,
+      '7z': Icons.folder_zip,
+      'mp3': Icons.audio_file,
+      'wav': Icons.audio_file,
+      'mp4': Icons.video_file,
+      'avi': Icons.video_file,
+      'mov': Icons.video_file,
+      'apk': Icons.android,
+    };
+    return iconMap[extension] ?? Icons.insert_drive_file;
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+
+  Future<void> _downloadFile(String url, String fileName) async {
+    try {
+      final uri = Uri.parse(url);
+      final result = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!result) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('无法打开文件链接'), backgroundColor: AppTheme.badgeColor));
+        }
+      }
+    } catch (e) {
+      _logger.e('下载文件失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('下载文件失败'), backgroundColor: AppTheme.badgeColor));
+      }
+    }
+  }
+
   /// 显示@提及菜单
   void _showMentionMenu(String nickname) {
     if (widget.conversation.isGroup) {
@@ -1249,6 +1362,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
+  /// 发送图片
   void _sendImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -1256,10 +1370,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final file = File(pickedFile.path);
     final fileSize = await file.length();
-    final maxSize = 20 * 1024 * 1024;
+    final maxSize = 15 * 1024 * 1024;
     if (fileSize > maxSize) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('图片大小不能超过20MB')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('图片大小不能超过15MB')));
       }
       return;
     }
@@ -1267,6 +1381,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     bool? result;
     bool isOriginal = false;
 
+    if (!mounted) return;
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -1396,6 +1511,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     int height = 0;
 
     if (!isOriginal && fileSize > 3 * 1024 * 1024) {
+      // 压缩图片
       final compressed = await FlutterImageCompress.compressWithFile(
         file.absolute.path,
         quality: 80,
@@ -1408,28 +1524,39 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         }
         return;
       }
-      imageBytes = compressed;
+      imageBytes = compressed; // 压缩后的字节
       final decodedImage = await decodeImageFromList(imageBytes);
       width = decodedImage.width;
       height = decodedImage.height;
     } else {
-      imageBytes = await file.readAsBytes();
+      // 原图
+      imageBytes = await file.readAsBytes(); // 原图的字节
       final decodedImage = await decodeImageFromList(imageBytes);
       width = decodedImage.width;
       height = decodedImage.height;
     }
 
     if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 20),
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('正在上传图片...', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
     );
 
     final fileName = pickedFile.name;
     final contentType = 'image/${fileName.split('.').last}';
     _logger.d('准备上传图片, fileName: $fileName, contentType: $contentType, imageBytes.length: ${imageBytes.length}');
-    print('准备上传图片, fileName: $fileName, contentType: $contentType, imageBytes.length: ${imageBytes.length}');
     final uploadResult = await FileService().createUploadUrl(contentType, fileName, imageBytes.length, 'image');
 
     if (!mounted) return;
@@ -1442,10 +1569,65 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return;
     }
 
-    final uploaded = await FileService().uploadToR2(uploadResult.uploadUrl!, imageBytes, contentType);
+    double progress = 0.0;
+    void Function(VoidCallback)? setDialogState;
+    bool isCancelled = false;
+    CancelToken? cancelToken;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            setDialogState = setState;
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 20),
+                  CircularProgressIndicator(value: progress > 0 ? progress : null),
+                  const SizedBox(height: 20),
+                  const Text('正在上传图片...', style: TextStyle(fontSize: 16)),
+                  const SizedBox(height: 10),
+                  Text('${(progress * 100).toInt()}%', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  const SizedBox(height: 5),
+                  SizedBox(width: 200, child: LinearProgressIndicator(value: progress > 0 ? progress : null)),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      isCancelled = true;
+                      cancelToken?.cancel('用户取消上传');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('上传已取消')));
+                    },
+                    child: const Text('取消上传', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    cancelToken = CancelToken();
+    final uploaded = await FileService().uploadToR2(
+      uploadResult.uploadUrl!,
+      imageBytes,
+      contentType,
+      cancelToken: cancelToken,
+      onProgress: (sent, total) {
+        if (isCancelled) return;
+        progress = sent / total;
+        _logger.d('上传进度: ${(progress * 100).toInt()}%');
+        setDialogState?.call(() {});
+      },
+    );
     _logger.d('上传图片到R2结果: $uploaded');
     if (!uploaded) {
-      if (mounted) {
+      if (mounted && !isCancelled) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('上传图片失败'), duration: Duration(seconds: 5)));
@@ -1453,7 +1635,31 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return;
     }
 
-    final imageJsonContent = jsonEncode({'url': uploadResult.fileUrl, 'width': width, 'height': height});
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 20),
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('正在发送消息...', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+
+    final imageJsonContent = jsonEncode({
+      'url': uploadResult.fileUrl,
+      'width': width,
+      'height': height,
+      'size': imageBytes.length,
+    });
 
     SendMessageResult sendResult;
     if (widget.conversation.isGroup) {
@@ -1479,6 +1685,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     if (sendResult.isSuccess) {
       if (mounted) {
+        Navigator.pop(context);
         setState(() {
           _quotedMessage = null;
         });
@@ -1486,10 +1693,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  void _sendFile() {}
-
-  void _showRedEnvelopeDialog() {}
-
+  /// 点击查看图片
   void _showFullScreenImage(String url) {
     showDialog(
       context: context,
@@ -1526,6 +1730,216 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       ),
     );
   }
+
+  /// 获取文件MIME类型
+  String _getMimeType(String extension) {
+    const mimeTypes = {
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain',
+      'rtf': 'application/rtf',
+      'zip': 'application/zip',
+      'rar': 'application/vnd.rar',
+      '7z': 'application/x-7z-compressed',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'mp4': 'video/mp4',
+      'avi': 'video/x-msvideo',
+      'mov': 'video/quicktime',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'svg': 'image/svg+xml',
+    };
+    return mimeTypes[extension] ?? 'application/octet-stream';
+  }
+
+  /// 发送文件
+  void _sendFile() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.isEmpty) return;
+
+    final file = File(result.files.first.path!);
+    final fileSize = await file.length();
+    final maxSize = 50 * 1024 * 1024; // 50MB限制
+    if (fileSize > maxSize) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('文件大小不能超过50MB')));
+      }
+      return;
+    }
+
+    final currentUser = _accountService.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 20),
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('正在获取上传链接...', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+
+    final fileName = result.files.first.name;
+    final extension = fileName.split('.').last.toLowerCase();
+    final contentType = _getMimeType(extension);
+    final fileBytes = await file.readAsBytes();
+
+    _logger.d('准备上传文件, fileName: $fileName, contentType: $contentType, fileBytes.length: ${fileBytes.length}');
+
+    final uploadResult = await FileService().createUploadUrl(contentType, fileName, fileBytes.length, 'file');
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (uploadResult == null || !uploadResult.isSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取上传链接失败')));
+      }
+      return;
+    }
+
+    double progress = 0.0;
+    void Function(VoidCallback)? setDialogState;
+    bool isCancelled = false;
+    CancelToken? cancelToken;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            setDialogState = setState;
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 20),
+                  CircularProgressIndicator(value: progress > 0 ? progress : null),
+                  const SizedBox(height: 20),
+                  const Text('正在上传文件...', style: TextStyle(fontSize: 16)),
+                  const SizedBox(height: 10),
+                  Text('${(progress * 100).toInt()}%', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  const SizedBox(height: 5),
+                  SizedBox(width: 200, child: LinearProgressIndicator(value: progress > 0 ? progress : null)),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      isCancelled = true;
+                      cancelToken?.cancel('用户取消上传');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('上传已取消')));
+                    },
+                    child: const Text('取消上传', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    cancelToken = CancelToken();
+    final uploaded = await FileService().uploadToR2(
+      uploadResult.uploadUrl!,
+      fileBytes,
+      contentType,
+      cancelToken: cancelToken,
+      onProgress: (sent, total) {
+        if (isCancelled) return;
+        progress = sent / total;
+        _logger.d('上传进度: ${(progress * 100).toInt()}%');
+        setDialogState?.call(() {});
+      },
+    );
+    _logger.d('上传文件到R2结果: $uploaded');
+    if (!uploaded) {
+      if (mounted && !isCancelled) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('上传文件失败'), duration: Duration(seconds: 5)));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 20),
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('正在发送消息...', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+
+    final fileJsonContent = jsonEncode({'name': fileName, 'size': fileSize, 'url': uploadResult.fileUrl});
+
+    SendMessageResult sendResult;
+    if (widget.conversation.isGroup) {
+      sendResult = await ChatService().sendGroupMessage(
+        conversationId: widget.conversation.id,
+        message: fileJsonContent,
+        type: 4, // 文件类型
+      );
+      if (!sendResult.isSuccess && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '文件发送失败')));
+      }
+    } else {
+      sendResult = await ChatService().sendPrivateMessage(
+        conversationId: widget.conversation.id,
+        receiverId: widget.conversation.chatUserId,
+        message: fileJsonContent,
+        type: 4, // 文件类型
+      );
+      if (!sendResult.isSuccess && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '文件发送失败')));
+      }
+    }
+
+    if (sendResult.isSuccess) {
+      if (mounted) {
+        Navigator.pop(context);
+        setState(() {
+          _quotedMessage = null;
+        });
+      }
+    }
+  }
+
+  void _showRedEnvelopeDialog() {}
 
   void _shareLocation() {}
 

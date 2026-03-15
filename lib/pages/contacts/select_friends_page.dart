@@ -141,6 +141,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
       if (conversation != null) {
         await ConversationService().notifyConversationListChanged();
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('群聊创建成功'),
@@ -150,6 +151,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
         );
         Navigator.pop(context);
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('群聊创建失败'),
