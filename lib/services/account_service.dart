@@ -280,13 +280,10 @@ class AccountService extends ChangeNotifier {
         );
 
         // 保存用户信息到本地
-        _logger.d('登录成功，保存用户信息: $_currentUser');
         await _saveUserToLocal(_currentUser!);
-        _logger.d('用户信息保存完成');
 
         // 初始化用户独立数据库
         await DatabaseService().initForUser(_currentUser!.id);
-        _logger.d('用户数据库初始化完成');
 
         // 连接 WebSocket
         await ChatService().checkAndReconnect();

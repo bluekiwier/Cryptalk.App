@@ -5,6 +5,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import 'package:logger/logger.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,6 +23,7 @@ import '../../services/conversation_service.dart';
 import '../../services/message_service.dart';
 import '../../services/database_service.dart';
 import '../../services/file_service.dart';
+import '../../services/voice_service.dart';
 import 'chat_settings_page.dart';
 
 /// 聊天详情页面
@@ -49,13 +51,29 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   final ChatService _chatService = ChatService();
   final AccountService _accountService = AccountService();
+  final VoiceService _voiceService = VoiceService();
   final _logger = Logger();
+
+  bool _isRecording = false;
+  int _recordingSeconds = 0;
+  Timer? _recordingTimer;
+  String? _playingVoiceId;
 
   @override
   void initState() {
     super.initState();
     _messages = [];
     _currentTitle = widget.conversation.title;
+
+    _voiceService.onError = (message) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppTheme.badgeColor));
+      }
+    };
+
+    _voiceService.initialize();
     // 设置当前聊天会话ID
     _chatService.setCurrentChatConversation(widget.conversation.id);
     // 进入聊天页时清零未读数
@@ -91,6 +109,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _recordingTimer?.cancel();
+    _voiceService.stopPlay();
+    _voiceService.dispose();
     // 移除监听
     _chatService.removeListener(_onChatServiceUpdated);
     // 清除当前聊天会话ID
@@ -104,8 +125,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   /// 处理ChatService更新（收到新消息或删除消息等事件）
   void _onChatServiceUpdated() async {
+    _logger.d('收到 ChatService 更新通知');
+
     // 从ChatService获取当前会话的新消息
     final newMessages = _chatService.getMessagesForConversation(widget.conversation.id);
+    _logger.d('新消息数量: ${newMessages.length}');
 
     // 保存到本地数据库并更新UI（无论是否有新消息，都需要更新UI以反映删除等状态变化）
     if (newMessages.isNotEmpty) {
@@ -113,6 +137,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       for (final chatMessage in newMessages) {
         final quoteIdStr = chatMessage.payload.quoteId;
         final quoteId = quoteIdStr.isNotEmpty ? (int.tryParse(quoteIdStr) ?? 0) : 0;
+        final seqId = int.tryParse(chatMessage.payload.seqId) ?? 0;
         await DatabaseService().insertMessage({
           'id': chatMessage.payload.id,
           'conversation_id': int.parse(widget.conversation.id),
@@ -124,6 +149,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'content': chatMessage.payload.content,
           'type': chatMessage.payload.type,
           'status': chatMessage.payload.status,
+          'seq_id': seqId,
           'created_at': chatMessage.payload.createdAt,
         });
       }
@@ -131,43 +157,51 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     // 从数据库重新读取所有消息（包括状态变化，如删除）
     final messageMaps = await DatabaseService().getMessages(int.parse(widget.conversation.id), limit: 1000);
+    _logger.d('从数据库读取到 ${messageMaps.length} 条消息');
 
-    final updatedMessages = messageMaps.map((map) {
-      final quoteIdInt = map['quote_id'] as int?;
-      final statusInt = map['status'] as int? ?? 0;
-      return Message(
-        id: map['id']?.toString() ?? '',
-        senderId: map['sender_id']?.toString() ?? '',
-        senderNickname: map['sender_nickname']?.toString(),
-        senderAvatar: map['sender_avatar']?.toString(),
-        content: map['content']?.toString() ?? '',
-        type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-        createdAt: map['created_at'] != null
-            ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
-            : DateTime.now(),
-        isRead: true,
-        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
-        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
-      );
-    }).toList();
-
-    // 对消息按ID升序排序
-    updatedMessages.sort((a, b) {
-      final aId = int.tryParse(a.id) ?? 0;
-      final bId = int.tryParse(b.id) ?? 0;
-      return aId.compareTo(bId);
-    });
+    final updatedMessages = messageMaps
+        .map((map) {
+          final quoteIdInt = map['quote_id'] as int?;
+          final statusInt = map['status'] as int? ?? 0;
+          final seqId = map['seq_id']?.toString() ?? '';
+          final msgId = map['id']?.toString() ?? '';
+          _logger.d('消息 $msgId 状态: $statusInt');
+          return Message(
+            id: msgId,
+            senderId: map['sender_id']?.toString() ?? '',
+            senderNickname: map['sender_nickname']?.toString(),
+            senderAvatar: map['sender_avatar']?.toString(),
+            content: map['content']?.toString() ?? '',
+            type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
+            createdAt: map['created_at'] != null
+                ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+                : DateTime.now(),
+            isRead: true,
+            quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+            status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
+            seqId: seqId,
+          );
+        })
+        .toList()
+        .reversed
+        .toList();
 
     if (mounted) {
       setState(() {
         _messages = updatedMessages;
       });
 
-      // 滚动到底部
+      // 滚动到底部 - 使用更可靠的方式
       if (newMessages.isNotEmpty) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        // 等待 UI 完全渲染后滚动
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && _scrollController.hasClients) {
+            // 确保滚动到最底部
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
           }
         });
       }
@@ -183,7 +217,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   Future<void> _updateGroupTitle() async {
     final db = await DatabaseService().database;
     final result = await db.query(
-      'conversations',
+      ConversationEntity.tableName,
       columns: ['title'],
       where: 'id = ?',
       whereArgs: [int.tryParse(widget.conversation.id) ?? 0],
@@ -222,28 +256,32 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       minMessageId: minMessageId,
     );
 
-    final newMessages = messageMaps.map((map) {
-      // _logger.d('从数据库读取消息: $map');
-      final quoteIdInt = map['quote_id'] as int?;
-      final statusInt = map['status'] as int? ?? 0;
-      return Message(
-        id: map['id']?.toString() ?? '',
-        senderId: map['sender_id']?.toString() ?? '',
-        senderNickname: map['sender_nickname']?.toString(),
-        senderAvatar: map['sender_avatar']?.toString(),
-        content: map['content']?.toString() ?? '',
-        type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-        createdAt: map['created_at'] != null
-            ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
-            : DateTime.now(),
-        isRead: true,
-        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
-        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
-      );
-    }).toList();
-
-    // 对新的消息按ID升序（旧在前、新在后）确保UI表现正常
-    newMessages.sort((a, b) => int.parse(a.id).compareTo(int.parse(b.id)));
+    final newMessages = messageMaps
+        .map((map) {
+          // _logger.d('从数据库读取消息: $map');
+          final quoteIdInt = map['quote_id'] as int?;
+          final statusInt = map['status'] as int? ?? 0;
+          final isReadInt = map['is_read'] as int? ?? 1;
+          final seqId = map['seq_id']?.toString() ?? '';
+          return Message(
+            id: map['id']?.toString() ?? '',
+            senderId: map['sender_id']?.toString() ?? '',
+            senderNickname: map['sender_nickname']?.toString(),
+            senderAvatar: map['sender_avatar']?.toString(),
+            content: map['content']?.toString() ?? '',
+            type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
+            createdAt: map['created_at'] != null
+                ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+                : DateTime.now(),
+            isRead: isReadInt == 1,
+            quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+            status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
+            seqId: seqId,
+          );
+        })
+        .toList()
+        .reversed
+        .toList();
 
     if (mounted) {
       setState(() {
@@ -258,9 +296,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
       // 如果是首次加载或者是刷新最新页，滚动到底部
       if (!isLoadMore) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && _scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
           }
         });
       }
@@ -319,6 +361,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'content': json['content'],
           'type': json['type'] ?? 0,
           'status': json['status'] ?? 0,
+          'is_read': 0,
+          'seq_id': json['seqId'] ?? '',
           'created_at': json['createdAt'],
         };
       }).toList();
@@ -327,7 +371,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       await DatabaseService().insertMessages(messageRows);
 
       final newMessages = list.map((json) {
-        final quoteIdInt = json['quoteId'] as int?;
         final statusInt = json['status'] as int? ?? 0;
         return Message(
           id: json['id']?.toString() ?? '',
@@ -340,13 +383,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
               : DateTime.now(),
           isRead: true,
-          quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+          quoteId: json['quoteId']?.toString() ?? '',
           status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
+          seqId: json['seqId']?.toString() ?? '',
         );
       }).toList();
 
-      // 对新的消息按ID升序（旧在前、新在后）确保UI表现正常
-      newMessages.sort((a, b) => int.parse(a.id).compareTo(int.parse(b.id)));
+      // 对新的消息按创建时间升序排序（旧在前、新在后）确保 UI 表现正常
+      newMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
       if (mounted) {
         setState(() {
@@ -356,15 +400,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               _messages.add(message);
             }
           }
-          // 重新排序所有消息
-          _messages.sort((a, b) => int.parse(a.id).compareTo(int.parse(b.id)));
-        });
-
-        // 滚动到底部
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-          }
+          // 重新排序所有消息（按时间排序）
+          _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         });
       }
     }
@@ -650,6 +687,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     // 被删除的消息显示提示文案，但不隐藏消息气泡（保留引用等信息）
     final isDeleted = message.status == MessageStatus.deleted;
+    // 图片消息不需要背景色，其他消息类型需要背景色
+    final hasBackground = message.type != MessageType.image;
 
     final key = GlobalKey();
     final quotedMessage = message.quoteId != null
@@ -678,146 +717,162 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isMe && widget.conversation.isGroup)
+          // 对方消息显示头像（群聊和单聊）
+          if (!isMe)
             GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onLongPress: () => _showMentionMenu(message.senderNickname ?? '未知用户'),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                child: AvatarWidget(avatar: message.senderAvatar ?? '', size: 36, isGroup: false),
+              onLongPress: () => _showMentionMenu(
+                widget.conversation.isGroup ? (message.senderNickname ?? '未知用户') : widget.conversation.title,
               ),
-            ),
-          if (!isMe && !widget.conversation.isGroup)
-            GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onLongPress: () => _showMentionMenu(widget.conversation.title),
               child: Container(
-                padding: const EdgeInsets.all(4),
-                child: AvatarWidget(avatar: widget.conversation.avatar, size: 36),
-              ),
-            ),
-          if (!isMe) const SizedBox(width: 8),
-          Flexible(
-            child: GestureDetector(
-              key: key,
-              onLongPress: () => _showMessageMenu(message, isMe, key),
-              child: CustomPaint(
-                painter: isMe
-                    ? null
-                    : BubbleTailPainter(
-                        color: isDeleted ? Colors.grey[300]! : Colors.white,
-                        tailDirection: TailDirection.left,
-                      ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: isMe && !isDeleted ? AppTheme.headerGradient : null,
-                    color: isDeleted ? Colors.grey[300] : (isMe ? null : Colors.white),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(10),
-                      topRight: const Radius.circular(10),
-                      bottomLeft: Radius.circular(isMe ? 10 : 4),
-                      bottomRight: Radius.circular(isMe ? 4 : 10),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isMe ? AppTheme.primaryColor : Colors.black).withValues(alpha: 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!isMe && widget.conversation.isGroup)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            message.senderNickname?.isNotEmpty == true ? message.senderNickname! : '未知用户',
-                            style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      if (quotedMessage != null && quotedMessage.id.isNotEmpty)
-                        GestureDetector(
-                          onTap: () {
-                            final quotedIndex = _messages.indexWhere((m) => m.id == quotedMessage.id);
-                            if (quotedIndex != -1) {
-                              _scrollToMessage(quotedMessage.id);
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: (isMe ? Colors.white : AppTheme.surfaceBg).withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border(
-                                left: BorderSide(
-                                  color: isMe ? Colors.white.withValues(alpha: 0.8) : AppTheme.primaryColor,
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 引用消息
-                                if (quotedSenderName.isNotEmpty)
-                                  Text(
-                                    quotedSenderName,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
-                                          ? Colors.grey[400]
-                                          : (isMe ? Colors.white.withValues(alpha: 0.9) : AppTheme.primaryColor),
-                                    ),
-                                  ),
-                                if (quotedMessage.type == MessageType.image)
-                                  _buildImageMessage(quotedMessage.content)
-                                else if (quotedMessage.type == MessageType.file)
-                                  _buildFileMessage(quotedMessage.content)
-                                else
-                                  Text(
-                                    quotedMessage.status == MessageStatus.deleted ? '消息已被删除' : quotedMessage.content,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
-                                          ? Colors.grey[350]
-                                          : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (message.type == MessageType.image)
-                        _buildImageMessage(message.content)
-                      else if (message.type == MessageType.file)
-                        _buildFileMessage(message.content)
-                      else
-                        Text(
-                          isDeleted ? '消息已被删除' : message.content,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
-                            height: 1.4,
-                          ),
-                        ),
-                    ],
-                  ),
+                padding: const EdgeInsets.fromLTRB(0, 0, 4, 4),
+                child: AvatarWidget(
+                  avatar: widget.conversation.isGroup ? (message.senderAvatar ?? '') : widget.conversation.avatar,
+                  size: 36,
                 ),
               ),
             ),
+          if (!isMe) const SizedBox(width: 8),
+          // 消息内容区域
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 群聊时显示发送者昵称，放在气泡顶部
+                if (!isMe && widget.conversation.isGroup)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      message.senderNickname?.isNotEmpty == true ? message.senderNickname! : '未知用户',
+                      style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                // 消息气泡
+                GestureDetector(
+                  key: key,
+                  onLongPress: () => _showMessageMenu(message, isMe, key),
+                  child: CustomPaint(
+                    painter: (!isMe && hasBackground && !isDeleted)
+                        ? BubbleTailPainter(color: Colors.white, tailDirection: TailDirection.left)
+                        : null,
+                    child: Container(
+                      padding: hasBackground
+                          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+                          : EdgeInsets.zero,
+                      decoration: hasBackground
+                          ? BoxDecoration(
+                              gradient: isMe && !isDeleted ? AppTheme.headerGradient : null,
+                              color: isDeleted ? Colors.grey[300] : (isMe ? null : Colors.white),
+                              borderRadius: BorderRadius.all(Radius.circular(6)), // 消息气泡圆角
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isMe ? AppTheme.primaryColor : Colors.black).withValues(alpha: 0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (quotedMessage != null && quotedMessage.id.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                final quotedIndex = _messages.indexWhere((m) => m.id == quotedMessage.id);
+                                if (quotedIndex != -1) {
+                                  _scrollToMessage(quotedMessage.id);
+                                }
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: (isMe ? Colors.white : AppTheme.surfaceBg).withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: isMe ? Colors.white.withValues(alpha: 0.8) : AppTheme.primaryColor,
+                                      width: 3,
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 引用消息
+                                    if (quotedSenderName.isNotEmpty)
+                                      Text(
+                                        quotedSenderName,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                              ? Colors.grey[400]
+                                              : (isMe ? Colors.white.withValues(alpha: 0.9) : AppTheme.primaryColor),
+                                        ),
+                                      ),
+                                    if (quotedMessage.type == MessageType.image)
+                                      _buildImageMessage(
+                                        quotedMessage.content,
+                                        isDeleted: quotedMessage.status == MessageStatus.deleted,
+                                      )
+                                    else if (quotedMessage.type == MessageType.file)
+                                      _buildFileMessage(
+                                        quotedMessage.content,
+                                        isMe: isMe,
+                                        isDeleted: quotedMessage.status == MessageStatus.deleted,
+                                      )
+                                    else
+                                      Text(
+                                        quotedMessage.status == MessageStatus.deleted
+                                            ? '消息已被删除'
+                                            : quotedMessage.content,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: (isDeleted || quotedMessage.status == MessageStatus.deleted)
+                                              ? Colors.grey[350]
+                                              : (isMe ? Colors.white : AppTheme.textSecondary).withValues(alpha: 0.8),
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (message.type == MessageType.image)
+                            _buildImageMessage(message.content, isDeleted: isDeleted)
+                          else if (message.type == MessageType.file)
+                            _buildFileMessage(message.content, isMe: isMe, isDeleted: isDeleted)
+                          else if (message.type == MessageType.audio)
+                            _buildVoiceMessage(message, isMe, isDeleted: isDeleted)
+                          else
+                            Text(
+                              isDeleted ? '消息已被删除' : message.content,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
+                                height: 1.4,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          if (isMe) ...[
-            const SizedBox(width: 8),
-            AvatarWidget(avatar: _accountService.currentUser?.avatar ?? '', size: 36),
-          ],
+          // 自己消息显示头像
+          if (isMe) const SizedBox(width: 8),
+          if (isMe)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 0, 4),
+              child: AvatarWidget(avatar: _accountService.currentUser?.avatar ?? '', size: 36),
+            ),
         ],
       ),
     );
@@ -906,7 +961,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       Navigator.pop(context);
                       Clipboard.setData(ClipboardData(text: message.content));
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制到剪贴板')));
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(const SnackBar(content: Text('已复制到剪贴板'), backgroundColor: AppTheme.onlineColor));
                       }
                     },
                   ),
@@ -997,7 +1054,43 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     });
   }
 
-  Widget _buildImageMessage(String content) {
+  /// 获取引用消息的发送者名称
+  String _getQuotedSenderName(Message message) {
+    if (message.senderId == _accountService.currentUser?.id) {
+      return '你';
+    } else if (widget.conversation.isGroup) {
+      return message.senderNickname?.isNotEmpty == true ? message.senderNickname! : '未知用户';
+    } else {
+      return widget.conversation.title;
+    }
+  }
+
+  /// 获取引用消息的内容显示文本
+  String _getQuotedContentDisplay(Message message) {
+    if (message.status == MessageStatus.deleted) {
+      return '消息已被删除';
+    }
+
+    switch (message.type) {
+      case MessageType.audio:
+        return '[语音]';
+      case MessageType.image:
+        return '[图片]';
+      case MessageType.file:
+        return '[文件]';
+      case MessageType.groupNotify:
+        return '[群通知]';
+      default:
+        return message.content;
+    }
+  }
+
+  /// 构建图片消息样式
+  Widget _buildImageMessage(String content, {bool isDeleted = false}) {
+    if (isDeleted) {
+      return Text('消息已被删除', style: TextStyle(fontSize: 15, color: Colors.grey[500]));
+    }
+
     try {
       final data = jsonDecode(content);
       final url = data['url'] as String?;
@@ -1051,7 +1144,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  Widget _buildFileMessage(String content) {
+  /// 构建文件消息样式
+  Widget _buildFileMessage(String content, {bool isMe = false, bool isDeleted = false}) {
+    if (isDeleted) {
+      return Text('消息已被删除', style: TextStyle(fontSize: 15, color: Colors.grey[500]));
+    }
+
     try {
       final data = jsonDecode(content);
       final name = data['name'] as String? ?? '未知文件';
@@ -1062,40 +1160,50 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         return Text(content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
       }
 
+      // 根据发送方/接收方设置不同的颜色
+      final iconColor = isMe ? Colors.white : AppTheme.primaryColor;
+      final textColor = isMe ? Colors.white : AppTheme.textPrimary;
+      final subtextColor = isMe ? Colors.white.withValues(alpha: 0.7) : AppTheme.textSecondary;
+      final iconBgColor = isMe ? Colors.white.withValues(alpha: 0.2) : AppTheme.primaryColor.withValues(alpha: 0.1);
+
       return GestureDetector(
         onTap: () => _downloadFile(url, name),
         child: Container(
-          width: 220,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+          constraints: const BoxConstraints(maxWidth: 220),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(_getFileIconData(name), color: AppTheme.primaryColor, size: 24),
+                decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(8)),
+                child: Icon(_getFileIconData(name), color: iconColor, size: 24),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              Flexible(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(_formatFileSize(size), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    const SizedBox(height: 2),
+                    Text(_formatFileSize(size), style: TextStyle(fontSize: 12, color: subtextColor)),
                   ],
                 ),
               ),
-              const Icon(Icons.download, color: AppTheme.primaryColor, size: 24),
+              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(16)),
+                child: Icon(Icons.download, color: iconColor, size: 20),
+              ),
             ],
           ),
         ),
@@ -1124,6 +1232,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       'mp4': Icons.video_file,
       'avi': Icons.video_file,
       'mov': Icons.video_file,
+      'm4a': Icons.video_file,
       'apk': Icons.android,
     };
     return iconMap[extension] ?? Icons.insert_drive_file;
@@ -1134,6 +1243,139 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+
+  /// 构建语音消息样式
+  Widget _buildVoiceMessage(Message message, bool isMe, {bool isDeleted = false}) {
+    if (isDeleted) {
+      return Text('消息已被删除', style: TextStyle(fontSize: 15, color: Colors.grey[500]));
+    }
+
+    try {
+      final data = jsonDecode(message.content);
+      final url = data['url'] as String?;
+      final duration = data['duration'] as int? ?? 0;
+      final isPlaying = _playingVoiceId == message.id;
+
+      if (url == null) {
+        return Text(message.content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
+      }
+
+      // 计算语音消息宽度：最小 100，最大 300，根据时长比例计算
+      // 60 秒对应最大宽度 300，5 秒对应最小宽度 100
+      final minWidth = 60.0;
+      final maxWidth = 240.0;
+      final maxDuration = 60;
+      final voiceWidth = minWidth + (maxWidth - minWidth) * (duration / maxDuration);
+
+      return GestureDetector(
+        onTap: () => _toggleVoicePlay(message, url),
+        child: Container(
+          width: voiceWidth,
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          child: Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (!isMe)
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: AppTheme.primaryColor, size: 18),
+                ),
+              if (!isMe) const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$duration \'\'',
+                  style: TextStyle(fontSize: 14, color: isMe ? Colors.white : AppTheme.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isMe) const SizedBox(width: 8),
+              if (isMe)
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 18),
+                ),
+              if (!message.isRead && !isMe)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      return Text(message.content, style: TextStyle(fontSize: 13, color: Colors.grey[700]));
+    }
+  }
+
+  void _toggleVoicePlay(Message message, String url) async {
+    final messageId = int.tryParse(message.id);
+    if (messageId != null && !message.isRead) {
+      await DatabaseService().markMessageAsRead(messageId);
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == message.id);
+          if (index != -1) {
+            _messages[index] = Message(
+              id: message.id,
+              content: message.content,
+              senderId: message.senderId,
+              senderNickname: message.senderNickname,
+              senderAvatar: message.senderAvatar,
+              type: message.type,
+              createdAt: message.createdAt,
+              isRead: true,
+              quoteId: message.quoteId,
+              status: message.status,
+            );
+          }
+        });
+      }
+    }
+
+    // 如果正在播放同一条语音，则停止播放
+    if (_playingVoiceId == message.id) {
+      await _voiceService.stopPlay();
+      if (mounted) {
+        setState(() {
+          _playingVoiceId = null;
+        });
+      }
+    } else {
+      // 停止当前正在播放的语音
+      if (_playingVoiceId != null) {
+        await _voiceService.stopPlay();
+      }
+      // 开始播放新的语音
+      if (mounted) {
+        setState(() {
+          _playingVoiceId = message.id;
+        });
+      }
+      await _voiceService.playVoice(
+        url,
+        onComplete: () {
+          if (mounted) {
+            setState(() {
+              _playingVoiceId = null;
+            });
+          }
+        },
+      );
+    }
   }
 
   Future<void> _downloadFile(String url, String fileName) async {
@@ -1204,12 +1446,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         Text(
                           _quotedMessage!.senderId == _accountService.currentUser?.id
                               ? '回复你'
-                              : '回复 ${widget.conversation.title}',
+                              : '回复 ${_getQuotedSenderName(_quotedMessage!)}',
                           style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _quotedMessage!.content,
+                          _getQuotedContentDisplay(_quotedMessage!),
                           style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -1232,12 +1474,55 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ],
               ),
             ),
+          if (_isRecording)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.mic, color: Colors.red, size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    '$_recordingSeconds'
+                    '',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
+                  ),
+                  const SizedBox(width: 20),
+                  const Text('松开发送，上滑取消', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                ],
+              ),
+            ),
           Container(
             padding: EdgeInsets.only(left: 12, right: 12, top: 8, bottom: MediaQuery.of(context).padding.bottom + 8),
             child: Row(
               children: [
                 // 语音按钮
-                _buildInputAction(Icons.mic_none_rounded),
+                Listener(
+                  onPointerDown: (_) {
+                    _logger.d('语音按钮: 按下');
+                    _startRecording();
+                  },
+                  onPointerUp: (_) {
+                    _logger.d('语音按钮: 松开');
+                    _stopRecording();
+                  },
+                  onPointerCancel: (_) {
+                    _logger.d('语音按钮: 取消');
+                    _cancelRecording();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      _isRecording ? Icons.mic : Icons.mic_none_rounded,
+                      size: 26,
+                      color: _isRecording ? Colors.red : AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 4),
                 // 输入框
                 Expanded(
@@ -1683,7 +1968,45 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       }
     }
 
-    if (sendResult.isSuccess) {
+    if (sendResult.isSuccess && sendResult.messageData != null) {
+      // 使用服务端返回的完整消息数据插入到本地数据库
+      final messageData = sendResult.messageData!;
+      _logger.d('发送图片成功，服务端返回的数据: $messageData');
+      final currentUser = _accountService.currentUser;
+      if (currentUser != null) {
+        final messageType = messageData['type'] as int? ?? 1;
+        _logger.d('图片消息 type: $messageType, content: ${messageData['content']}');
+        await DatabaseService().insertMessage({
+          'id': int.parse(messageData['id']?.toString() ?? '0'),
+          'conversation_id': int.parse(widget.conversation.id),
+          'conversation_type': widget.conversation.isGroup ? 2 : 1,
+          'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
+          'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
+          'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+          'content': messageData['content'] ?? imageJsonContent,
+          'type': messageType,
+          'status': messageData['status'] ?? 0,
+          'seq_id': messageData['seqId'] ?? 0,
+          'created_at': messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+        });
+
+        // 更新会话的最后一条消息信息
+        await ConversationService().updateConversationAfterSendMessage(
+          conversationId: int.parse(widget.conversation.id),
+          senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          messageId: int.parse(messageData['id']?.toString() ?? '0'),
+          messageAt: messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          messagePreview: '[图片]',
+          messageType: 1,
+        );
+
+        // 重新加载消息并更新 UI
+        if (mounted) {
+          await _loadMessagesAndSync();
+        }
+      }
+
       if (mounted) {
         Navigator.pop(context);
         setState(() {
@@ -1749,6 +2072,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       'mp3': 'audio/mpeg',
       'wav': 'audio/wav',
       'mp4': 'video/mp4',
+      'm4a': 'video/mp4',
       'avi': 'video/x-msvideo',
       'mov': 'video/quicktime',
       'jpg': 'image/jpeg',
@@ -1929,7 +2253,45 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       }
     }
 
-    if (sendResult.isSuccess) {
+    if (sendResult.isSuccess && sendResult.messageData != null) {
+      // 使用服务端返回的完整消息数据插入到本地数据库
+      final messageData = sendResult.messageData!;
+      _logger.d('发送文件成功，服务端返回的数据: $messageData');
+      final currentUser = _accountService.currentUser;
+      if (currentUser != null) {
+        final messageType = messageData['type'] as int? ?? 4;
+        _logger.d('文件消息 type: $messageType, content: ${messageData['content']}');
+        await DatabaseService().insertMessage({
+          'id': int.parse(messageData['id']?.toString() ?? '0'),
+          'conversation_id': int.parse(widget.conversation.id),
+          'conversation_type': widget.conversation.isGroup ? 2 : 1,
+          'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
+          'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
+          'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+          'content': messageData['content'] ?? fileJsonContent,
+          'type': messageType,
+          'status': messageData['status'] ?? 0,
+          'seq_id': messageData['seqId'] ?? 0,
+          'created_at': messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+        });
+
+        // 更新会话的最后一条消息信息
+        await ConversationService().updateConversationAfterSendMessage(
+          conversationId: int.parse(widget.conversation.id),
+          senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          messageId: int.parse(messageData['id']?.toString() ?? '0'),
+          messageAt: messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          messagePreview: '[文件]',
+          messageType: 4,
+        );
+
+        // 重新加载消息并更新 UI
+        if (mounted) {
+          await _loadMessagesAndSync();
+        }
+      }
+
       if (mounted) {
         Navigator.pop(context);
         setState(() {
@@ -1944,6 +2306,267 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   void _shareLocation() {}
 
   void _shareContact() {}
+
+  void _startRecording() async {
+    if (_isRecording) return;
+
+    setState(() {
+      _isRecording = true;
+      _recordingSeconds = 0;
+    });
+
+    _logger.d('开始录音...');
+    final result = await _voiceService.startRecording();
+    _logger.d('开始录音结果: $result');
+
+    if (result == null) {
+      setState(() {
+        _isRecording = false;
+      });
+      return;
+    }
+
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() {
+        _recordingSeconds = timer.tick;
+      });
+
+      if (timer.tick >= 60) {
+        _stopRecording();
+      }
+    });
+  }
+
+  void _stopRecording() async {
+    if (!_isRecording) return;
+
+    _logger.d('停止录音: 开始处理');
+    _recordingTimer?.cancel();
+
+    final result = await _voiceService.stopRecording();
+
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _recordingSeconds = 0;
+      });
+    }
+
+    _logger.d('停止录音: 结果=$result');
+    if (result != null) {
+      _logger.d('停止录音: 发送语音, 时长=${result['duration']}, 大小=${result['size']}');
+      _sendVoice(result['path'], result['duration'], result['size']);
+    } else {
+      _logger.d('停止录音: 无结果，可能是录音时长太短');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('录音时间太短')));
+      }
+    }
+  }
+
+  void _cancelRecording() async {
+    if (!_isRecording) return;
+
+    _logger.d('取消录音: 开始处理');
+    _recordingTimer?.cancel();
+    await _voiceService.cancelRecording();
+
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _recordingSeconds = 0;
+      });
+    }
+    _logger.d('取消录音: 处理完成');
+  }
+
+  void _sendVoice(String filePath, int duration, int size) async {
+    final currentUser = _accountService.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+      }
+      return;
+    }
+
+    final fileName = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final contentType = 'audio/mp4';
+
+    final file = File(filePath);
+    final fileBytes = await file.readAsBytes();
+
+    _logger.d('准备上传语音, fileName: $fileName, contentType: $contentType, fileBytes.length: ${fileBytes.length}');
+
+    final uploadResult = await FileService().createUploadUrl(contentType, fileName, fileBytes.length, 'voice');
+
+    if (!mounted) return;
+
+    if (uploadResult == null || !uploadResult.isSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取上传链接失败')));
+      }
+      return;
+    }
+
+    double progress = 0.0;
+    void Function(VoidCallback)? setDialogState;
+    bool isCancelled = false;
+    CancelToken? cancelToken;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            setDialogState = setState;
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 20),
+                  CircularProgressIndicator(value: progress > 0 ? progress : null),
+                  const SizedBox(height: 20),
+                  const Text('正在上传语音...', style: TextStyle(fontSize: 16)),
+                  const SizedBox(height: 10),
+                  Text('${(progress * 100).toInt()}%', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  const SizedBox(height: 5),
+                  SizedBox(width: 200, child: LinearProgressIndicator(value: progress > 0 ? progress : null)),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      isCancelled = true;
+                      cancelToken?.cancel('用户取消上传');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('上传已取消')));
+                    },
+                    child: const Text('取消上传', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    cancelToken = CancelToken();
+    final uploaded = await FileService().uploadToR2(
+      uploadResult.uploadUrl!,
+      fileBytes,
+      contentType,
+      cancelToken: cancelToken,
+      onProgress: (sent, total) {
+        if (isCancelled) return;
+        progress = sent / total;
+        _logger.d('上传进度: ${(progress * 100).toInt()}%');
+        setDialogState?.call(() {});
+      },
+    );
+    _logger.d('上传语音到R2结果: $uploaded');
+    if (!uploaded) {
+      if (mounted && !isCancelled) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('上传语音失败'), duration: Duration(seconds: 5)));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 20),
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('正在发送语音...', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+
+    final voiceJsonContent = jsonEncode({'url': uploadResult.fileUrl, 'duration': duration, 'size': size});
+
+    SendMessageResult sendResult;
+    if (widget.conversation.isGroup) {
+      sendResult = await ChatService().sendGroupMessage(
+        conversationId: widget.conversation.id,
+        message: voiceJsonContent,
+        type: 2,
+      );
+      if (!sendResult.isSuccess && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '语音发送失败')));
+      }
+    } else {
+      sendResult = await ChatService().sendPrivateMessage(
+        conversationId: widget.conversation.id,
+        receiverId: widget.conversation.chatUserId,
+        message: voiceJsonContent,
+        type: 2,
+      );
+      if (!sendResult.isSuccess && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '语音发送失败')));
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (sendResult.isSuccess && sendResult.messageData != null) {
+      // 使用服务端返回的完整消息数据插入到本地数据库
+      final messageData = sendResult.messageData!;
+      _logger.d('发送语音成功，服务端返回的数据: $messageData');
+      final currentUser = _accountService.currentUser;
+      if (currentUser != null) {
+        final messageType = messageData['type'] as int? ?? 2;
+        _logger.d('语音消息 type: $messageType, content: ${messageData['content']}');
+        await DatabaseService().insertMessage({
+          'id': int.parse(messageData['id']?.toString() ?? '0'),
+          'conversation_id': int.parse(widget.conversation.id),
+          'conversation_type': widget.conversation.isGroup ? 2 : 1,
+          'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
+          'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
+          'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+          'content': messageData['content'] ?? voiceJsonContent,
+          'type': messageType,
+          'status': messageData['status'] ?? 0,
+          'seq_id': messageData['seqId'] ?? 0,
+          'created_at': messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+        });
+
+        // 更新会话的最后一条消息信息
+        await ConversationService().updateConversationAfterSendMessage(
+          conversationId: int.parse(widget.conversation.id),
+          senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          messageId: int.parse(messageData['id']?.toString() ?? '0'),
+          messageAt: messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          messagePreview: '[语音]',
+          messageType: 2,
+        );
+
+        // 重新加载消息并更新 UI
+        if (mounted) {
+          await _loadMessagesAndSync();
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _quotedMessage = null;
+        });
+      }
+    }
+  }
 
   /// 发送消息
   void _sendMessage() async {
@@ -1974,7 +2597,39 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       );
     }
 
-    if (result.isSuccess) {
+    if (result.isSuccess && result.messageData != null) {
+      // 使用服务端返回的完整消息数据插入到本地数据库
+      final messageData = result.messageData!;
+      await DatabaseService().insertMessage({
+        'id': int.parse(messageData['id']?.toString() ?? '0'),
+        'conversation_id': int.parse(widget.conversation.id),
+        'conversation_type': widget.conversation.isGroup ? 2 : 1,
+        'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+        'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
+        'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
+        'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+        'content': messageData['content'] ?? text,
+        'type': messageData['type'] ?? 0,
+        'status': messageData['status'] ?? 0,
+        'seq_id': messageData['seqId'] ?? 0,
+        'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
+      });
+
+      // 更新会话的最后一条消息信息
+      await ConversationService().updateConversationAfterSendMessage(
+        conversationId: int.parse(widget.conversation.id),
+        senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+        messageId: int.parse(messageData['id']?.toString() ?? '0'),
+        messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
+        messagePreview: messageData['content'] ?? text,
+        messageType: messageData['type'] ?? 0,
+      );
+
+      // 重新加载消息并更新 UI
+      if (mounted) {
+        await _loadMessagesAndSync();
+      }
+
       if (mounted) {
         setState(() {
           _messageController.clear();

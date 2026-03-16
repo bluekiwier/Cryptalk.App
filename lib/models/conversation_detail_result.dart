@@ -1,18 +1,48 @@
 class ConversationDetailResult {
-  final int id;
+  /// 会话ID
+  final String id;
+
+  /// 会话类型（1: 单聊，2: 群聊）
   final int type;
-  final int chatUserId;
+
+  /// 聊天用户ID
+  final String chatUserId;
+
+  /// 标题
   final String title;
+
+  /// 头像
   final String avatar;
-  final int lastSenderId;
-  final int lastMessageId;
+
+  /// 最后一条消息序列ID
+  final String lastSeqId;
+
+  /// 最后一条消息发送者ID
+  final String lastSenderId;
+
+  /// 最后一条消息ID
+  final String lastMessageId;
+
+  /// 最后一条消息时间
   final DateTime? lastMessageAt;
+
+  /// 最后一条消息内容预览
   final String? lastMessagePreview;
+
+  /// 群公告
   final String? announcement;
-  final int unreadCount;
-  final bool isPinned;
-  final bool isMuted;
+
+  /// 是否全员禁言:0=否,1=是
   final bool isAllMuted;
+
+  /// 未读消息数量
+  final int unreadCount;
+
+  /// 是否置顶
+  final bool isPinned;
+
+  /// 是否免打扰
+  final bool isMuted;
 
   const ConversationDetailResult({
     required this.id,
@@ -20,32 +50,32 @@ class ConversationDetailResult {
     required this.chatUserId,
     required this.title,
     required this.avatar,
+    required this.lastSeqId,
     required this.lastSenderId,
     required this.lastMessageId,
     this.lastMessageAt,
     this.lastMessagePreview,
     this.announcement,
+    this.isAllMuted = false,
     required this.unreadCount,
     required this.isPinned,
     required this.isMuted,
-    this.isAllMuted = false,
   });
 
   factory ConversationDetailResult.fromJson(Map<String, dynamic> json) {
     return ConversationDetailResult(
-      id: json['id'] as int? ?? 0,
+      id: json['id'].toString(),
       type: json['type'] as int? ?? 1,
-      chatUserId: json['chatUserId'] as int? ?? 0,
+      chatUserId: json['chatUserId'].toString(),
       title: json['title']?.toString() ?? '',
       avatar: json['avatar']?.toString() ?? '',
-      lastSenderId: json['lastSenderId'] as int? ?? 0,
-      lastMessageId: json['lastMessageId'] as int? ?? 0,
+      lastSeqId: json['lastSeqId'].toString(),
+      lastSenderId: json['lastSenderId'].toString(),
+      lastMessageId: json['lastMessageId'].toString(),
       lastMessageAt: json['lastMessageAt'] != null ? DateTime.tryParse(json['lastMessageAt'].toString()) : null,
       lastMessagePreview: json['lastMessagePreview']?.toString(),
       announcement: json['announcement']?.toString(),
-      unreadCount: (json['unreadCount'] is int)
-          ? json['unreadCount']
-          : int.tryParse(json['unreadCount']?.toString() ?? '0') ?? 0,
+      unreadCount: json['unreadCount'],
       isPinned: json['isPinned'] == true || json['isPinned'] == 1,
       isMuted: json['isMuted'] == true || json['isMuted'] == 1,
       isAllMuted: json['isAllMuted'] == true || json['isAllMuted'] == 1,

@@ -84,6 +84,9 @@ class ConversationMessagePayload {
   // 会话类型: 1-私聊,2-群聊
   final int conversationType;
 
+  // 消息顺序号
+  final String seqId;
+
   // 发送者ID
   final String senderId;
 
@@ -112,6 +115,7 @@ class ConversationMessagePayload {
     required this.id,
     required this.conversationId,
     required this.conversationType,
+    required this.seqId,
     required this.senderId,
     this.senderNickname,
     this.senderAvatar,
@@ -127,6 +131,7 @@ class ConversationMessagePayload {
       id: json['id'] ?? '',
       conversationId: json['conversationId'] ?? '',
       conversationType: json['conversationType'] ?? 0,
+      seqId: json['seqId'] ?? '',
       senderId: json['senderId'] ?? '',
       senderNickname: json['senderNickname']?.toString(),
       senderAvatar: json['senderAvatar']?.toString(),
@@ -324,7 +329,10 @@ class ChatService extends ChangeNotifier {
 
   /// 处理聊天消息：写 DB + 更新会话缓存 + 触发 UI 局部刷新
   void _handleChatMessage(ChatMessageDto message) {
-    // _logger.i('处理聊天消息: conversationId=${message.conversationId}');
+    final content = message.payload.content;
+    _logger.i(
+      '收到聊天消息: conversationId=${message.conversationId}, type=${message.payload.type}, content=${content.length > 100 ? content.substring(0, 100) : content}...',
+    );
     // 存内存（用于聊天详情页读取）
     // 避免重复添加相同消息
     final isDuplicate = _receivedMessages.any((msg) => msg.payload.id == message.payload.id);
@@ -399,24 +407,40 @@ class ChatService extends ChangeNotifier {
   /// 2. 如果删除的消息是会话的最后一条消息，则更新会话表中的 last_message_id, last_message_at, last_message_preview, last_sender_id 为最新消息信息
   /// 3. 从内存中的消息列表移除对应消息，并通知 UI 更新
   void _handleDeleteMessage(DeleteMessageDto message) {
-    // 解析消息ID和会话ID，如果解析失败则直接返回
-    final msgId = int.tryParse(message.messageId) ?? 0;
+    _logger.i('收到删除消息: messageId=${message.messageId}, conversationId=${message.conversationId}');
+    // 直接使用字符串 ID，不转换为 int，避免大数问题
+    final msgIdStr = message.messageId;
     final convId = int.tryParse(message.conversationId) ?? 0;
 
-    if (msgId == 0 || convId == 0) return;
+    _logger.i('使用字符串 msgId=$msgIdStr, convId=$convId');
+
+    if (msgIdStr.isEmpty || convId == 0) return;
 
     // 异步执行数据库操作，避免阻塞主线程
     Future(() async {
       final dbService = DatabaseService();
       final db = await dbService.database;
 
+      // 先查询一下这条消息是否存在 - 使用字符串 ID 查询
+      final existingMessages = await db.query(
+        ConversationMessageEntity.tableName,
+        where: '${ConversationMessageEntity.id} = ?',
+        whereArgs: [msgIdStr],
+      );
+      _logger.i('查询到的消息数量: ${existingMessages.length}');
+      if (existingMessages.isNotEmpty) {
+        _logger.i('消息当前状态: ${existingMessages.first[ConversationMessageEntity.status]}');
+        _logger.i('消息 ID 类型: ${existingMessages.first[ConversationMessageEntity.id].runtimeType}');
+      }
+
       // 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
-      await db.update(
+      final updateCount = await db.update(
         ConversationMessageEntity.tableName,
         {ConversationMessageEntity.status: 2},
         where: '${ConversationMessageEntity.id} = ?',
-        whereArgs: [msgId],
+        whereArgs: [msgIdStr],
       );
+      _logger.i('更新的行数: $updateCount');
 
       // 2. 查询会话表，获取当前会话信息
       final conversationResult = await db.query(
@@ -428,23 +452,38 @@ class ChatService extends ChangeNotifier {
       // 如果会话存在
       if (conversationResult.isNotEmpty) {
         final conversation = conversationResult.first;
-        final lastMessageId = conversation[ConversationEntity.lastMessageId] as int?;
+        final lastMessageId = conversation[ConversationEntity.lastMessageId];
 
-        // 判断删除的消息是否为会话的最后一条消息
-        if (lastMessageId == msgId) {
+        // 判断删除的消息是否为会话的最后一条消息 - 需要处理字符串比较
+        bool isLastMessage = false;
+        if (lastMessageId != null) {
+          if (lastMessageId is int) {
+            // 尝试将 msgIdStr 解析为 int 进行比较
+            final parsedMsgId = int.tryParse(msgIdStr);
+            isLastMessage = parsedMsgId != null && parsedMsgId == lastMessageId;
+          } else {
+            // 直接字符串比较
+            isLastMessage = lastMessageId.toString() == msgIdStr;
+          }
+        }
+
+        _logger.i('是否是最后一条消息: $isLastMessage');
+
+        if (isLastMessage) {
           // 查询该会话中未删除的最新一条消息
           final latestMessages = await db.query(
             ConversationMessageEntity.tableName,
             where: '${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.status} != 2',
             whereArgs: [convId],
-            orderBy: '${ConversationMessageEntity.id} DESC',
+            orderBy: '${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC',
             limit: 1,
           );
 
           // 如果还有未删除的消息，则更新会话的最后一条消息信息
           if (latestMessages.isNotEmpty) {
             final latestMessage = latestMessages.first;
-            final newLastMessageId = latestMessage[ConversationMessageEntity.id] as int;
+            final newLastSeqId = latestMessage[ConversationMessageEntity.seqId] as int;
+            final newLastMessageId = latestMessage[ConversationMessageEntity.id];
             final newLastMessageAt = latestMessage[ConversationMessageEntity.createdAt] as String;
             final newLastMessagePreview = _truncate(
               latestMessage[ConversationMessageEntity.content] as String? ?? '',
@@ -452,10 +491,19 @@ class ChatService extends ChangeNotifier {
             );
             final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as int;
 
+            // 处理 newLastMessageId，确保它是 int 类型
+            final int? newLastMessageIdInt;
+            if (newLastMessageId is int) {
+              newLastMessageIdInt = newLastMessageId;
+            } else {
+              newLastMessageIdInt = int.tryParse(newLastMessageId.toString());
+            }
+
             await db.update(
               ConversationEntity.tableName,
               {
-                ConversationEntity.lastMessageId: newLastMessageId,
+                ConversationEntity.lastSeqId: newLastSeqId,
+                ConversationEntity.lastMessageId: newLastMessageIdInt ?? 0,
                 ConversationEntity.lastMessageAt: newLastMessageAt,
                 ConversationEntity.lastMessagePreview: newLastMessagePreview,
                 ConversationEntity.lastSenderId: newLastSenderId,
@@ -469,6 +517,7 @@ class ChatService extends ChangeNotifier {
             await db.update(
               ConversationEntity.tableName,
               {
+                ConversationEntity.lastSeqId: 0,
                 ConversationEntity.lastMessageId: 0,
                 ConversationEntity.lastMessageAt: '',
                 ConversationEntity.lastMessagePreview: '',
@@ -486,6 +535,7 @@ class ChatService extends ChangeNotifier {
       // 这样引用该消息的其他消息（如引用消息）仍然可以通过 _messages 列表找到被引用的消息
       // 消息的实际内容会在 UI 刷新时从数据库读取（status=2 表示已删除）
       // 通知 UI 更新
+      _logger.i('通知 UI 更新');
       notifyListeners();
     });
   }
@@ -530,6 +580,10 @@ class ChatService extends ChangeNotifier {
       case "message":
         final chat = ChatMessageDto.fromJson(message.data!);
         _handleChatMessage(chat);
+        break;
+      case "delete":
+        final del = DeleteMessageDto.fromJson(message.data!);
+        _handleDeleteMessage(del);
         break;
       case "change_title":
         _handleChangeTitleEvent(message.data!);
@@ -605,6 +659,7 @@ class ChatService extends ChangeNotifier {
         id: msgId.toString(),
         conversationId: conversationId,
         conversationType: 2,
+        seqId: payload['seqId']?.toString() ?? '',
         senderId: senderId.toString(),
         senderNickname: payload['senderNickname']?.toString(),
         senderAvatar: payload['senderAvatar']?.toString(),
@@ -643,11 +698,30 @@ class ChatService extends ChangeNotifier {
         senderId: senderId,
         messageId: msgId,
         messageAt: createdAtStr,
-        messagePreview: content,
+        messagePreview: _getMessagePreview(content, notifyMessage.payload.type),
         messageType: notifyMessage.payload.type,
         isInChatPage: isInChatPage(conversationId),
       );
     });
+  }
+
+  String _getMessagePreview(String content, int type) {
+    if (type == 1) {
+      return '[图片]';
+    } else if (type == 2) {
+      return '[语音]';
+    } else if (type == 3) {
+      return '[视频]';
+    } else if (type == 4) {
+      return '[文件]';
+    } else if (type == 5) {
+      return '[位置]';
+    } else if (type == 6) {
+      return '[名片]';
+    } else if (type == 7) {
+      return '[红包]';
+    }
+    return content;
   }
 
   /// 发送消息
@@ -748,7 +822,7 @@ class ChatService extends ChangeNotifier {
 
       final data = <String, dynamic>{
         'conversationId': conversationId.toString(),
-        'receiverId': receiverId is String ? int.tryParse(receiverId) ?? receiverId : receiverId,
+        'receiverId': receiverId.toString(),
         'message': message,
         'type': type,
       };
@@ -761,13 +835,14 @@ class ChatService extends ChangeNotifier {
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
-        return SendMessageResult(success: true, messageId: responseData["data"]?.toString());
+        final messageData = responseData['data'];
+        return SendMessageResult(success: true, messageId: messageData?['id']?.toString(), messageData: messageData);
       } else {
-        _logger.e('发送私聊消息失败: ${responseData?['message']}');
+        _logger.e('发送私聊消息失败：${responseData?['message']}');
         return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败');
       }
     } catch (e) {
-      _logger.e('发送私聊消息异常: $e');
+      _logger.e('发送私聊消息异常：$e');
       return SendMessageResult(success: false, message: '网络异常');
     }
   }
@@ -776,7 +851,7 @@ class ChatService extends ChangeNotifier {
   /// [conversationId] 会话 ID
   /// [message] 消息内容
   /// [quoteId] 引用的消息 ID
-  /// [type] 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=表情,6=位置,7=名片,8=红包,9=系统通知
+  /// [type] 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=位置,6=名片,7=红包,8=系统通知,9=广播,10=群通知消息
   Future<SendMessageResult> sendGroupMessage({
     required dynamic conversationId,
     required String message,
@@ -796,7 +871,8 @@ class ChatService extends ChangeNotifier {
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
-        return SendMessageResult(success: true, messageId: responseData["data"]?.toString());
+        final messageData = responseData['data'];
+        return SendMessageResult(success: true, messageId: messageData?['id']?.toString(), messageData: messageData);
       } else {
         _logger.e('发送群聊消息失败: ${responseData?['message']}');
         return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败');

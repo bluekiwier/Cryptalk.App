@@ -17,18 +17,20 @@ class Message {
   final bool isRead;
   final String? quoteId;
   final MessageStatus status;
+  final String seqId;
 
   const Message({
     required this.id,
     required this.content,
+    required this.createdAt,
     this.senderId = '',
     this.senderNickname,
     this.senderAvatar,
     this.type = MessageType.text,
-    required this.createdAt,
     this.isRead = false,
     this.quoteId,
     this.status = MessageStatus.normal,
+    this.seqId = '',
   });
 }
 

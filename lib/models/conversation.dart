@@ -13,6 +13,7 @@ class Conversation {
   final bool isPinned;
   final bool isMuted;
   final List<User> members;
+  final String lastSeqId;
 
   const Conversation({
     required this.id,
@@ -25,5 +26,6 @@ class Conversation {
     this.isPinned = false,
     this.isMuted = false,
     this.members = const [],
+    this.lastSeqId = '',
   });
 }

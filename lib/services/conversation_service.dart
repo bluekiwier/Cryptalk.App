@@ -8,6 +8,7 @@ import '../models/conversation_detail_result.dart';
 import '../models/conversation_list_input_dto.dart';
 import '../models/conversation_list_result.dart';
 import '../models/message.dart';
+import '../models/db/conversation_entity.dart';
 
 /// 会话服务（ChangeNotifier）
 /// 策略：本地 DB 优先呈现，后台异步同步网络数据
@@ -55,9 +56,10 @@ class ConversationService extends ChangeNotifier {
   /// 后台从网络同步会话列表（首页，不阻塞 UI）
   Future<void> _syncFromNetwork() async {
     try {
-      final result = await _fetchConversationsFromNetwork();
+      final result = await _fetchConversationList();
       if (result == null) return;
       // 写入本地 DB
+      // 遍历 result.list 集合中的每一个元素，将其传递给 _detailResultToRow 函数进行处理，然后将处理后的所有结果收集到一个新的 List（列表）中，并赋值给 rows 变量。
       final rows = result.list.map(_detailResultToRow).toList();
       await _db.upsertConversations(rows);
       // 刷新内存列表
@@ -142,7 +144,7 @@ class ConversationService extends ChangeNotifier {
     _isLoadingMore = true;
     notifyListeners();
     try {
-      final result = await _fetchConversationsFromNetwork(cursor: _nextCursor);
+      final result = await _fetchConversationList(cursor: _nextCursor);
       if (result != null) {
         final rows = result.list.map(_detailResultToRow).toList();
         await _db.upsertConversations(rows);
@@ -267,7 +269,7 @@ class ConversationService extends ChangeNotifier {
   // 私有：分页获取会话列表
   // ─────────────────────────────────────────────
 
-  Future<ConversationListResult?> _fetchConversationsFromNetwork({ConversationListInputDto? cursor}) async {
+  Future<ConversationListResult?> _fetchConversationList({ConversationListInputDto? cursor}) async {
     try {
       final dio = await AccountService().getDio();
 
@@ -597,11 +599,39 @@ class ConversationService extends ChangeNotifier {
   /// 更新本地会话的群名称（用于WebSocket事件）
   Future<void> updateConversationTitle(String conversationId, String title) async {
     final db = await _db.database;
-    await db.update('conversations', {'title': title}, where: 'id = ?', whereArgs: [int.tryParse(conversationId) ?? 0]);
+    await db.update(
+      ConversationEntity.tableName,
+      {'title': title},
+      where: 'id = ?',
+      whereArgs: [int.tryParse(conversationId) ?? 0],
+    );
     await notifyConversationListChanged();
   }
 
-  /// 获取我的角色: 1=群主,2=管理员,3=成员
+  /// 发送消息后更新会话信息（发送方专用）
+  Future<void> updateConversationAfterSendMessage({
+    required int conversationId,
+    required int senderId,
+    required int messageId,
+    required String messageAt,
+    required String messagePreview,
+    required int messageType,
+  }) async {
+    // 更新 DB（不增加未读数）
+    await _db.updateConversationFromMessage(
+      conversationId: conversationId,
+      senderId: senderId,
+      messageId: messageId,
+      messageAt: messageAt,
+      messagePreview: messagePreview,
+      messageType: messageType,
+      updateUnreadCount: false,
+    );
+    // 通知会话列表刷新
+    await notifyConversationListChanged();
+  }
+
+  /// 获取我的角色：1=群主，2=管理员，3=成员
   Future<Map<String, dynamic>?> getMyRole(String conversationId) async {
     try {
       final dio = await AccountService().getDio();
@@ -783,6 +813,7 @@ class ConversationService extends ChangeNotifier {
               id: row['last_message_id'].toString(),
               content: row['last_message_preview'] as String? ?? '',
               senderId: row['last_sender_id'].toString(),
+              seqId: row['last_seq_id']?.toString() ?? '',
               type: MessageType.text,
               createdAt: row['last_message_at'] != null
                   ? DateTime.tryParse(row['last_message_at'].toString()) ?? DateTime.now()
@@ -801,6 +832,7 @@ class ConversationService extends ChangeNotifier {
       'chat_user_id': dto.chatUserId,
       'title': dto.title,
       'avatar': dto.avatar,
+      'last_seq_id': dto.lastSeqId,
       'last_sender_id': dto.lastSenderId,
       'last_message_id': dto.lastMessageId,
       'last_message_at': dto.lastMessageAt?.toIso8601String(),
@@ -825,6 +857,7 @@ class ConversationService extends ChangeNotifier {
       lastMessage: Message(
         id: dto.lastMessageId.toString(),
         content: dto.lastMessagePreview ?? '',
+        seqId: dto.lastSeqId.toString(),
         senderId: dto.lastSenderId.toString(),
         type: MessageType.text,
         createdAt: dto.lastMessageAt ?? DateTime.now(),

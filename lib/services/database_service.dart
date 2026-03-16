@@ -34,7 +34,7 @@ class DatabaseService {
     final dbName = _currentUserId != null ? 'cryptalk_$_currentUserId.db' : 'cryptalk.db';
     final path = join(dbPath, dbName);
 
-    final db = await openDatabase(path, version: 1, onCreate: _onCreate);
+    final db = await openDatabase(path, version: 1, onCreate: _onCreate, onUpgrade: _onUpgrade);
 
     _logger.i('sqflite 数据库初始化成功: $path');
     return db;
@@ -76,6 +76,7 @@ class DatabaseService {
         ${ConversationEntity.chatUserId} INTEGER NOT NULL,
         ${ConversationEntity.title} TEXT NOT NULL,
         ${ConversationEntity.avatar} TEXT NOT NULL,
+        ${ConversationEntity.lastSeqId} INTEGER NOT NULL DEFAULT 0,
         ${ConversationEntity.lastSenderId} INTEGER NOT NULL,
         ${ConversationEntity.lastMessageId} INTEGER NOT NULL,
         ${ConversationEntity.lastMessageAt} TEXT,
@@ -92,6 +93,7 @@ class DatabaseService {
         ${ConversationMessageEntity.id} INTEGER PRIMARY KEY,
         ${ConversationMessageEntity.conversationId} INTEGER NOT NULL,
         ${ConversationMessageEntity.conversationType} INTEGER,
+        ${ConversationMessageEntity.seqId} INTEGER NOT NULL,
         ${ConversationMessageEntity.senderId} INTEGER NOT NULL,
         ${ConversationMessageEntity.senderNickname} TEXT,
         ${ConversationMessageEntity.senderAvatar} TEXT,
@@ -99,6 +101,7 @@ class DatabaseService {
         ${ConversationMessageEntity.content} TEXT NOT NULL,
         ${ConversationMessageEntity.type} INTEGER NOT NULL DEFAULT 0,
         ${ConversationMessageEntity.status} INTEGER NOT NULL DEFAULT 0,
+        ${ConversationMessageEntity.isRead} INTEGER NOT NULL DEFAULT 0,
         ${ConversationMessageEntity.createdAt} TEXT NOT NULL
       )
     ''');
@@ -123,6 +126,17 @@ class DatabaseService {
     ''');
 
     _logger.i('数据库表创建成功');
+  }
+
+  /// 数据库版本升级
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // _logger.i('数据库升级：$oldVersion -> $newVersion');
+    // if (oldVersion < 2) {
+    //   await db.execute(
+    //     'ALTER TABLE ${ConversationMessageEntity.tableName} ADD COLUMN ${ConversationMessageEntity.isRead} INTEGER NOT NULL DEFAULT 0',
+    //   );
+    //   _logger.i('已添加 is_read 字段到 messages 表');
+    // }
   }
 
   // ─────────────────────────────────────────────
@@ -154,8 +168,9 @@ class DatabaseService {
         }
 
         // 处理 chat_user_id 字段
-        if (row.containsKey('chat_user_id') && row['chat_user_id'] != null) {
-          data[ConversationEntity.chatUserId] = row['chat_user_id'];
+        final chatUserId = row['chat_user_id'] ?? row['chatUserId'];
+        if (chatUserId != null) {
+          data[ConversationEntity.chatUserId] = chatUserId;
         } else if (existing.isEmpty) {
           data[ConversationEntity.chatUserId] = 0;
         }
@@ -174,8 +189,16 @@ class DatabaseService {
           data[ConversationEntity.avatar] = existing.first[ConversationEntity.avatar];
         }
 
+        // 处理 lastSeqId / last_seq_id 字段
+        final lastSeqId = row['last_seq_id'] ?? row['lastSeqId'];
+        if (lastSeqId != null) {
+          data[ConversationEntity.lastSeqId] = lastSeqId;
+        } else if (existing.isNotEmpty) {
+          data[ConversationEntity.lastSeqId] = existing.first[ConversationEntity.lastSeqId];
+        }
+
         // 处理 lastSenderId / last_sender_id 字段
-        final lastSenderId = row['lastSenderId'] ?? row['last_sender_id'];
+        final lastSenderId = row['last_sender_id'] ?? row['lastSenderId'];
         if (lastSenderId != null) {
           data[ConversationEntity.lastSenderId] = lastSenderId;
         } else if (existing.isNotEmpty) {
@@ -183,7 +206,7 @@ class DatabaseService {
         }
 
         // 处理 lastMessageId / last_message_id 字段
-        final lastMessageId = row['lastMessageId'] ?? row['last_message_id'];
+        final lastMessageId = row['last_message_id'] ?? row['lastMessageId'];
         if (lastMessageId != null) {
           data[ConversationEntity.lastMessageId] = lastMessageId;
         } else if (existing.isNotEmpty) {
@@ -191,7 +214,7 @@ class DatabaseService {
         }
 
         // 处理 lastMessageAt / last_message_at 字段
-        final lastMessageAt = row['lastMessageAt'] ?? row['last_message_at'];
+        final lastMessageAt = row['last_message_at'] ?? row['lastMessageAt'];
         if (lastMessageAt != null) {
           data[ConversationEntity.lastMessageAt] = lastMessageAt;
         } else if (existing.isNotEmpty) {
@@ -199,7 +222,7 @@ class DatabaseService {
         }
 
         // 处理 lastMessagePreview / last_message_preview 字段
-        final lastMessagePreview = row['lastMessagePreview'] ?? row['last_message_preview'];
+        final lastMessagePreview = row['last_message_preview'] ?? row['lastMessagePreview'];
         if (lastMessagePreview != null) {
           data[ConversationEntity.lastMessagePreview] = _truncate(lastMessagePreview.toString(), 50);
         } else if (existing.isNotEmpty) {
@@ -217,7 +240,7 @@ class DatabaseService {
           data[ConversationEntity.isMuted] = (row['is_muted'] ?? 0) == 1 ? 1 : 0;
         }
 
-        data[ConversationEntity.updatedAt] = DateTime.now().toIso8601String();
+        data[ConversationEntity.updatedAt] = DateTime.now().toUtc().toIso8601String();
 
         if (existing.isNotEmpty) {
           await txn.update(
@@ -333,8 +356,8 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getMessages(int conversationId, {int limit = 20, int minMessageId = 0}) async {
     final db = await database;
     final sql = minMessageId > 0
-        ? 'SELECT * FROM ${ConversationMessageEntity.tableName} WHERE ${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.id} < ? ORDER BY ${ConversationMessageEntity.id} DESC LIMIT ?'
-        : 'SELECT * FROM ${ConversationMessageEntity.tableName} WHERE ${ConversationMessageEntity.conversationId} = ? ORDER BY ${ConversationMessageEntity.id} DESC LIMIT ?';
+        ? 'SELECT * FROM ${ConversationMessageEntity.tableName} WHERE ${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.id} < ? ORDER BY ${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC LIMIT ?'
+        : 'SELECT * FROM ${ConversationMessageEntity.tableName} WHERE ${ConversationMessageEntity.conversationId} = ? ORDER BY ${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC LIMIT ?';
     final params = minMessageId > 0 ? [conversationId, minMessageId, limit] : [conversationId, limit];
     final results = await db.rawQuery(sql, params);
     return results;
@@ -386,7 +409,8 @@ class DatabaseService {
     final db = await database;
     final results = await db.query(
       ConversationEntity.tableName,
-      orderBy: '${ConversationEntity.isPinned} DESC, ${ConversationEntity.lastMessageAt} DESC',
+      orderBy:
+          '${ConversationEntity.isPinned} DESC, COALESCE(${ConversationEntity.lastMessageAt}, ${ConversationEntity.updatedAt}) DESC',
       limit: limit,
       offset: offset,
     );
@@ -422,6 +446,7 @@ class DatabaseService {
       ConversationMessageEntity.id: row['id'],
       ConversationMessageEntity.conversationId: row['conversation_id'],
       ConversationMessageEntity.conversationType: row['conversation_type'] ?? 1,
+      ConversationMessageEntity.seqId: row['seq_id'] ?? 0,
       ConversationMessageEntity.senderId: row['sender_id'],
       ConversationMessageEntity.senderNickname: row['sender_nickname'],
       ConversationMessageEntity.senderAvatar: row['sender_avatar'],
@@ -429,8 +454,9 @@ class DatabaseService {
       ConversationMessageEntity.content: row['content'],
       ConversationMessageEntity.type: row['type'] ?? 0,
       ConversationMessageEntity.status: row['status'] ?? 0,
+      ConversationMessageEntity.isRead: row['is_read'] ?? 0,
       ConversationMessageEntity.createdAt: row['created_at'],
-    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// 批量插入消息
@@ -449,13 +475,15 @@ class DatabaseService {
           ConversationMessageEntity.content: row['content'],
           ConversationMessageEntity.type: row['type'] ?? 0,
           ConversationMessageEntity.status: row['status'] ?? 0,
+          ConversationMessageEntity.isRead: row['is_read'] ?? 0,
+          ConversationMessageEntity.seqId: row['seq_id'] ?? 0,
           ConversationMessageEntity.createdAt: row['created_at'],
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
 
-  /// 分页查询某会话的消息（按 id 降序，翻页用 cursor）
+  /// 分页查询某会话的消息（按 seq_id 和 created_at 降序，翻页用 cursor）
   Future<List<Map<String, dynamic>>> queryMessages({
     required int conversationId,
     int pageSize = 20,
@@ -469,7 +497,7 @@ class DatabaseService {
         ConversationMessageEntity.tableName,
         where: '${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.id} < ?',
         whereArgs: [conversationId, beforeId],
-        orderBy: '${ConversationMessageEntity.id} DESC',
+        orderBy: '${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC',
         limit: pageSize,
       );
     } else {
@@ -477,12 +505,34 @@ class DatabaseService {
         ConversationMessageEntity.tableName,
         where: '${ConversationMessageEntity.conversationId} = ?',
         whereArgs: [conversationId],
-        orderBy: '${ConversationMessageEntity.id} DESC',
+        orderBy: '${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC',
         limit: pageSize,
       );
     }
 
     return results.map((e) => e).toList();
+  }
+
+  /// 标记消息为已读
+  Future<void> markMessageAsRead(int messageId) async {
+    final db = await database;
+    await db.update(
+      ConversationMessageEntity.tableName,
+      {ConversationMessageEntity.isRead: 1},
+      where: '${ConversationMessageEntity.id} = ?',
+      whereArgs: [messageId],
+    );
+  }
+
+  /// 标记某会话的所有消息为已读
+  Future<void> markConversationMessagesAsRead(int conversationId) async {
+    final db = await database;
+    await db.update(
+      ConversationMessageEntity.tableName,
+      {ConversationMessageEntity.isRead: 1},
+      where: '${ConversationMessageEntity.conversationId} = ?',
+      whereArgs: [conversationId],
+    );
   }
 
   /// 关闭数据库

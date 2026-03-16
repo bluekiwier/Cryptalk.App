@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/conversation.dart';
+import '../../models/db/conversation_entity.dart';
 import '../../services/database_service.dart';
 import '../../services/conversation_service.dart';
 import '../../theme/app_theme.dart';
@@ -53,7 +54,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   Future<void> _updateLocalDatabase() async {
     final db = await DatabaseService().database;
     await db.update(
-      'conversations',
+      ConversationEntity.tableName,
       {'is_muted': _isMuted ? 1 : 0, 'is_pinned': _isPinned ? 1 : 0},
       where: 'id = ?',
       whereArgs: [int.tryParse(widget.conversation.id) ?? 0],
@@ -121,7 +122,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   Future<void> _updateLocalConversationTitle(String title) async {
     final db = await DatabaseService().database;
     await db.update(
-      'conversations',
+      ConversationEntity.tableName,
       {'title': title},
       where: 'id = ?',
       whereArgs: [int.tryParse(widget.conversation.id) ?? 0],
@@ -266,7 +267,11 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         final result = await ConversationService().quitGroup(widget.conversation.id);
         if (result.success == true && mounted) {
           final db = await DatabaseService().database;
-          await db.delete('conversations', where: 'id = ?', whereArgs: [int.tryParse(widget.conversation.id) ?? 0]);
+          await db.delete(
+            ConversationEntity.tableName,
+            where: 'id = ?',
+            whereArgs: [int.tryParse(widget.conversation.id) ?? 0],
+          );
           await ConversationService().notifyConversationListChanged();
           if (mounted) {
             ScaffoldMessenger.of(
