@@ -171,7 +171,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         senderAvatar: map['sender_avatar']?.toString(),
         content: map['content']?.toString() ?? '',
         type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-        createdAt: parseUtcTime(map['created_at']?.toString()),
+        createdAt: parseUtcTime(map['created_at']?.toString()) ?? DateTime.now(),
         isRead: true,
         quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
         status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
@@ -646,17 +646,27 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
               // 时间分隔线
               final showTime =
-                  index == 0 || _messages[index].createdAt.difference(_messages[index - 1].createdAt).inMinutes > 1;
+                  index == 0 ||
+                  (_messages[index].createdAt ?? DateTime.now())
+                          .difference(_messages[index - 1].createdAt ?? DateTime.now())
+                          .inMinutes >
+                      1;
 
               // 群通知消息（系统消息/加入群，退出群）居中显示
               if (widget.conversation.isGroup && message.type == MessageType.groupNotify) {
                 return Column(
-                  children: [if (showTime) _buildTimeLabel(message.createdAt), _buildGroupNotifyMessage(message)],
+                  children: [
+                    if (showTime) _buildTimeLabel(message.createdAt ?? DateTime.now()),
+                    _buildGroupNotifyMessage(message),
+                  ],
                 );
               }
 
               return Column(
-                children: [if (showTime) _buildTimeLabel(message.createdAt), _buildMessageBubble(message, isMe)],
+                children: [
+                  if (showTime) _buildTimeLabel(message.createdAt ?? DateTime.now()),
+                  _buildMessageBubble(message, isMe),
+                ],
               );
             },
           ),

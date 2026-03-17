@@ -410,7 +410,7 @@ class DatabaseService {
     final results = await db.query(
       ConversationEntity.tableName,
       orderBy:
-          '${ConversationEntity.isPinned} DESC, COALESCE(${ConversationEntity.lastMessageAt}, ${ConversationEntity.updatedAt}) DESC',
+          '${ConversationEntity.isPinned} DESC, CASE WHEN ${ConversationEntity.lastMessageAt} IS NULL THEN 0 ELSE 1 END DESC, COALESCE(${ConversationEntity.lastMessageAt}, ${ConversationEntity.updatedAt}) DESC',
       limit: limit,
       offset: offset,
     );

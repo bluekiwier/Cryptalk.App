@@ -67,7 +67,7 @@ class ChatMessageDto {
       conversationType: json['conversationType'] ?? 0,
       senderId: json['senderId'] ?? '',
       receiverId: json['receiverId'] ?? '',
-      time: parseUtcTime(json['time']?.toString()),
+      time: parseUtcTime(json['time']?.toString()) ?? DateTime.now(),
       payload: ConversationMessagePayload.fromJson(json['payload'] ?? {}),
       isReceipt: json['isReceipt'] ?? false,
     );
@@ -656,7 +656,7 @@ class ChatService extends ChangeNotifier {
       conversationType: 2,
       senderId: senderId.toString(),
       receiverId: conversationId,
-      time: parseUtcTime(createdAtStr),
+      time: parseUtcTime(createdAtStr) ?? DateTime.now(),
       payload: ConversationMessagePayload(
         id: msgId.toString(),
         conversationId: conversationId,

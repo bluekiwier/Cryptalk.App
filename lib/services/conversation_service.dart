@@ -48,7 +48,7 @@ class ConversationService extends ChangeNotifier {
   Future<void> initialize() async {
     await _loadFromLocal();
     // 后台非阻塞同步网络
-    _syncFromNetwork();
+    // _syncFromNetwork();
     // 后台非阻塞同步会话数据（增量更新）
     syncConversations();
   }
@@ -237,14 +237,11 @@ class ConversationService extends ChangeNotifier {
         isPinned: old.isPinned,
         isMuted: old.isMuted,
         unreadCount: isInChatPage ? old.unreadCount : old.unreadCount + 1,
-        lastMessage: Message(
-          id: messageId.toString(),
-          content: messagePreview,
-          senderId: senderId.toString(),
-          type: _mapMessageType(messageType),
-          createdAt: parseUtcTime(messageAt),
-          isRead: isInChatPage ? true : false,
-        ),
+        lastSeqId: old.lastSeqId,
+        lastSenderId: senderId.toString(),
+        lastMessageId: messageId.toString(),
+        lastMessageAt: parseUtcTime(messageAt),
+        lastMessagePreview: messagePreview,
       );
       _conversations[idx] = updated;
       // 将该会话移至顶部（非置顶会话按时间排序）
@@ -275,7 +272,11 @@ class ConversationService extends ChangeNotifier {
         isPinned: old.isPinned,
         isMuted: old.isMuted,
         unreadCount: 0,
-        lastMessage: old.lastMessage,
+        lastSeqId: old.lastSeqId,
+        lastSenderId: old.lastSenderId,
+        lastMessageId: old.lastMessageId,
+        lastMessageAt: old.lastMessageAt,
+        lastMessagePreview: old.lastMessagePreview,
       );
       _updateFilteredConversations();
       notifyListeners();
@@ -825,17 +826,11 @@ class ConversationService extends ChangeNotifier {
       isPinned: (row['is_pinned'] as int? ?? 0) == 1,
       isMuted: (row['is_muted'] as int? ?? 0) == 1,
       unreadCount: row['unread_count'] as int? ?? 0,
-      lastMessage: row['last_message_id'] != null
-          ? Message(
-              id: row['last_message_id'].toString(),
-              content: row['last_message_preview'] as String? ?? '',
-              senderId: row['last_sender_id'].toString(),
-              seqId: row['last_seq_id']?.toString() ?? '',
-              type: MessageType.text,
-              createdAt: parseUtcTime(row['last_message_at']?.toString()),
-              isRead: true,
-            )
-          : null,
+      lastSeqId: row['last_seq_id']?.toString() ?? '',
+      lastSenderId: row['last_sender_id'].toString(),
+      lastMessageId: row['last_message_id'].toString(),
+      lastMessageAt: parseUtcTime(row['last_message_at']?.toString()),
+      lastMessagePreview: row['last_message_preview'] as String? ?? '',
     );
   }
 
@@ -869,15 +864,11 @@ class ConversationService extends ChangeNotifier {
       isPinned: dto.isPinned,
       isMuted: dto.isMuted,
       unreadCount: dto.unreadCount,
-      lastMessage: Message(
-        id: dto.lastMessageId.toString(),
-        content: dto.lastMessagePreview ?? '',
-        seqId: dto.lastSeqId.toString(),
-        senderId: dto.lastSenderId.toString(),
-        type: MessageType.text,
-        createdAt: dto.lastMessageAt ?? DateTime.now(),
-        isRead: true,
-      ),
+      lastSeqId: dto.lastSeqId,
+      lastSenderId: dto.lastSenderId,
+      lastMessageId: dto.lastMessageId,
+      lastMessageAt: dto.lastMessageAt,
+      lastMessagePreview: dto.lastMessagePreview ?? '',
     );
   }
 
@@ -885,8 +876,8 @@ class ConversationService extends ChangeNotifier {
   void _sortConversations() {
     _conversations.sort((a, b) {
       if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
-      final ta = a.lastMessage?.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final tb = b.lastMessage?.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final ta = a.lastMessageAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final tb = b.lastMessageAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return tb.compareTo(ta);
     });
   }
@@ -926,33 +917,5 @@ class ConversationService extends ChangeNotifier {
     _isSearching = false;
     _filteredConversations = _conversations;
     notifyListeners();
-  }
-
-  /// 消息类型映射
-  MessageType _mapMessageType(int type) {
-    switch (type) {
-      case 1:
-        return MessageType.image;
-      case 2:
-        return MessageType.audio;
-      case 3:
-        return MessageType.video;
-      case 4:
-        return MessageType.file;
-      case 5:
-        return MessageType.location;
-      case 6:
-        return MessageType.contact;
-      case 7:
-        return MessageType.hongBao;
-      case 8:
-        return MessageType.system;
-      case 9:
-        return MessageType.broadcast;
-      case 10:
-        return MessageType.groupNotify;
-      default:
-        return MessageType.text;
-    }
   }
 }

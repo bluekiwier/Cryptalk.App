@@ -13,7 +13,7 @@ class Message {
   final String? senderNickname;
   final String? senderAvatar;
   final MessageType type;
-  final DateTime createdAt;
+  final DateTime? createdAt;
   final bool isRead;
   final String? quoteId;
   final MessageStatus status;

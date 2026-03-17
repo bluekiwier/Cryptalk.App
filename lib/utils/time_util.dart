@@ -5,14 +5,14 @@ const _weekDays = {1: '星期一', 2: '星期二', 3: '星期三', 4: '星期四
 /// 将字符串格式的时间解析为 DateTime 对象
 /// @param timeStr 时间字符串（UTC格式）
 /// @return 解析后的 DateTime 对象
-DateTime parseUtcTime(String? timeStr) {
-  if (timeStr == null || timeStr.isEmpty) return DateTime.now();
+DateTime? parseUtcTime(String? timeStr) {
+  if (timeStr == null || timeStr.isEmpty) return null;
   var str = timeStr;
   if (!str.endsWith('Z') && !str.contains('+') && str.length > 10) {
     if (str.contains(' ')) str = str.replaceAll(' ', 'T');
     str = '${str}Z';
   }
-  return DateTime.tryParse(str) ?? DateTime.now();
+  return DateTime.tryParse(str);
 }
 
 /// 格式化消息时间

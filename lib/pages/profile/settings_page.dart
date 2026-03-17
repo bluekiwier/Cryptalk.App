@@ -39,13 +39,13 @@ class _SettingsPageState extends State<SettingsPage> {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
-                  gradient: Theme.of(context).brightness == Brightness.dark 
-                    ? LinearGradient(
-                        colors: [AppTheme.primaryDark, AppTheme.primaryColor],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      )
-                    : AppTheme.headerGradient,
+                  gradient: Theme.of(context).brightness == Brightness.dark
+                      ? LinearGradient(
+                          colors: [AppTheme.primaryDark, AppTheme.primaryColor],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        )
+                      : AppTheme.headerGradient,
                 ),
                 child: SafeArea(
                   child: Center(
@@ -77,8 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         iconColor: const Color(0xFF6C63FF),
                         label: '新消息通知',
                         value: _notificationEnabled,
-                        onChanged: (v) =>
-                            setState(() => _notificationEnabled = v),
+                        onChanged: (v) => setState(() => _notificationEnabled = v),
                       ),
                       _buildCardDivider(),
                       _buildSwitchItem(
@@ -111,11 +110,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // 隐私
                     _buildSectionTitle('隐私'),
                     _buildCard([
-                      _buildNavItem(
-                        icon: Icons.block_outlined,
-                        iconColor: const Color(0xFFEF4444),
-                        label: '黑名单',
-                      ),
+                      _buildNavItem(icon: Icons.block_outlined, iconColor: const Color(0xFFEF4444), label: '黑名单'),
                       _buildCardDivider(),
                       _buildNavItem(
                         icon: Icons.lock_outline_rounded,
@@ -179,11 +174,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.textSecondary,
-        ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
       ),
     );
   }
@@ -196,11 +187,7 @@ class _SettingsPageState extends State<SettingsPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark
-                  ? 0.2
-                  : 0.03,
-            ),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -221,58 +208,29 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
+        decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: iconColor, size: 20),
       ),
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-      ),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeTrackColor: AppTheme.primaryColor,
-      ),
+      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      trailing: Switch(value: value, onChanged: onChanged, activeTrackColor: AppTheme.primaryColor),
     );
   }
 
   /// 导航选项
-  Widget _buildNavItem({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    String? subtitle,
-  }) {
+  Widget _buildNavItem({required IconData icon, required Color iconColor, required String label, String? subtitle}) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
+        decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: iconColor, size: 20),
       ),
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-      ),
+      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (subtitle != null)
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textHint),
-            ),
+          if (subtitle != null) Text(subtitle, style: const TextStyle(fontSize: 13, color: AppTheme.textHint)),
           const SizedBox(width: 4),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppTheme.textHint,
-            size: 20,
-          ),
+          const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
         ],
       ),
       onTap: () {},
@@ -280,9 +238,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildCardDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 72),
-      child: Divider(height: 0.5),
-    );
+    return const Padding(padding: EdgeInsets.only(left: 72), child: Divider(height: 0.5));
   }
 }
