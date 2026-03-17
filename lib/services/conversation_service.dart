@@ -8,7 +8,6 @@ import '../models/conversation_detail_result.dart';
 import '../models/conversation_list_input_dto.dart';
 import '../models/conversation_list_result.dart';
 import '../utils/time_util.dart';
-import '../models/message.dart';
 import '../models/db/conversation_entity.dart';
 
 /// 会话服务（ChangeNotifier）

@@ -2328,12 +2328,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  void _showRedEnvelopeDialog() {}
-
-  void _shareLocation() {}
-
-  void _shareContact() {}
-
   void _startRecording() async {
     if (_isRecording) return;
 
@@ -2385,7 +2379,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _logger.d('停止录音: 发送语音, 时长=${result['duration']}, 大小=${result['size']}');
       _sendVoice(result['path'], result['duration'], result['size']);
     } else {
-      _logger.d('停止录音: 无结果，可能是录音时长太短');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('录音时间太短')));
       }
