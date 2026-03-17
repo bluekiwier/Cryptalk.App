@@ -10,7 +10,7 @@ class User {
   final String? inviteCode;
   final int? friendRequestCount; // 好友申请数量（可选）
   final int? messageUnreadCount; // 消息未读数量（可选）
-  final bool isOnline;
+  final bool onlineStatus;
   final DateTime? lastSeen;
 
   const User({
@@ -24,7 +24,7 @@ class User {
     this.inviteCode,
     this.friendRequestCount,
     this.messageUnreadCount,
-    this.isOnline = false,
+    this.onlineStatus = false,
     this.lastSeen,
   });
 
@@ -41,7 +41,7 @@ class User {
       inviteCode: json['inviteCode']?.toString(),
       friendRequestCount: json['friendRequestCount'] is int ? json['friendRequestCount'] : null,
       messageUnreadCount: json['messageUnreadCount'] is int ? json['messageUnreadCount'] : null,
-      isOnline: json['isOnline'] == 1 || json['isOnline'] == true,
+      onlineStatus: json['onlineStatus'] == 1 || json['onlineStatus'] == true,
     );
   }
 }

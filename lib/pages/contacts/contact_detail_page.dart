@@ -27,35 +27,19 @@ class ContactDetailPage extends StatelessWidget {
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
               ),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
               PopupMenuButton<String>(
                 offset: const Offset(0, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 icon: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.more_horiz_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
+                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
+                  child: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 18),
                 ),
                 onSelected: (value) => _handleMenuAction(context, value),
                 itemBuilder: (context) => [
@@ -63,11 +47,7 @@ class ContactDetailPage extends StatelessWidget {
                     value: 'block',
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.block_rounded,
-                          size: 20,
-                          color: AppTheme.textPrimary,
-                        ),
+                        Icon(Icons.block_rounded, size: 20, color: AppTheme.textPrimary),
                         SizedBox(width: 12),
                         Text('加入黑名单'),
                       ],
@@ -77,11 +57,7 @@ class ContactDetailPage extends StatelessWidget {
                     value: 'unblock',
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.person_add_disabled_rounded,
-                          size: 20,
-                          color: AppTheme.textPrimary,
-                        ),
+                        Icon(Icons.person_add_disabled_rounded, size: 20, color: AppTheme.textPrimary),
                         SizedBox(width: 12),
                         Text('移除黑名单'),
                       ],
@@ -92,16 +68,9 @@ class ContactDetailPage extends StatelessWidget {
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.delete_outline_rounded,
-                          size: 20,
-                          color: AppTheme.badgeColor,
-                        ),
+                        Icon(Icons.delete_outline_rounded, size: 20, color: AppTheme.badgeColor),
                         SizedBox(width: 12),
-                        Text(
-                          '删除好友',
-                          style: TextStyle(color: AppTheme.badgeColor),
-                        ),
+                        Text('删除好友', style: TextStyle(color: AppTheme.badgeColor)),
                       ],
                     ),
                   ),
@@ -110,47 +79,30 @@ class ContactDetailPage extends StatelessWidget {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                ),
+                decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
                     // 大头像
-                    AvatarWidget(
-                      avatar: user.avatar,
-                      size: 88,
-                      showOnline: true,
-                      isOnline: user.isOnline,
-                    ),
+                    AvatarWidget(avatar: user.avatar, size: 88, showOnline: true, onlineStatus: user.onlineStatus),
                     const SizedBox(height: 16),
                     // 名字
                     Text(
                       user.nickname,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     // 在线状态
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        user.isOnline ? '在线' : '离线',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
+                        user.onlineStatus ? '在线' : '离线',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                   ],
@@ -194,9 +146,7 @@ class ContactDetailPage extends StatelessWidget {
                 );
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatDetailPage(conversation: conv),
-                  ),
+                  MaterialPageRoute(builder: (context) => ChatDetailPage(conversation: conv)),
                 );
               },
             ),
@@ -211,11 +161,7 @@ class ContactDetailPage extends StatelessWidget {
           // ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildActionButton(
-              icon: Icons.phone_rounded,
-              label: '语音通话',
-              onTap: () {},
-            ),
+            child: _buildActionButton(icon: Icons.phone_rounded, label: '语音通话', onTap: () {}),
           ),
         ],
       ),
@@ -238,8 +184,7 @@ class ContactDetailPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: (isPrimary ? AppTheme.primaryColor : Colors.black)
-                  .withValues(alpha: isPrimary ? 0.2 : 0.04),
+              color: (isPrimary ? AppTheme.primaryColor : Colors.black).withValues(alpha: isPrimary ? 0.2 : 0.04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -247,11 +192,7 @@ class ContactDetailPage extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: isPrimary ? Colors.white : AppTheme.primaryColor,
-              size: 22,
-            ),
+            Icon(icon, color: isPrimary ? Colors.white : AppTheme.primaryColor, size: 22),
             const SizedBox(height: 4),
             Text(
               label,
@@ -275,32 +216,20 @@ class ContactDetailPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             '个人信息',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
           ),
           const SizedBox(height: 16),
           _buildInfoRow(
             Icons.edit_note_rounded,
             '个性签名',
-            (user.signature?.isNotEmpty == true)
-                ? user.signature!
-                : '这个人很懒，什么都没有留下。',
+            (user.signature?.isNotEmpty == true) ? user.signature! : '这个人很懒，什么都没有留下。',
           ),
           const Divider(height: 24),
           _buildInfoRow(Icons.phone_outlined, '手机号', user.mobile),
@@ -319,10 +248,7 @@ class ContactDetailPage extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textHint),
-            ),
+            Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textHint)),
             const SizedBox(height: 2),
             Text(
               (value == null || value.isEmpty) ? '未设置' : value,
@@ -341,26 +267,14 @@ class ContactDetailPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: [
           _buildActionRow(Icons.image_outlined, '发送图片'),
-          const Padding(
-            padding: EdgeInsets.only(left: 56),
-            child: Divider(height: 0.5),
-          ),
+          const Padding(padding: EdgeInsets.only(left: 56), child: Divider(height: 0.5)),
           _buildActionRow(Icons.folder_outlined, '发送文件'),
-          const Padding(
-            padding: EdgeInsets.only(left: 56),
-            child: Divider(height: 0.5),
-          ),
+          const Padding(padding: EdgeInsets.only(left: 56), child: Divider(height: 0.5)),
           _buildActionRow(Icons.location_on_outlined, '发送位置'),
         ],
       ),
@@ -371,11 +285,7 @@ class ContactDetailPage extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: AppTheme.primaryColor, size: 22),
       title: Text(label, style: const TextStyle(fontSize: 15)),
-      trailing: const Icon(
-        Icons.chevron_right_rounded,
-        color: AppTheme.textHint,
-        size: 20,
-      ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
       onTap: () {},
     );
   }
@@ -437,10 +347,7 @@ class ContactDetailPage extends StatelessWidget {
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -457,11 +364,7 @@ class ContactDetailPage extends StatelessWidget {
   /// 显示提示信息
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)),
     );
   }
 }

@@ -74,18 +74,13 @@ class _ContactsPageState extends State<ContactsPage> {
     setState(() => _isLoading = true);
 
     // 并行请求好友列表和申请数量
-    final results = await Future.wait([
-      _friendService.getFriendList(),
-      _friendService.getRequestsCount(),
-    ]);
+    final results = await Future.wait([_friendService.getFriendList(), _friendService.getRequestsCount()]);
 
     final friendListData = results[0] as List<Map<String, dynamic>>;
     final count = results[1] as int;
 
     if (mounted) {
-      final friends = friendListData
-          .map((item) => User.fromJson(item))
-          .toList();
+      final friends = friendListData.map((item) => User.fromJson(item)).toList();
 
       setState(() {
         _friends = friends;
@@ -186,11 +181,7 @@ class _ContactsPageState extends State<ContactsPage> {
               _buildAppBar(),
               // 搜索栏
               SliverToBoxAdapter(
-                child: CustomSearchBar(
-                  hintText: '搜索联系人',
-                  readOnly: false,
-                  onChanged: _onSearchChanged,
-                ),
+                child: CustomSearchBar(hintText: '搜索联系人', readOnly: false, onChanged: _onSearchChanged),
               ),
               // 快捷入口
               SliverToBoxAdapter(child: _buildQuickActions(context)),
@@ -203,10 +194,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   child: Center(
                     child: Text(
                       _isLoading ? '正在加载...' : '共 ${_friends.length} 位联系人',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.textHint,
-                      ),
+                      style: const TextStyle(fontSize: 13, color: AppTheme.textHint),
                     ),
                   ),
                 ),
@@ -219,10 +207,7 @@ class _ContactsPageState extends State<ContactsPage> {
               top: 0,
               bottom: 0,
               child: Center(
-                child: _AlphabetIndexBar(
-                  indexList: _indexList,
-                  onLetterSelected: _scrollToLetter,
-                ),
+                child: _AlphabetIndexBar(indexList: _indexList, onLetterSelected: _scrollToLetter),
               ),
             ),
         ],
@@ -247,23 +232,13 @@ class _ContactsPageState extends State<ContactsPage> {
                 children: [
                   const Text(
                     '通讯录',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                   const Spacer(),
                   // 扫码按钮
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ScannerPage(),
-                        ),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerPage()));
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -271,23 +246,14 @@ class _ContactsPageState extends State<ContactsPage> {
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.qr_code_scanner_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 20),
                     ),
                   ),
                   const SizedBox(width: 10),
                   // 添加好友按钮
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AddFriendPage(),
-                        ),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFriendPage()));
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -295,11 +261,7 @@ class _ContactsPageState extends State<ContactsPage> {
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.person_add_outlined,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      child: const Icon(Icons.person_add_outlined, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -314,11 +276,7 @@ class _ContactsPageState extends State<ContactsPage> {
   /// 快捷入口：新朋友、群聊、标签
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
-      {
-        'icon': Icons.person_add_alt_1_rounded,
-        'label': '新朋友',
-        'badge': _requestCount,
-      },
+      {'icon': Icons.person_add_alt_1_rounded, 'label': '新朋友', 'badge': _requestCount},
       // {'icon': Icons.group_rounded, 'label': '群聊', 'badge': 0},
       // {'icon': Icons.label_rounded, 'label': '标签', 'badge': 0},
     ];
@@ -330,11 +288,7 @@ class _ContactsPageState extends State<ContactsPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark
-                  ? 0.2
-                  : 0.1,
-            ),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -348,15 +302,8 @@ class _ContactsPageState extends State<ContactsPage> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.headerGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    action['icon'] as IconData,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  decoration: BoxDecoration(gradient: AppTheme.headerGradient, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(action['icon'] as IconData, color: Colors.white, size: 20),
                 ),
                 title: Text(
                   action['label'] as String,
@@ -371,48 +318,27 @@ class _ContactsPageState extends State<ContactsPage> {
                   children: [
                     if ((action['badge'] as int) > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.badgeColor,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: AppTheme.badgeColor, borderRadius: BorderRadius.circular(10)),
                         child: Text(
                           '${action['badge']}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ),
                     const SizedBox(width: 4),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppTheme.textHint,
-                      size: 20,
-                    ),
+                    const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
                   ],
                 ),
                 onTap: () async {
                   if (action['label'] == '新朋友') {
                     // 从新朋友页面返回时刷新数据
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NewFriendsPage()),
-                    );
+                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const NewFriendsPage()));
                     // 返回后刷新好友列表和申请数量
                     _loadData();
                   }
                 },
               ),
-              if (!isLast)
-                const Padding(
-                  padding: EdgeInsets.only(left: 72),
-                  child: Divider(height: 1),
-                ),
+              if (!isLast) const Padding(padding: EdgeInsets.only(left: 72), child: Divider(height: 1)),
             ],
           );
         }).toList(),
@@ -437,16 +363,11 @@ class _ContactsPageState extends State<ContactsPage> {
                     height: 32,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppTheme.primaryColor,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     ),
                   ),
                   SizedBox(height: 12),
-                  Text(
-                    '正在加载好友列表...',
-                    style: TextStyle(color: AppTheme.textHint, fontSize: 13),
-                  ),
+                  Text('正在加载好友列表...', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
                 ],
               ),
             ),
@@ -465,25 +386,14 @@ class _ContactsPageState extends State<ContactsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.people_outline_rounded,
-                    size: 64,
-                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                  ),
+                  Icon(Icons.people_outline_rounded, size: 64, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
                   const SizedBox(height: 12),
                   const Text(
                     '暂无好友',
-                    style: TextStyle(
-                      color: AppTheme.textHint,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(color: AppTheme.textHint, fontSize: 15, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    '点击右上角添加好友',
-                    style: TextStyle(color: AppTheme.textHint, fontSize: 13),
-                  ),
+                  const Text('点击右上角添加好友', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
                 ],
               ),
             ),
@@ -505,11 +415,7 @@ class _ContactsPageState extends State<ContactsPage> {
             color: Theme.of(context).scaffoldBackgroundColor,
             child: Text(
               tag,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textSecondary,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
             ),
           ),
         ),
@@ -522,10 +428,7 @@ class _ContactsPageState extends State<ContactsPage> {
         SliverList(
           delegate: SliverChildBuilderDelegate((context, index) {
             final user = sectionFriends[index];
-            return _ContactTile(
-              user: user,
-              onTap: () => _openContact(context, user.id),
-            );
+            return _ContactTile(user: user, onTap: () => _openContact(context, user.id));
           }, childCount: sectionFriends.length),
         ),
       );
@@ -539,8 +442,7 @@ class _ContactsPageState extends State<ContactsPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) =>
-          const Center(child: CircularProgressIndicator(color: Colors.white)),
+      builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
 
     try {
@@ -552,9 +454,7 @@ class _ContactsPageState extends State<ContactsPage> {
         if (context.mounted) {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => ContactDetailPage(user: user),
-            ),
+            MaterialPageRoute(builder: (context) => ContactDetailPage(user: user)),
           );
           if (result == true) {
             _loadData();
@@ -562,17 +462,13 @@ class _ContactsPageState extends State<ContactsPage> {
         }
       } else {
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('获取用户信息失败')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取用户信息失败')));
         }
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // 确保关闭加载提示
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('网络错误，请稍后重试')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('网络错误，请稍后重试')));
       }
     }
   }
@@ -595,20 +491,13 @@ class _ContactTile extends StatelessWidget {
         height: 60,
         child: Row(
           children: [
-            AvatarWidget(
-              avatar: user.avatar,
-              size: 44,
-              showOnline: true,
-              isOnline: user.isOnline,
-            ),
+            AvatarWidget(avatar: user.avatar, size: 44, showOnline: true, onlineStatus: user.onlineStatus),
             // 头像与文字的间距
             const SizedBox(width: 14),
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppTheme.dividerColor, width: 1),
-                  ),
+                  border: Border(bottom: BorderSide(color: AppTheme.dividerColor, width: 1)),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -622,15 +511,11 @@ class _ContactTile extends StatelessWidget {
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-                    if (user.signature != null &&
-                        user.signature!.isNotEmpty) ...[
+                    if (user.signature != null && user.signature!.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         user.signature!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textHint,
-                        ),
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textHint),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -639,10 +524,7 @@ class _ContactTile extends StatelessWidget {
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(left: 14),
-              child: Divider(height: 0.5),
-            ),
+            Padding(padding: EdgeInsets.only(left: 14), child: Divider(height: 0.5)),
           ],
         ),
       ),
@@ -655,10 +537,7 @@ class _AlphabetIndexBar extends StatefulWidget {
   final List<String> indexList;
   final ValueChanged<String> onLetterSelected;
 
-  const _AlphabetIndexBar({
-    required this.indexList,
-    required this.onLetterSelected,
-  });
+  const _AlphabetIndexBar({required this.indexList, required this.onLetterSelected});
 
   @override
   State<_AlphabetIndexBar> createState() => _AlphabetIndexBarState();
@@ -678,9 +557,7 @@ class _AlphabetIndexBarState extends State<_AlphabetIndexBar> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
         decoration: BoxDecoration(
-          color: _activeLetter != null
-              ? Colors.black.withValues(alpha: 0.05)
-              : Colors.transparent,
+          color: _activeLetter != null ? Colors.black.withValues(alpha: 0.05) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -714,10 +591,7 @@ class _AlphabetIndexBarState extends State<_AlphabetIndexBar> {
   void _handleTouch(Offset localPosition) {
     final RenderBox box = context.findRenderObject() as RenderBox;
     final double itemHeight = box.size.height / widget.indexList.length;
-    final int index = (localPosition.dy / itemHeight).floor().clamp(
-      0,
-      widget.indexList.length - 1,
-    );
+    final int index = (localPosition.dy / itemHeight).floor().clamp(0, widget.indexList.length - 1);
 
     final letter = widget.indexList[index];
     if (letter != _activeLetter) {

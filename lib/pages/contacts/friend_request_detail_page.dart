@@ -14,12 +14,10 @@ class FriendRequestDetailPage extends StatefulWidget {
   const FriendRequestDetailPage({super.key, required this.request});
 
   @override
-  State<FriendRequestDetailPage> createState() =>
-      _FriendRequestDetailPageState();
+  State<FriendRequestDetailPage> createState() => _FriendRequestDetailPageState();
 }
 
-class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
-    with SingleTickerProviderStateMixin {
+class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with SingleTickerProviderStateMixin {
   final FriendService _friendService = FriendService();
 
   /// 用户详情数据
@@ -42,18 +40,12 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
-          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-        );
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
     _loadUserProfile();
   }
 
@@ -120,12 +112,8 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
         SnackBar(
           content: Text(result.message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: result.success
-              ? AppTheme.accentColor
-              : AppTheme.badgeColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          backgroundColor: result.success ? AppTheme.accentColor : AppTheme.badgeColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
 
@@ -146,36 +134,19 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            content: Text(
-              content,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            content: Text(content, style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text(
-                  '取消',
-                  style: TextStyle(color: AppTheme.textHint),
-                ),
+                child: const Text('取消', style: TextStyle(color: AppTheme.textHint)),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(
                   confirmText,
-                  style: TextStyle(
-                    color: confirmColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: confirmColor, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -212,21 +183,12 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
               const Text(
                 '申请详情',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
               const Spacer(),
               const SizedBox(width: 48),
@@ -249,16 +211,11 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
               height: 36,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppTheme.primaryColor,
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
               ),
             ),
             SizedBox(height: 16),
-            Text(
-              '正在加载用户资料...',
-              style: TextStyle(color: AppTheme.textHint, fontSize: 14),
-            ),
+            Text('正在加载用户资料...', style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
           ],
         ),
       );
@@ -269,35 +226,18 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 56,
-              color: AppTheme.textHint.withValues(alpha: 0.5),
-            ),
+            Icon(Icons.cloud_off_rounded, size: 56, color: AppTheme.textHint.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: AppTheme.textHint, fontSize: 14),
-            ),
+            Text(_errorMessage!, style: const TextStyle(color: AppTheme.textHint, fontSize: 14)),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: _loadUserProfile,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.headerGradient,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                decoration: BoxDecoration(gradient: AppTheme.headerGradient, borderRadius: BorderRadius.circular(20)),
                 child: const Text(
                   '重新加载',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -329,8 +269,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
 
   /// 构建头像卡片
   Widget _buildAvatarCard() {
-    final nickname =
-        _userProfile?['nickname']?.toString() ?? widget.request.nickname;
+    final nickname = _userProfile?['nickname']?.toString() ?? widget.request.nickname;
     final avatar = _userProfile?['avatar']?.toString() ?? widget.request.avatar;
 
     return Container(
@@ -340,11 +279,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -371,20 +306,16 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: _userProfile?['isOnline'] == 1
-                      ? AppTheme.onlineColor
-                      : AppTheme.offlineColor,
+                  color: _userProfile?['onlineStatus'] == 1 ? AppTheme.onlineColor : AppTheme.offlineColor,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 6),
               Text(
-                _userProfile?['isOnline'] == 1 ? '在线' : '离线',
+                _userProfile?['onlineStatus'] == 1 ? '在线' : '离线',
                 style: TextStyle(
                   fontSize: 13,
-                  color: _userProfile?['isOnline'] == 1
-                      ? AppTheme.onlineColor
-                      : AppTheme.textHint,
+                  color: _userProfile?['onlineStatus'] == 1 ? AppTheme.onlineColor : AppTheme.textHint,
                 ),
               ),
             ],
@@ -401,17 +332,10 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryColor.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
+            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 6)),
           ],
         ),
-        child: AvatarWidget(
-          avatar: avatar.isNotEmpty ? avatar : '👤',
-          size: 88,
-        ),
+        child: AvatarWidget(avatar: avatar.isNotEmpty ? avatar : '👤', size: 88),
       );
     }
     return Container(
@@ -420,11 +344,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 6)),
         ],
       ),
       child: ClipRRect(
@@ -432,8 +352,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
         child: Image.network(
           avatar,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              AvatarWidget(avatar: '👤', size: 88),
+          errorBuilder: (context, error, stackTrace) => AvatarWidget(avatar: '👤', size: 88),
         ),
       ),
     );
@@ -441,8 +360,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
 
   /// 构建信息卡片
   Widget _buildInfoCard() {
-    final account =
-        _userProfile?['account']?.toString() ?? widget.request.account;
+    final account = _userProfile?['account']?.toString() ?? widget.request.account;
     final email = _userProfile?['email']?.toString() ?? '';
     final mobile = _userProfile?['mobile']?.toString() ?? '';
     final inviteCode = _userProfile?['inviteCode']?.toString() ?? '';
@@ -453,13 +371,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,33 +384,22 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
                 Container(
                   width: 4,
                   height: 16,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.headerGradient,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(gradient: AppTheme.headerGradient, borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(width: 8),
                 const Text(
                   '基本信息',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                 ),
               ],
             ),
           ),
           // 信息列表
           _buildInfoRow(Icons.account_circle_outlined, '账号', account),
-          if (email.isNotEmpty)
-            _buildInfoRow(Icons.email_outlined, '邮箱', email),
-          if (mobile.isNotEmpty)
-            _buildInfoRow(Icons.phone_outlined, '手机', mobile),
-          if (inviteCode.isNotEmpty)
-            _buildInfoRow(Icons.card_giftcard_outlined, '邀请码', inviteCode),
-          if (createdAt.isNotEmpty)
-            _buildInfoRow(Icons.access_time_rounded, '注册时间', createdAt),
+          if (email.isNotEmpty) _buildInfoRow(Icons.email_outlined, '邮箱', email),
+          if (mobile.isNotEmpty) _buildInfoRow(Icons.phone_outlined, '手机', mobile),
+          if (inviteCode.isNotEmpty) _buildInfoRow(Icons.card_giftcard_outlined, '邀请码', inviteCode),
+          if (createdAt.isNotEmpty) _buildInfoRow(Icons.access_time_rounded, '注册时间', createdAt),
           const SizedBox(height: 12),
         ],
       ),
@@ -524,21 +425,11 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textHint,
-                  ),
-                ),
+                Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textHint)),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppTheme.textPrimary),
                 ),
               ],
             ),
@@ -551,20 +442,11 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
   /// 构建底部操作按钮区
   Widget _buildBottomActions() {
     return Container(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
-      ),
+      padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: MediaQuery.of(context).padding.bottom + 16),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2)),
         ],
       ),
       child: _isProcessing
@@ -574,9 +456,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
                 height: 32,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.primaryColor,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                 ),
               ),
             )
@@ -589,10 +469,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
                     icon: Icons.block_rounded,
                     bgColor: Colors.grey.shade100,
                     textColor: Colors.red.shade400,
-                    onTap: () => _handleAction(
-                      'block',
-                      _friendService.blockFriendRequest,
-                    ),
+                    onTap: () => _handleAction('block', _friendService.blockFriendRequest),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -603,10 +480,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
                     icon: Icons.close_rounded,
                     bgColor: Colors.grey.shade100,
                     textColor: AppTheme.textSecondary,
-                    onTap: () => _handleAction(
-                      'disagree',
-                      _friendService.disagreeFriendRequest,
-                    ),
+                    onTap: () => _handleAction('disagree', _friendService.disagreeFriendRequest),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -616,10 +490,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
                   child: _buildGradientActionButton(
                     label: '接受',
                     icon: Icons.check_rounded,
-                    onTap: () => _handleAction(
-                      'agree',
-                      _friendService.agreeFriendRequest,
-                    ),
+                    onTap: () => _handleAction('agree', _friendService.agreeFriendRequest),
                   ),
                 ),
               ],
@@ -640,10 +511,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(14),
-        ),
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(14)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -651,11 +519,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
             ),
           ],
         ),
@@ -664,11 +528,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
   }
 
   /// 构建渐变操作按钮（接受按钮使用）
-  Widget _buildGradientActionButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildGradientActionButton({required String label, required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -677,11 +537,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
           gradient: AppTheme.headerGradient,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryColor.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
@@ -691,11 +547,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage>
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
             ),
           ],
         ),

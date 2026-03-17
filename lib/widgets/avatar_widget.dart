@@ -7,7 +7,7 @@ class AvatarWidget extends StatelessWidget {
   final String avatar;
   final double size;
   final bool showOnline;
-  final bool isOnline;
+  final bool onlineStatus;
   final bool isGroup;
 
   const AvatarWidget({
@@ -15,7 +15,7 @@ class AvatarWidget extends StatelessWidget {
     required this.avatar,
     this.size = 48,
     this.showOnline = false,
-    this.isOnline = false,
+    this.onlineStatus = false,
     this.isGroup = false,
   });
 
@@ -52,11 +52,11 @@ class AvatarWidget extends StatelessWidget {
               width: size * 0.25,
               height: size * 0.25,
               decoration: BoxDecoration(
-                color: isOnline ? AppTheme.onlineColor : AppTheme.offlineColor,
+                color: onlineStatus ? AppTheme.onlineColor : AppTheme.offlineColor,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
-                  if (isOnline)
+                  if (onlineStatus)
                     BoxShadow(color: AppTheme.onlineColor.withValues(alpha: 0.4), blurRadius: 4, spreadRadius: 1),
                 ],
               ),
