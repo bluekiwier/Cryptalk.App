@@ -11,6 +11,7 @@ import 'conversation_service.dart';
 import '../models/db/conversation_entity.dart';
 import '../models/db/conversation_message_entity.dart';
 import '../models/send_message_result.dart';
+import '../utils/time_util.dart';
 
 /// 统一消息模型
 class MessageResult {
@@ -66,7 +67,7 @@ class ChatMessageDto {
       conversationType: json['conversationType'] ?? 0,
       senderId: json['senderId'] ?? '',
       receiverId: json['receiverId'] ?? '',
-      time: DateTime.parse(json['time'] ?? ''),
+      time: parseUtcTime(json['time']?.toString()),
       payload: ConversationMessagePayload.fromJson(json['payload'] ?? {}),
       isReceipt: json['isReceipt'] ?? false,
     );
@@ -368,6 +369,7 @@ class ChatService extends ChangeNotifier {
         'content': payload.content,
         'type': payload.type,
         'status': payload.status,
+        'seq_id': int.tryParse(payload.seqId) ?? 0,
         'created_at': createdAt,
       });
 
@@ -641,7 +643,7 @@ class ChatService extends ChangeNotifier {
     final msgId = int.tryParse(payload['id']?.toString() ?? '') ?? 0;
     final senderId = int.tryParse(payload['senderId']?.toString() ?? '') ?? 0;
     final content = payload['content']?.toString() ?? '';
-    final createdAtStr = payload['createdAt']?.toString() ?? DateTime.now().toIso8601String();
+    final createdAtStr = payload['createdAt']?.toString() ?? DateTime.now().toUtc().toIso8601String();
     final convId = int.tryParse(conversationId) ?? 0;
 
     if (msgId == 0 || convId == 0) {
@@ -654,7 +656,7 @@ class ChatService extends ChangeNotifier {
       conversationType: 2,
       senderId: senderId.toString(),
       receiverId: conversationId,
-      time: DateTime.tryParse(createdAtStr) ?? DateTime.now(),
+      time: parseUtcTime(createdAtStr),
       payload: ConversationMessagePayload(
         id: msgId.toString(),
         conversationId: conversationId,
@@ -690,6 +692,7 @@ class ChatService extends ChangeNotifier {
         'content': content,
         'type': notifyMessage.payload.type,
         'status': notifyMessage.payload.status,
+        'seq_id': int.tryParse(payload['seqId']?.toString() ?? '') ?? 0,
         'created_at': createdAtStr,
       });
 

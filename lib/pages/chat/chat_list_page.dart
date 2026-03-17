@@ -1,3 +1,4 @@
+import 'package:cryptalk/utils/time_util.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/conversation.dart';
@@ -5,11 +6,11 @@ import '../../widgets/avatar_widget.dart';
 import '../../widgets/search_bar_widget.dart';
 import '../../services/conversation_service.dart';
 import '../../services/account_service.dart';
-import 'chat_detail_page.dart';
 import '../contacts/scanner_page.dart';
 import '../contacts/add_friend_page.dart';
 import '../contacts/select_friends_page.dart';
 import '../profile/my_qr_code_page.dart';
+import 'chat_detail_page.dart';
 
 /// 聊天列表页面
 /// 策略：冷启动 < 100ms（本地 DB），60fps（ListView.builder），实时未读（ChangeNotifier）
@@ -24,6 +25,7 @@ class _ChatListPageState extends State<ChatListPage> {
   final AccountService _accountService = AccountService();
   final ConversationService _conversationService = ConversationService();
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
 
   // 是否正在初始化（首次从 DB 加载）
   bool _initializing = true;
@@ -33,6 +35,7 @@ class _ChatListPageState extends State<ChatListPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _conversationService.addListener(_onServiceChanged);
+    _searchController.addListener(_onSearchChanged);
     _init();
   }
 
@@ -41,7 +44,14 @@ class _ChatListPageState extends State<ChatListPage> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _conversationService.removeListener(_onServiceChanged);
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
     super.dispose();
+  }
+
+  /// 搜索文本变化时触发
+  void _onSearchChanged() {
+    _conversationService.searchConversations(_searchController.text);
   }
 
   /// 初始化：加载本地 DB（秒开），后台同步网络
@@ -68,7 +78,9 @@ class _ChatListPageState extends State<ChatListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final conversations = _conversationService.conversations;
+    final filteredConversations = _conversationService.filteredConversations;
+    final isSearching = _conversationService.isSearching;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
@@ -81,7 +93,17 @@ class _ChatListPageState extends State<ChatListPage> {
             // 顶部渐变 AppBar
             _buildAppBar(context),
             // 搜索栏
-            const SliverToBoxAdapter(child: CustomSearchBar(hintText: '搜索聊天记录')),
+            SliverToBoxAdapter(
+              child: CustomSearchBar(
+                hintText: '搜索会话',
+                controller: _searchController,
+                readOnly: false,
+                autofocus: false,
+                onSubmitted: (value) {
+                  // 搜索
+                },
+              ),
+            ),
             // 内容区
             if (_initializing)
               // 首次加载（本地 DB 还没完成）—— 极短，通常 < 50ms
@@ -91,12 +113,12 @@ class _ChatListPageState extends State<ChatListPage> {
                   child: Center(child: CircularProgressIndicator()),
                 ),
               )
-            else if (conversations.isEmpty)
-              const SliverToBoxAdapter(
+            else if (filteredConversations.isEmpty)
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.only(top: 100),
+                  padding: const EdgeInsets.only(top: 100),
                   child: Center(
-                    child: Text('暂无聊天会话', style: TextStyle(color: AppTheme.textHint)),
+                    child: Text(isSearching ? '未找到相关会话' : '暂无聊天会话', style: const TextStyle(color: AppTheme.textHint)),
                   ),
                 ),
               )
@@ -104,22 +126,22 @@ class _ChatListPageState extends State<ChatListPage> {
               SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   // 末尾额外的加载指示器 item
-                  if (index == conversations.length) {
+                  if (index == filteredConversations.length) {
                     return _buildLoadMoreIndicator();
                   }
                   return _ConversationTile(
-                    key: ValueKey(conversations[index].id),
-                    conversation: conversations[index],
+                    key: ValueKey(filteredConversations[index].id),
+                    conversation: filteredConversations[index],
                     onTap: () async {
                       // 进入聊天页时清零未读数
-                      await _conversationService.clearUnread(conversations[index].id);
+                      await _conversationService.clearUnread(filteredConversations[index].id);
                       if (!mounted) return;
                       // 用局部变量捕获 context，避免跨异步使用
                       // ignore: use_build_context_synchronously
-                      await _openChat(context, conversations[index]);
+                      await _openChat(context, filteredConversations[index]);
                     },
                   );
-                }, childCount: conversations.length + 1),
+                }, childCount: filteredConversations.length + 1),
               ),
             // 底部间距
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
@@ -340,7 +362,7 @@ class _ConversationTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  _formatTime(conversation.lastMessage?.createdAt),
+                  formatTime(conversation.lastMessage?.createdAt),
                   style: TextStyle(
                     fontSize: 11,
                     color: conversation.unreadCount > 0 ? AppTheme.primaryColor : AppTheme.textHint,
@@ -367,18 +389,5 @@ class _ConversationTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime? time) {
-    if (time == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(time);
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) {
-      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    }
-    if (diff.inDays < 7) return '${diff.inDays}天前';
-    return '${time.month}/${time.day}';
   }
 }

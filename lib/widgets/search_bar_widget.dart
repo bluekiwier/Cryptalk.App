@@ -10,6 +10,7 @@ class CustomSearchBar extends StatelessWidget {
   final VoidCallback? onTap;
   final ValueChanged<String>? onSubmitted;
   final bool readOnly;
+  final bool autofocus;
 
   const CustomSearchBar({
     super.key,
@@ -19,6 +20,7 @@ class CustomSearchBar extends StatelessWidget {
     this.onSubmitted,
     this.onTap,
     this.readOnly = true,
+    this.autofocus = false,
   });
 
   @override
@@ -32,11 +34,7 @@ class CustomSearchBar extends StatelessWidget {
           color: AppTheme.dividerColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
           ],
         ),
         child: Row(
@@ -45,13 +43,10 @@ class CustomSearchBar extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: readOnly
-                  ? Text(
-                      hintText,
-                      style: TextStyle(color: AppTheme.textHint, fontSize: 14),
-                    )
+                  ? Text(hintText, style: TextStyle(color: AppTheme.textHint, fontSize: 14))
                   : TextField(
                       controller: controller,
-                      autofocus: !readOnly,
+                      autofocus: autofocus,
                       onChanged: onChanged,
                       onSubmitted: onSubmitted,
                       textInputAction: TextInputAction.search,
@@ -74,21 +69,14 @@ class CustomSearchBar extends StatelessWidget {
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
                     '搜索',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

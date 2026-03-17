@@ -7,6 +7,7 @@ import '../models/conversation.dart';
 import '../models/conversation_detail_result.dart';
 import '../models/conversation_list_input_dto.dart';
 import '../models/conversation_list_result.dart';
+import '../utils/time_util.dart';
 import '../models/message.dart';
 import '../models/db/conversation_entity.dart';
 
@@ -23,6 +24,18 @@ class ConversationService extends ChangeNotifier {
   // 内存中的会话列表（排序后）
   List<Conversation> _conversations = [];
   List<Conversation> get conversations => List.unmodifiable(_conversations);
+
+  // 搜索过滤的会话列表
+  List<Conversation> _filteredConversations = [];
+  List<Conversation> get filteredConversations => List.unmodifiable(_filteredConversations);
+
+  // 是否正在搜索
+  bool _isSearching = false;
+  bool get isSearching => _isSearching;
+
+  // 搜索关键词
+  String _searchKeyword = '';
+  String get searchKeyword => _searchKeyword;
 
   // 是否有更多（网络分页）
   bool _hasMore = false;
@@ -46,6 +59,7 @@ class ConversationService extends ChangeNotifier {
       final rows = await _db.queryConversations(limit: limit, offset: 0);
       final list = rows.map(_rowToConversation).toList();
       _conversations = list;
+      _updateFilteredConversations();
       notifyListeners();
       _logger.d('本地 DB 加载会话 ${list.length} 条');
     } catch (e) {
@@ -153,6 +167,7 @@ class ConversationService extends ChangeNotifier {
         final existingIds = _conversations.map((c) => c.id).toSet();
         final uniqueNewItems = newItems.where((c) => !existingIds.contains(c.id)).toList();
         _conversations = [..._conversations, ...uniqueNewItems];
+        _updateFilteredConversations();
         _hasMore = result.hasMore;
         _nextCursor = result.nextCursor;
         _logger.d('加载更多 ${newItems.length} 条，hasMore=$_hasMore');
@@ -227,13 +242,14 @@ class ConversationService extends ChangeNotifier {
           content: messagePreview,
           senderId: senderId.toString(),
           type: _mapMessageType(messageType),
-          createdAt: DateTime.tryParse(messageAt) ?? DateTime.now(),
+          createdAt: parseUtcTime(messageAt),
           isRead: isInChatPage ? true : false,
         ),
       );
       _conversations[idx] = updated;
       // 将该会话移至顶部（非置顶会话按时间排序）
       _sortConversations();
+      _updateFilteredConversations();
       notifyListeners();
     } else {
       // 不在内存列表中，重新从 DB 加载
@@ -261,6 +277,7 @@ class ConversationService extends ChangeNotifier {
         unreadCount: 0,
         lastMessage: old.lastMessage,
       );
+      _updateFilteredConversations();
       notifyListeners();
     }
   }
@@ -815,9 +832,7 @@ class ConversationService extends ChangeNotifier {
               senderId: row['last_sender_id'].toString(),
               seqId: row['last_seq_id']?.toString() ?? '',
               type: MessageType.text,
-              createdAt: row['last_message_at'] != null
-                  ? DateTime.tryParse(row['last_message_at'].toString()) ?? DateTime.now()
-                  : DateTime.now(),
+              createdAt: parseUtcTime(row['last_message_at']?.toString()),
               isRead: true,
             )
           : null,
@@ -874,6 +889,43 @@ class ConversationService extends ChangeNotifier {
       final tb = b.lastMessage?.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return tb.compareTo(ta);
     });
+  }
+
+  /// 同步搜索过滤列表
+  void _updateFilteredConversations() {
+    if (_isSearching && _searchKeyword.isNotEmpty) {
+      final lowerKeyword = _searchKeyword.toLowerCase();
+      _filteredConversations = _conversations.where((c) {
+        return c.title.toLowerCase().contains(lowerKeyword) || c.chatUserId.contains(lowerKeyword);
+      }).toList();
+    } else {
+      _filteredConversations = List.from(_conversations);
+    }
+  }
+
+  /// 搜索会话
+  /// [keyword] 搜索关键词
+  void searchConversations(String keyword) {
+    _searchKeyword = keyword;
+    if (keyword.isEmpty) {
+      _isSearching = false;
+      _filteredConversations = _conversations;
+    } else {
+      _isSearching = true;
+      final lowerKeyword = keyword.toLowerCase();
+      _filteredConversations = _conversations.where((c) {
+        return c.title.toLowerCase().contains(lowerKeyword) || c.chatUserId.contains(lowerKeyword);
+      }).toList();
+    }
+    notifyListeners();
+  }
+
+  /// 清除搜索
+  void clearSearch() {
+    _searchKeyword = '';
+    _isSearching = false;
+    _filteredConversations = _conversations;
+    notifyListeners();
   }
 
   /// 消息类型映射

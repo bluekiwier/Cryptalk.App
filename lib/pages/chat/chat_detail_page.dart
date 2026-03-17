@@ -23,6 +23,7 @@ import '../../services/conversation_service.dart';
 import '../../services/message_service.dart';
 import '../../services/database_service.dart';
 import '../../services/file_service.dart';
+import '../../utils/time_util.dart';
 import '../../services/voice_service.dart';
 import 'chat_settings_page.dart';
 
@@ -36,8 +37,6 @@ class ChatDetailPage extends StatefulWidget {
   @override
   State<ChatDetailPage> createState() => _ChatDetailPageState();
 }
-
-const _weekDays = {1: '星期一', 2: '星期二', 3: '星期三', 4: '星期四', 5: '星期五', 6: '星期六', 7: '星期日'};
 
 class _ChatDetailPageState extends State<ChatDetailPage> {
   final TextEditingController _messageController = TextEditingController();
@@ -139,10 +138,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         final quoteId = quoteIdStr.isNotEmpty ? (int.tryParse(quoteIdStr) ?? 0) : 0;
         final seqId = int.tryParse(chatMessage.payload.seqId) ?? 0;
         await DatabaseService().insertMessage({
-          'id': chatMessage.payload.id,
+          'id': int.tryParse(chatMessage.payload.id) ?? 0,
           'conversation_id': int.parse(widget.conversation.id),
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
-          'sender_id': chatMessage.payload.senderId,
+          'sender_id': int.tryParse(chatMessage.payload.senderId) ?? 0,
           'sender_nickname': chatMessage.payload.senderNickname,
           'sender_avatar': chatMessage.payload.senderAvatar,
           'quote_id': quoteId,
@@ -159,32 +158,29 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final messageMaps = await DatabaseService().getMessages(int.parse(widget.conversation.id), limit: 1000);
     _logger.d('从数据库读取到 ${messageMaps.length} 条消息');
 
-    final updatedMessages = messageMaps
-        .map((map) {
-          final quoteIdInt = map['quote_id'] as int?;
-          final statusInt = map['status'] as int? ?? 0;
-          final seqId = map['seq_id']?.toString() ?? '';
-          final msgId = map['id']?.toString() ?? '';
-          _logger.d('消息 $msgId 状态: $statusInt');
-          return Message(
-            id: msgId,
-            senderId: map['sender_id']?.toString() ?? '',
-            senderNickname: map['sender_nickname']?.toString(),
-            senderAvatar: map['sender_avatar']?.toString(),
-            content: map['content']?.toString() ?? '',
-            type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-            createdAt: map['created_at'] != null
-                ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
-                : DateTime.now(),
-            isRead: true,
-            quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
-            status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
-            seqId: seqId,
-          );
-        })
-        .toList()
-        .reversed
-        .toList();
+    final updatedMessages = messageMaps.map((map) {
+      final quoteIdInt = map['quote_id'] as int?;
+      final statusInt = map['status'] as int? ?? 0;
+      final seqId = map['seq_id']?.toString() ?? '';
+      final msgId = map['id']?.toString() ?? '';
+      _logger.d('消息 $msgId 状态: $statusInt');
+      return Message(
+        id: msgId,
+        senderId: map['sender_id']?.toString() ?? '',
+        senderNickname: map['sender_nickname']?.toString(),
+        senderAvatar: map['sender_avatar']?.toString(),
+        content: map['content']?.toString() ?? '',
+        type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
+        createdAt: parseUtcTime(map['created_at']?.toString()),
+        isRead: true,
+        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
+        seqId: seqId,
+      );
+    }).toList();
+
+    // 按seqId升序排序（旧在前、新在后）
+    updatedMessages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
 
     if (mounted) {
       setState(() {
@@ -256,32 +252,29 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       minMessageId: minMessageId,
     );
 
-    final newMessages = messageMaps
-        .map((map) {
-          // _logger.d('从数据库读取消息: $map');
-          final quoteIdInt = map['quote_id'] as int?;
-          final statusInt = map['status'] as int? ?? 0;
-          final isReadInt = map['is_read'] as int? ?? 1;
-          final seqId = map['seq_id']?.toString() ?? '';
-          return Message(
-            id: map['id']?.toString() ?? '',
-            senderId: map['sender_id']?.toString() ?? '',
-            senderNickname: map['sender_nickname']?.toString(),
-            senderAvatar: map['sender_avatar']?.toString(),
-            content: map['content']?.toString() ?? '',
-            type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-            createdAt: map['created_at'] != null
-                ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
-                : DateTime.now(),
-            isRead: isReadInt == 1,
-            quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
-            status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
-            seqId: seqId,
-          );
-        })
-        .toList()
-        .reversed
-        .toList();
+    final newMessages = messageMaps.map((map) {
+      // _logger.d('从数据库读取消息: $map');
+      final quoteIdInt = map['quote_id'] as int?;
+      final statusInt = map['status'] as int? ?? 0;
+      final isReadInt = map['is_read'] as int? ?? 1;
+      final seqId = map['seq_id']?.toString() ?? '';
+      return Message(
+        id: map['id']?.toString() ?? '',
+        senderId: map['sender_id']?.toString() ?? '',
+        senderNickname: map['sender_nickname']?.toString(),
+        senderAvatar: map['sender_avatar']?.toString(),
+        content: map['content']?.toString() ?? '',
+        type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
+        createdAt: parseUtcTime(map['created_at']?.toString()),
+        isRead: isReadInt == 1,
+        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
+        seqId: seqId,
+      );
+    }).toList();
+
+    // 按seqId升序排序（旧在前、新在后）
+    newMessages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
 
     if (mounted) {
       setState(() {
@@ -379,9 +372,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           senderAvatar: json['senderAvatar']?.toString(),
           content: json['content']?.toString() ?? '',
           type: MessageType.values.firstWhere((e) => e.index == (json['type'] ?? 0), orElse: () => MessageType.text),
-          createdAt: json['createdAt'] != null
-              ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
-              : DateTime.now(),
+          createdAt: parseUtcTime(json['createdAt']?.toString()),
           isRead: true,
           quoteId: json['quoteId']?.toString() ?? '',
           status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
@@ -389,8 +380,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         );
       }).toList();
 
-      // 对新的消息按创建时间升序排序（旧在前、新在后）确保 UI 表现正常
-      newMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      // 对新的消息按seqId升序排序（旧在前、新在后）确保 UI 表现正常
+      newMessages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
 
       if (mounted) {
         setState(() {
@@ -400,8 +391,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               _messages.add(message);
             }
           }
-          // 重新排序所有消息（按时间排序）
-          _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          // 重新排序所有消息（按seqId排序）
+          _messages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
         });
       }
     }
@@ -655,7 +646,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
-        child: Text(_formatMessageTime(time.toLocal()), style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+        child: Text(formatMessageTime(time.toLocal()), style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
       ),
     );
   }
@@ -1988,7 +1979,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'type': messageType,
           'status': messageData['status'] ?? 0,
           'seq_id': messageData['seqId'] ?? 0,
-          'created_at': messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         });
 
         // 更新会话的最后一条消息信息
@@ -1996,7 +1987,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           conversationId: int.parse(widget.conversation.id),
           senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
           messageId: int.parse(messageData['id']?.toString() ?? '0'),
-          messageAt: messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
           messagePreview: '[图片]',
           messageType: 1,
         );
@@ -2273,7 +2264,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'type': messageType,
           'status': messageData['status'] ?? 0,
           'seq_id': messageData['seqId'] ?? 0,
-          'created_at': messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         });
 
         // 更新会话的最后一条消息信息
@@ -2281,7 +2272,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           conversationId: int.parse(widget.conversation.id),
           senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
           messageId: int.parse(messageData['id']?.toString() ?? '0'),
-          messageAt: messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
           messagePreview: '[文件]',
           messageType: 4,
         );
@@ -2541,7 +2532,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           'type': messageType,
           'status': messageData['status'] ?? 0,
           'seq_id': messageData['seqId'] ?? 0,
-          'created_at': messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         });
 
         // 更新会话的最后一条消息信息
@@ -2549,7 +2540,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           conversationId: int.parse(widget.conversation.id),
           senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
           messageId: int.parse(messageData['id']?.toString() ?? '0'),
-          messageAt: messageData['createdAt'] ?? DateTime.now().toIso8601String(),
+          messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
           messagePreview: '[语音]',
           messageType: 2,
         );
@@ -2642,26 +2633,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(result.message ?? '消息发送失败'), backgroundColor: AppTheme.badgeColor));
       }
-    }
-  }
-
-  /// 格式化消息时间
-  String _formatMessageTime(DateTime time) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final messageDate = DateTime(time.year, time.month, time.day);
-    final dateDiff = today.difference(messageDate).inDays;
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    final timeStr = '$hour:$minute';
-    if (dateDiff == 0) {
-      return '今天 $timeStr';
-    } else if (dateDiff == 1) {
-      return '昨天 $timeStr';
-    } else if (dateDiff <= 7 && dateDiff > 0) {
-      return '${_weekDays[time.weekday]} $timeStr';
-    } else {
-      return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} $timeStr';
     }
   }
 }
