@@ -82,11 +82,11 @@ class FileService {
             validateStatus: (status) => true,
           ),
           onSendProgress: (sent, total) {
-            _logger.d('上传进度: $sent/$total');
+            // _logger.d('上传进度: $sent/$total');
             onProgress?.call(sent, total);
           },
         );
-        _logger.d('上传到R2响应: ${response.statusCode}, body: ${response.data}');
+        // _logger.d('上传到R2响应: ${response.statusCode}, body: ${response.data}');
         if (response.statusCode == 200 || response.statusCode == 201) {
           _logger.d('上传到R2成功');
           return true;

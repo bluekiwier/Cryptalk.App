@@ -31,171 +31,168 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 60,
-            floating: false,
-            pinned: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: AppTheme.getAppBarDecoration(context),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
             elevation: 0,
+            scrolledUnderElevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
-                child: const SafeArea(
-                  child: Center(
-                    child: Text(
-                      '修改密码',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ),
+            title: const Text(
+              '修改密码',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
               ),
             ),
+            centerTitle: true,
           ),
-          SliverToBoxAdapter(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              // 安全提示
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : AppTheme.primaryColor.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : AppTheme.primaryColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    const SizedBox(height: 8),
-                    // 安全提示
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.security_rounded, color: AppTheme.primaryColor, size: 24),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              '''为了账号安全，密码长度需为 6~20 个字符，
+                    Icon(Icons.security_rounded, color: AppTheme.primaryColor, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '''为了账号安全，密码长度需为 6~20 个字符，
 建议使用字母、数字和特殊字符的组合。''',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.primaryColor.withValues(alpha: 0.8),
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // 旧密码
-                    _buildLabel('当前密码'),
-                    const SizedBox(height: 8),
-                    _buildPasswordField(
-                      controller: _oldPasswordController,
-                      hintText: '请输入当前密码',
-                      isVisible: _showOldPassword,
-                      onToggle: () => setState(() => _showOldPassword = !_showOldPassword),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return '请输入当前密码';
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // 新密码
-                    _buildLabel('新密码'),
-                    const SizedBox(height: 8),
-                    _buildPasswordField(
-                      controller: _newPasswordController,
-                      hintText: '请输入新密码（6~20位）',
-                      isVisible: _showNewPassword,
-                      onToggle: () => setState(() => _showNewPassword = !_showNewPassword),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return '请输入新密码';
-                        if (v.length < 6) return '密码不能少于 6 个字符';
-                        if (v.length > 20) return '密码不能超过 20 个字符';
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // 确认新密码
-                    _buildLabel('确认新密码'),
-                    const SizedBox(height: 8),
-                    _buildPasswordField(
-                      controller: _confirmPasswordController,
-                      hintText: '请再次输入新密码',
-                      isVisible: _showConfirmPassword,
-                      onToggle: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return '请确认新密码';
-                        if (v != _newPasswordController.text) {
-                          return '两次输入的密码不一致';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 36),
-
-                    // 提交按钮
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.headerGradient,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            disabledBackgroundColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                )
-                              : const Text(
-                                  '确认修改',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-                                ),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.primaryColor.withValues(alpha: 0.8),
+                          height: 1.5,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+
+              const SizedBox(height: 28),
+
+              // 旧密码
+              _buildLabel('当前密码'),
+              const SizedBox(height: 8),
+              _buildPasswordField(
+                controller: _oldPasswordController,
+                hintText: '请输入当前密码',
+                isVisible: _showOldPassword,
+                onToggle: () => setState(() => _showOldPassword = !_showOldPassword),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return '请输入当前密码';
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // 新密码
+              _buildLabel('新密码'),
+              const SizedBox(height: 8),
+              _buildPasswordField(
+                controller: _newPasswordController,
+                hintText: '请输入新密码（6~20位）',
+                isVisible: _showNewPassword,
+                onToggle: () => setState(() => _showNewPassword = !_showNewPassword),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return '请输入新密码';
+                  if (v.length < 6) return '密码不能少于 6 个字符';
+                  if (v.length > 20) return '密码不能超过 20 个字符';
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // 确认新密码
+              _buildLabel('确认新密码'),
+              const SizedBox(height: 8),
+              _buildPasswordField(
+                controller: _confirmPasswordController,
+                hintText: '请再次输入新密码',
+                isVisible: _showConfirmPassword,
+                onToggle: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return '请确认新密码';
+                  if (v != _newPasswordController.text) {
+                    return '两次输入的密码不一致';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 36),
+
+              // 提交按钮
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.headerGradient,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      disabledBackgroundColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                          )
+                        : const Text(
+                            '确认修改',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -204,7 +201,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+      style: TextStyle(
+        fontSize: 14, 
+        fontWeight: FontWeight.w600, 
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     );
   }
 
@@ -218,9 +219,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          if (Theme.of(context).brightness != Brightness.dark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
@@ -229,7 +237,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         decoration: InputDecoration(
           hintText: hintText,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Theme.of(context).cardColor,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -250,7 +258,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        style: const TextStyle(fontSize: 15),
+        style: TextStyle(
+          fontSize: 15,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }

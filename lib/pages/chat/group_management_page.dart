@@ -3,6 +3,7 @@ import '../../models/conversation.dart';
 import '../../services/conversation_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/avatar_widget.dart';
+import '../../widgets/app_switch.dart';
 
 /// 群管理页面，用于管理群成员、群设置等
 class GroupManagementPage extends StatefulWidget {
@@ -367,8 +368,12 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
+        flexibleSpace: Container(
+          decoration: AppTheme.getAppBarDecoration(context),
+        ),
         elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -413,7 +418,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           padding: const EdgeInsets.all(16),
           child: TextField(
             controller: _searchController,
@@ -426,7 +431,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                   : null,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
               filled: true,
-              fillColor: AppTheme.scaffoldBg,
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
@@ -492,7 +497,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('全体禁言', style: TextStyle(fontSize: 16)),
-              Switch(
+              AppSwitch(
                 value: _isAllMuted,
                 onChanged: (value) async {
                   if (value) {

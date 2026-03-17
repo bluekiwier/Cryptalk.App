@@ -187,7 +187,7 @@ class AccountService extends ChangeNotifier {
     if (user.signature != null) {
       await prefs.setString('userSignature', user.signature!);
     }
-    await prefs.setBool('userOnlineStatus', user.onlineStatus);
+    await prefs.setBool('userOnline', user.online);
   }
 
   /// 从本地存储加载用户信息
@@ -209,7 +209,7 @@ class AccountService extends ChangeNotifier {
       email: prefs.getString('userEmail') ?? '',
       mobile: prefs.getString('userMobile') ?? '',
       signature: prefs.getString('userSignature') ?? '',
-      onlineStatus: prefs.getBool('userOnlineStatus') ?? false,
+      online: prefs.getBool('userOnline') ?? false,
     );
     _logger.d('加载用户信息成功: $_currentUser');
 
@@ -223,6 +223,7 @@ class AccountService extends ChangeNotifier {
   /// 更新当前用户信息
   void updateCurrentUser(User user) {
     _currentUser = user;
+    _saveUserToLocal(user); // 确保内部也保存到本地
     notifyListeners();
   }
 
@@ -276,7 +277,7 @@ class AccountService extends ChangeNotifier {
           email: data['user']['email']?.toString() ?? '',
           mobile: data['user']['mobile']?.toString() ?? '',
           signature: data['user']['signature']?.toString() ?? '',
-          onlineStatus: true,
+          online: true,
         );
 
         // 保存用户信息到本地
@@ -487,7 +488,7 @@ class AccountService extends ChangeNotifier {
     await prefs.remove('userEmail');
     await prefs.remove('userMobile');
     await prefs.remove('userSignature');
-    await prefs.remove('userOnlineStatus');
+    await prefs.remove('userOnline');
 
     // 清理用户数据库
     await DatabaseService().clearForCurrentUser();

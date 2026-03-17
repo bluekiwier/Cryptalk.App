@@ -21,26 +21,24 @@ class ContactDetailPage extends StatelessWidget {
         slivers: [
           // 带头像的折叠 AppBar
           SliverAppBar(
-            expandedHeight: 280,
             pinned: true,
-            backgroundColor: AppTheme.primaryColor,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Colors.transparent,
             leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
+            title: const Text(
+              '联系人详情',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+            ),
+            centerTitle: true,
             actions: [
               PopupMenuButton<String>(
                 offset: const Offset(0, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 18),
-                ),
+                icon: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 22),
                 onSelected: (value) => _handleMenuAction(context, value),
                 itemBuilder: (context) => [
                   const PopupMenuItem(
@@ -77,36 +75,39 @@ class ContactDetailPage extends StatelessWidget {
                 ],
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 40),
-                    // 大头像
-                    AvatarWidget(avatar: user.avatar, size: 88, showOnline: true, onlineStatus: user.onlineStatus),
-                    const SizedBox(height: 16),
-                    // 名字
-                    Text(
-                      user.nickname,
-                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
+          ),
+
+          // 顶部渐变背景信息区域 - 移入 body
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              decoration: BoxDecoration(
+                gradient: Theme.of(context).brightness == Brightness.dark ? null : AppTheme.headerGradient,
+                color: Theme.of(context).brightness == Brightness.dark ? AppTheme.appBarDarkBg : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 大头像
+                  AvatarWidget(avatar: user.avatar, size: 88, showOnline: true, online: user.online),
+                  const SizedBox(height: 16),
+                  // 名字
+                  Text(
+                    user.nickname,
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  // 在线状态
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 6),
-                    // 在线状态
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        user.onlineStatus ? '在线' : '离线',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
+                    child: Text(user.online ? '在线' : '离线', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                ],
               ),
             ),
           ),

@@ -146,4 +146,30 @@ class UserService {
       return null;
     }
   }
+
+  /// 修改当前用户头像
+  /// 调用 POST /api/user/change-avatar
+  Future<bool> changeAvatar(String avatarUrl) async {
+    try {
+      final dio = await accountService.getDio();
+      final response = await dio.post('/api/user/change-avatar', data: {'avatar': avatarUrl});
+      final data = response.data;
+      if (data != null && data['success'] == true) {
+        _logger.d('修改头像成功');
+        // 同步更新 AccountService 中的用户信息
+        final currentUser = accountService.currentUser;
+        if (currentUser != null) {
+          final updatedUser = currentUser.copyWith(avatar: avatarUrl);
+          accountService.updateCurrentUser(updatedUser);
+        }
+        return true;
+      } else {
+        _logger.e('修改头像失败: ${data?['message']}');
+        return false;
+      }
+    } catch (e) {
+      _logger.e('修改头像异常: $e');
+      return false;
+    }
+  }
 }

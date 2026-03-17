@@ -1,8 +1,17 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../services/account_service.dart';
+import '../../services/user_service.dart';
+import '../../services/file_service.dart';
 
 /// 更换头像页面
 class ChangeAvatarPage extends StatefulWidget {
@@ -15,23 +24,40 @@ class ChangeAvatarPage extends StatefulWidget {
 class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
   final ImagePicker _picker = ImagePicker();
   final AccountService _accountService = AccountService();
+  final UserService _userService = UserService();
+  final GlobalKey _avatarKey = GlobalKey();
   bool _isUploading = false;
+  bool _isSavingLocal = false;
   File? _imageFile;
 
-  /// 从相册或相机选择图片
+  /// 从相册或相机选择图片并裁剪
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
+      final XFile? pickedFile = await _picker.pickImage(source: source);
 
-      if (pickedFile != null) {
-        setState(() {
-          _imageFile = File(pickedFile.path);
-        });
+      if (pickedFile != null && mounted) {
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: pickedFile.path,
+          maxWidth: 512,
+          maxHeight: 512,
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: '裁剪头像',
+              toolbarColor: AppTheme.primaryColor,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true,
+            ),
+            IOSUiSettings(title: '裁剪头像', aspectRatioLockEnabled: true),
+          ],
+        );
+
+        if (croppedFile != null) {
+          setState(() {
+            _imageFile = File(croppedFile.path);
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -47,26 +73,124 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
     setState(() => _isUploading = true);
 
     try {
-      // 模拟上传逻辑，实际应用中需调用 API
-      // final result = await _userService.changeAvatar(_imageFile!.path);
+      final filePath = _imageFile!.absolute.path;
+      final outPath = "${Directory.systemTemp.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.png";
 
-      // 模拟延迟
-      await Future.delayed(const Duration(seconds: 2));
+      // 1. 压缩和调整大小 (512x512, PNG)
+      final result = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        quality: 90,
+        minWidth: 512,
+        minHeight: 512,
+        format: CompressFormat.png,
+      );
+
+      if (result == null) throw Exception("压缩图片失败");
+
+      final compressedFile = File(result.path);
+      final fileSize = await compressedFile.length();
+
+      // 2. 获取上传凭证
+      final currentUser = _accountService.currentUser;
+      final userId = currentUser?.id ?? '0';
+      final now = DateTime.now();
+      final timeStr =
+          "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
+      final fileName = "${userId}_$timeStr.png";
+
+      final uploadResult = await FileService().createUploadUrl("image/png", fileName, fileSize, "avatar");
+
+      if (uploadResult == null || !uploadResult.isSuccess) {
+        throw Exception("获取上传凭证失败");
+      }
+
+      // 3. 上传到 R2
+      final fileBytes = await compressedFile.readAsBytes();
+      final uploaded = await FileService().uploadToR2(uploadResult.uploadUrl!, fileBytes, "image/png");
+
+      if (!uploaded) {
+        throw Exception("上传图片到存储失败");
+      }
+
+      // 4. 更新后端头像
+      final success = await _userService.changeAvatar(uploadResult.fileUrl!);
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('头像更新成功（模拟）'), backgroundColor: AppTheme.onlineColor));
-        Navigator.pop(context, true);
+        if (success) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('头像更新成功'), backgroundColor: AppTheme.onlineColor));
+          Navigator.pop(context, true);
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('头像更新失败'), backgroundColor: AppTheme.badgeColor));
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('更像头像失败'), backgroundColor: AppTheme.badgeColor));
+        ).showSnackBar(SnackBar(content: Text('操作失败: $e'), backgroundColor: AppTheme.badgeColor));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  /// 保存图片到相册
+  Future<void> _saveImage() async {
+    if (_isSavingLocal) return;
+
+    setState(() => _isSavingLocal = true);
+
+    try {
+      // 1. 获取权限
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        await Gal.requestAccess();
+      }
+
+      // 2. 截取图片
+      final RenderRepaintBoundary? boundary = _avatarKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+      if (boundary == null) {
+        throw Exception('无法找到头像区域');
+      }
+
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      if (byteData == null) {
+        throw Exception('图片转换失败');
+      }
+
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+      // 3. 临时保存并导出到相册
+      final tempDir = await getTemporaryDirectory();
+      final String filePath = '${tempDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(filePath);
+      await file.writeAsBytes(pngBytes);
+
+      await Gal.putImage(file.path);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('头像已保存到相册！'), backgroundColor: AppTheme.onlineColor));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存失败: $e'), backgroundColor: AppTheme.badgeColor));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingLocal = false);
+      }
     }
   }
 
@@ -79,7 +203,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
+          decoration: AppTheme.getAppBarDecoration(context),
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -107,13 +231,16 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
           Center(
             child: Hero(
               tag: 'avatar_large',
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.width,
-                decoration: const BoxDecoration(color: Colors.white10),
-                child: _imageFile != null
-                    ? Image.file(_imageFile!, fit: BoxFit.cover)
-                    : _buildOriginalAvatar(user?.avatar),
+              child: RepaintBoundary(
+                key: _avatarKey,
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.width,
+                  decoration: const BoxDecoration(color: Colors.white10),
+                  child: _imageFile != null
+                      ? Image.file(_imageFile!, fit: BoxFit.cover)
+                      : _buildOriginalAvatar(user?.avatar),
+                ),
               ),
             ),
           ),
@@ -234,6 +361,14 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.save_alt_rounded, color: Colors.white),
+              title: Text(_isSavingLocal ? '保存中...' : '保存图片', style: const TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _saveImage();
               },
             ),
             const SizedBox(height: 10),

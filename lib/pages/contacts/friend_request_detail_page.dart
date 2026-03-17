@@ -175,7 +175,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
   /// 构建顶部 AppBar
   Widget _buildAppBar() {
     return Container(
-      decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
+      decoration: AppTheme.getAppBarDecoration(context),
       child: SafeArea(
         bottom: false,
         child: SizedBox(
@@ -306,16 +306,16 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: _userProfile?['onlineStatus'] == 1 ? AppTheme.onlineColor : AppTheme.offlineColor,
+                  color: _userProfile?['online'] == 1 ? AppTheme.onlineColor : AppTheme.offlineColor,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 6),
               Text(
-                _userProfile?['onlineStatus'] == 1 ? '在线' : '离线',
+                _userProfile?['online'] == 1 ? '在线' : '离线',
                 style: TextStyle(
                   fontSize: 13,
-                  color: _userProfile?['onlineStatus'] == 1 ? AppTheme.onlineColor : AppTheme.textHint,
+                  color: _userProfile?['online'] == 1 ? AppTheme.onlineColor : AppTheme.textHint,
                 ),
               ),
             ],

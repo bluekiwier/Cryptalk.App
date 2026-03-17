@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_switch.dart';
 
 /// 设置页面
 /// 包含通知、隐私、通用等设置项
@@ -19,55 +20,39 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 60,
-            floating: false,
-            pinned: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: AppTheme.getAppBarDecoration(context),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
             elevation: 0,
-            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+            scrolledUnderElevation: 0,
             leading: IconButton(
-              icon: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                size: 20,
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: Theme.of(context).brightness == Brightness.dark
-                      ? LinearGradient(
-                          colors: [AppTheme.primaryDark, AppTheme.primaryColor],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        )
-                      : AppTheme.headerGradient,
-                ),
-                child: SafeArea(
-                  child: Center(
-                    child: Text(
-                      '设置',
-                      style: TextStyle(
-                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ),
+            title: const Text(
+              '设置',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
               ),
             ),
+            centerTitle: true,
           ),
-          SliverList(
-            delegate: SliverChildListDelegate([
-              Padding(
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 通知设置
                     _buildSectionTitle('通知设置'),
@@ -161,10 +146,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-            ]),
+            ],
           ),
-        ],
-      ),
+        ),
     );
   }
 
@@ -174,7 +158,13 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+        style: TextStyle(
+          fontSize: 14, 
+          fontWeight: FontWeight.w600, 
+          color: Theme.of(context).brightness == Brightness.dark 
+              ? Colors.white.withValues(alpha: 0.7) 
+              : AppTheme.textSecondary,
+        ),
       ),
     );
   }
@@ -211,8 +201,15 @@ class _SettingsPageState extends State<SettingsPage> {
         decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: iconColor, size: 20),
       ),
-      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-      trailing: Switch(value: value, onChanged: onChanged, activeTrackColor: AppTheme.primaryColor),
+      title: Text(
+        label, 
+        style: TextStyle(
+          fontSize: 15, 
+          fontWeight: FontWeight.w500,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
+      trailing: AppSwitch(value: value, onChanged: onChanged),
     );
   }
 
@@ -224,7 +221,14 @@ class _SettingsPageState extends State<SettingsPage> {
         decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: iconColor, size: 20),
       ),
-      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      title: Text(
+        label, 
+        style: TextStyle(
+          fontSize: 15, 
+          fontWeight: FontWeight.w500,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

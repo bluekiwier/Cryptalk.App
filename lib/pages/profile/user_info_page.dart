@@ -4,6 +4,7 @@ import '../../services/account_service.dart';
 import '../../services/user_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/avatar_widget.dart';
+import 'change_avatar_page.dart';
 
 /// 个人信息详情页面
 class UserInfoPage extends StatefulWidget {
@@ -46,140 +47,90 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverAppBar(
-                expandedHeight: 60,
-                floating: false,
-                pinned: true,
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: Container(
+              decoration: AppTheme.getAppBarDecoration(context),
+              child: AppBar(
+                backgroundColor: Colors.transparent,
                 elevation: 0,
+                scrolledUnderElevation: 0,
                 leading: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: const BoxDecoration(
-                      gradient: AppTheme.headerGradient,
-                    ),
-                    child: SafeArea(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Text(
-                            '个人信息',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          Positioned(
-                            right: 16,
-                            child: IconButton(
-                              onPressed: _isLoading ? null : _refreshProfile,
-                              icon: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.refresh_rounded,
-                                      color: Colors.white,
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                title: const Text(
+                  '个人信息',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
                   ),
                 ),
-              ),
-            ],
-            body: user == null
-                ? const Center(child: Text('未登录'))
-                : SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        // 头像区域
-                        Center(
-                          child: Stack(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppTheme.primaryColor.withValues(
-                                      alpha: 0.2,
-                                    ),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: AvatarWidget(
-                                  avatar: user.avatar,
-                                  size: 100,
-                                ),
-                              ),
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Material(
-                                  elevation: 2,
-                                  shape: const CircleBorder(),
-                                  color: AppTheme.primaryColor,
-                                  child: InkWell(
-                                    onTap: () {
-                                      // TODO: 更换头像
-                                    },
-                                    customBorder: const CircleBorder(),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Icon(
-                                        Icons.camera_alt_rounded,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        // 信息列表
-                        _buildInfoSection(context, user),
-
-                        const SizedBox(height: 40),
-
-                        // // 底部说明
-                        // Padding(
-                        //   padding: const EdgeInsets.symmetric(horizontal: 20),
-                        //   child: Text(
-                        //     '以上为您在 Cryptalk 的基本个人资料',
-                        //     textAlign: TextAlign.center,
-                        //     style: TextStyle(
-                        //       color: AppTheme.textHint.withValues(alpha: 0.6),
-                        //       fontSize: 12,
-                        //     ),
-                        //   ),
-                        // ),
-                      ],
-                    ),
+                centerTitle: true,
+                actions: [
+                  IconButton(
+                    onPressed: _isLoading ? null : _refreshProfile,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.refresh_rounded, color: Colors.white),
                   ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
           ),
+          body: user == null
+              ? const Center(child: Text('未登录'))
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      // 头像区域
+                      Center(
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              child: AvatarWidget(avatar: user.avatar, size: 100),
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Material(
+                                elevation: 2,
+                                shape: const CircleBorder(),
+                                color: AppTheme.primaryColor,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const ChangeAvatarPage()),
+                                    );
+                                  },
+                                  customBorder: const CircleBorder(),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Icon(Icons.camera_alt_rounded, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      // 信息列表
+                      _buildInfoSection(context, user),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
         );
       },
     );
@@ -204,23 +155,14 @@ class _UserInfoPageState extends State<UserInfoPage> {
           autofocus: true,
           decoration: InputDecoration(
             hintText: '请输入新的$title',
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear, size: 18),
-              onPressed: () => controller.clear(),
-            ),
+            suffixIcon: IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => controller.clear()),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
             child: const Text('确定'),
           ),
         ],
@@ -236,12 +178,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
         final regExp = RegExp(r'^1[3-9]\d{9}$');
         if (!regExp.hasMatch(newValue)) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('请输入正确的手机号码格式'),
-                backgroundColor: AppTheme.badgeColor,
-              ),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('请输入正确的手机号码格式'), backgroundColor: AppTheme.badgeColor));
           }
           return;
         }
@@ -258,22 +197,16 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
         if (res.success) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$title修改成功！'),
-                backgroundColor: AppTheme.onlineColor,
-              ),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('$title修改成功！'), backgroundColor: AppTheme.onlineColor));
           }
           await _refreshProfile();
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(res.message),
-                backgroundColor: AppTheme.badgeColor,
-              ),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(res.message), backgroundColor: AppTheme.badgeColor));
           }
         }
       } finally {
@@ -290,11 +223,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark
-                  ? 0.2
-                  : 0.05,
-            ),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -305,11 +234,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
           _buildInfoTile(
             label: '昵称',
             value: user.nickname,
-            onTap: () => _editField(
-              title: '昵称',
-              initialValue: user.nickname,
-              fieldKey: 'nickname',
-            ),
+            onTap: () => _editField(title: '昵称', initialValue: user.nickname, fieldKey: 'nickname'),
           ),
           _buildDivider(),
           _buildInfoTile(label: '账号', value: user.account, showArrow: false),
@@ -317,35 +242,21 @@ class _UserInfoPageState extends State<UserInfoPage> {
           _buildInfoTile(
             label: '手机号',
             value: user.mobile ?? '未绑定',
-            onTap: () => _editField(
-              title: '手机号',
-              initialValue: user.mobile ?? '',
-              fieldKey: 'mobile',
-            ),
+            onTap: () => _editField(title: '手机号', initialValue: user.mobile ?? '', fieldKey: 'mobile'),
           ),
           _buildDivider(),
           _buildInfoTile(
             label: '邮箱',
             value: user.email ?? '未设置',
-            onTap: () => _editField(
-              title: '邮箱',
-              initialValue: user.email ?? '',
-              fieldKey: 'email',
-            ),
+            onTap: () => _editField(title: '邮箱', initialValue: user.email ?? '', fieldKey: 'email'),
           ),
           _buildDivider(),
           _buildInfoTile(
             label: '个性签名',
-            value: user.signature?.isNotEmpty == true
-                ? user.signature!
-                : '这个家伙很懒，什么都没写',
+            value: user.signature?.isNotEmpty == true ? user.signature! : '这个家伙很懒，什么都没写',
             isLongText: true,
-            onTap: () => _editField(
-              title: '个性签名',
-              initialValue: user.signature ?? '',
-              fieldKey: 'signature',
-              maxLines: 3,
-            ),
+            onTap: () =>
+                _editField(title: '个性签名', initialValue: user.signature ?? '', fieldKey: 'signature', maxLines: 3),
           ),
         ],
       ),
@@ -366,32 +277,20 @@ class _UserInfoPageState extends State<UserInfoPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
+            Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
             const SizedBox(width: 20),
             Expanded(
               child: Text(
                 value,
                 textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: onTap != null
-                      ? AppTheme.textPrimary
-                      : AppTheme.textHint,
-                ),
+                style: TextStyle(fontSize: 15, color: onTap != null ? AppTheme.textPrimary : AppTheme.textHint),
                 maxLines: isLongText ? 2 : 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (showArrow) ...[
               const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppTheme.textHint,
-                size: 20,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
             ],
           ],
         ),
@@ -400,11 +299,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
   }
 
   Widget _buildDivider() {
-    return Divider(
-      height: 1,
-      indent: 20,
-      endIndent: 20,
-      color: Colors.grey.withValues(alpha: 0.1),
-    );
+    return Divider(height: 1, indent: 20, endIndent: 20, color: Colors.grey.withValues(alpha: 0.1));
   }
 }

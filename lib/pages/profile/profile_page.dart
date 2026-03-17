@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../services/account_service.dart';
@@ -10,7 +11,7 @@ import 'about_page.dart';
 import 'user_info_page.dart';
 import 'my_qr_code_page.dart';
 import 'change_avatar_page.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import '../../widgets/app_switch.dart';
 
 /// 个人中心页面
 /// 展示个人信息、功能入口和设置
@@ -19,99 +20,116 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accountService = AccountService();
-    final loggedInUser = accountService.currentUser;
+    return ListenableBuilder(
+      listenable: AccountService(),
+      builder: (context, _) {
+        final accountService = AccountService();
+        final loggedInUser = accountService.currentUser;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // 顶部个人信息区域
-          SliverAppBar(
-            expandedHeight: 120,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      children: [
-                        // 左侧头像
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangeAvatarPage()));
-                          },
-                          child: Stack(
-                            children: [
-                              Hero(
-                                tag: 'avatar_large',
-                                child: AvatarWidget(avatar: loggedInUser?.avatar ?? '', size: 80),
-                              ),
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
-                                  ),
-                                  child: Icon(Icons.camera_alt_rounded, size: 16, color: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor),
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: CustomScrollView(
+            slivers: [
+              // 顶部个人信息区域
+              // SliverAppBar(
+              //   pinned: true,
+              //   elevation: 0,
+              //   scrolledUnderElevation: 0,
+              //   backgroundColor: Colors.transparent,
+              //   title: const Text(
+              //     '个人中心',
+              //     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+              //   ),
+              //   centerTitle: true,
+              //   flexibleSpace: Container(
+              //     decoration: AppTheme.getAppBarDecoration(context),
+              //   ),
+              // ),
+              // 顶部个人信息区域 - 移入 body 随滚动
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+                  decoration: BoxDecoration(
+                    gradient: Theme.of(context).brightness == Brightness.dark ? null : AppTheme.headerGradient,
+                    color: Theme.of(context).brightness == Brightness.dark ? AppTheme.appBarDarkBg : null,
+                  ),
+                  child: Row(
+                    children: [
+                      // 左侧头像
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangeAvatarPage()));
+                        },
+                        child: Stack(
+                          children: [
+                            Hero(
+                              tag: 'avatar_large',
+                              child: AvatarWidget(avatar: loggedInUser?.avatar ?? '', size: 80),
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt_rounded,
+                                  size: 16,
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? AppTheme.primaryDark
+                                      : AppTheme.primaryColor,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 20),
-                        // 右侧昵称和账号
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                loggedInUser?.nickname ?? '我',
-                                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '账号: ${loggedInUser?.account ?? ""}',
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(width: 20),
+                      // 右侧昵称和账号
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              loggedInUser?.nickname ?? '我',
+                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '账号: ${loggedInUser?.account ?? ""}',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
+
+              // 功能入口
+              SliverToBoxAdapter(child: _buildFunctionSection(context)),
+
+              // 工具/服务
+              SliverToBoxAdapter(child: _buildToolsSection(context)),
+
+              // 退出登录
+              SliverToBoxAdapter(child: _buildLogoutButton(context)),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+            ],
           ),
-
-          // 功能入口
-          SliverToBoxAdapter(child: _buildFunctionSection(context)),
-
-          // 工具/服务
-          SliverToBoxAdapter(child: _buildToolsSection(context)),
-
-          // 退出登录
-          SliverToBoxAdapter(child: _buildLogoutButton(context)),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 40)),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -218,11 +236,7 @@ class ProfilePage extends StatelessWidget {
                 icon: Icons.dark_mode_outlined,
                 iconColor: const Color(0xFF8B5CF6),
                 label: '深色模式',
-                trailing: Switch(
-                  value: themeService.isDarkMode,
-                  onChanged: (v) => themeService.toggleTheme(v),
-                  activeTrackColor: AppTheme.primaryColor,
-                ),
+                trailing: AppSwitch(value: themeService.isDarkMode, onChanged: (v) => themeService.toggleTheme(v)),
                 onTap: () => themeService.toggleTheme(!themeService.isDarkMode),
               );
             },

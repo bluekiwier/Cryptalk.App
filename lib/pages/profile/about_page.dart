@@ -11,46 +11,29 @@ class AboutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 60,
-            floating: false,
-            pinned: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: AppTheme.getAppBarDecoration(context),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
             elevation: 0,
+            scrolledUnderElevation: 0,
             leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.headerGradient,
-                ),
-                child: const SafeArea(
-                  child: Center(
-                    child: Text(
-                      '关于', // Changed text
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20, // Changed font size
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            title: const Text(
+              '关于',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
+            centerTitle: true,
           ),
-          SliverToBoxAdapter(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
                   const SizedBox(height: 40),
                   // APP Logo 区域
                   Center(
@@ -68,11 +51,7 @@ class AboutPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.lock_rounded,
-                        size: 50,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.lock_rounded, size: 50, color: Colors.white),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -90,10 +69,7 @@ class AboutPage extends StatelessWidget {
                     builder: (context, snapshot) {
                       return Text(
                         'Version ${snapshot.data?.version ?? "0.1.0"}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textHint,
-                        ),
+                        style: const TextStyle(fontSize: 14, color: AppTheme.textHint),
                       );
                     },
                   ),
@@ -105,11 +81,7 @@ class AboutPage extends StatelessWidget {
                     child: Text(
                       'Cryptalk 是一款专注于“极致隐私”与“纯粹沟通”的加密聊天应用。我们通过先进的端到端加密技术，确保您的每一条消息、每一张图片、每一段语音都只有您和接收者可见。',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: AppTheme.textSecondary,
-                        height: 1.6,
-                      ),
+                      style: TextStyle(fontSize: 15, color: AppTheme.textSecondary, height: 1.6),
                     ),
                   ),
 
@@ -122,12 +94,12 @@ class AboutPage extends StatelessWidget {
                     title: '端到端加密 (E2EE)',
                     description: '所有通信内容在设备端加密，云端仅作为中转，不存储任何解密密钥及通信明文。',
                   ),
-                  _buildFeatureItem(
-                    context: context,
-                    icon: Icons.timer_outlined,
-                    title: '阅后即焚',
-                    description: '支持发送阅后即焚消息，消息被阅读后将在双方设备中自动粉碎，不留痕迹。',
-                  ),
+                  // _buildFeatureItem(
+                  //   context: context,
+                  //   icon: Icons.timer_outlined,
+                  //   title: '阅后即焚',
+                  //   description: '支持发送阅后即焚消息，消息被阅读后将在双方设备中自动粉碎，不留痕迹。',
+                  // ),
                   _buildFeatureItem(
                     context: context,
                     icon: Icons.verified_user_outlined,
@@ -150,39 +122,18 @@ class AboutPage extends StatelessWidget {
                       children: [
                         Text(
                           '© 2026 Cryptalk Team. All Rights Reserved.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textHint,
-                          ),
+                          style: TextStyle(fontSize: 12, color: AppTheme.textHint),
                         ),
                         SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              '服务协议',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
+                            Text('服务协议', style: TextStyle(fontSize: 12, color: AppTheme.primaryColor)),
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(
-                                '|',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textHint,
-                                ),
-                              ),
+                              child: Text('|', style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
                             ),
-                            Text(
-                              '隐私政策',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
+                            Text('隐私政策', style: TextStyle(fontSize: 12, color: AppTheme.primaryColor)),
                           ],
                         ),
                       ],
@@ -191,9 +142,6 @@ class AboutPage extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -230,14 +178,7 @@ class AboutPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
+                Text(description, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4)),
               ],
             ),
           ),

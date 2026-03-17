@@ -45,6 +45,19 @@ class AppTheme {
     end: Alignment.centerRight,
   );
 
+  // AppBar 背景色 (深色模式)
+  static const Color appBarDarkBg = Color(0xFF1A1D2E);
+
+  /// 获取通用的 AppBar 装饰样式
+  /// 亮色模式使用渐变，深色模式使用纯深色
+  static Decoration getAppBarDecoration(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return BoxDecoration(
+      gradient: isDark ? null : headerGradient,
+      color: isDark ? appBarDarkBg : null,
+    );
+  }
+
   /// 亮色主题
   static ThemeData get lightTheme {
     return ThemeData(
@@ -133,7 +146,7 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: appBarDarkBg,
         foregroundColor: Colors.white,
         titleTextStyle: TextStyle(
           color: Colors.white,

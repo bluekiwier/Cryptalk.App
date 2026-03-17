@@ -73,31 +73,26 @@ class _AddFriendPageState extends State<AddFriendPage> {
         slivers: [
           // 顶部渐变 AppBar
           SliverAppBar(
-            expandedHeight: 60,
-            floating: false,
             pinned: true,
             elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Colors.transparent,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
-                child: const SafeArea(
-                  child: Center(
-                    child: Text(
-                      '添加好友',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ),
+            title: const Text(
+              '添加好友',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
               ),
+            ),
+            centerTitle: true,
+            flexibleSpace: Container(
+              decoration: AppTheme.getAppBarDecoration(context),
             ),
           ),
 

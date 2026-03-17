@@ -158,6 +158,7 @@ class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStat
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
+          scrolledUnderElevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),

@@ -6,6 +6,7 @@ import '../../services/database_service.dart';
 import '../../services/conversation_service.dart';
 import '../../theme/app_theme.dart';
 import 'group_management_page.dart';
+import '../../widgets/app_switch.dart';
 
 class ChatSettingsPage extends StatefulWidget {
   final Conversation conversation;
@@ -297,20 +298,24 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor,
+        flexibleSpace: Container(
+          decoration: AppTheme.getAppBarDecoration(context),
+        ),
         elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(
+          icon: const Icon(
             Icons.arrow_back_ios_new_rounded, 
-            color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white, 
+            color: Colors.white, 
             size: 20
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           isGroup ? '群设置' : '聊天设置',
-          style: TextStyle(
-            color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white, 
+          style: const TextStyle(
+            color: Colors.white, 
             fontSize: 18, 
             fontWeight: FontWeight.bold
           ),
@@ -342,31 +347,17 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
                 _buildSettingItem(
                   icon: Icons.notifications_off_outlined,
                   title: '消息免打扰',
-                  trailing: Switch(
+                  trailing: AppSwitch(
                     value: _isMuted,
                     onChanged: _toggleMute,
-                    activeTrackColor: AppTheme.primaryColor.withValues(alpha: 0.5),
-                    thumbColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return AppTheme.primaryColor;
-                      }
-                      return Colors.grey;
-                    }),
                   ),
                 ),
                 _buildSettingItem(
                   icon: Icons.push_pin_outlined,
                   title: '置顶聊天',
-                  trailing: Switch(
+                  trailing: AppSwitch(
                     value: _isPinned,
                     onChanged: _togglePin,
-                    activeTrackColor: AppTheme.primaryColor.withValues(alpha: 0.5),
-                    thumbColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return AppTheme.primaryColor;
-                      }
-                      return Colors.grey;
-                    }),
                   ),
                 ),
                 if (isGroup) ...[
@@ -410,7 +401,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(10)),
       child: ListTile(
         leading: Icon(icon, color: AppTheme.primaryColor),
         title: Text(title, style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary)),

@@ -68,43 +68,53 @@ class _UserDetailPageState extends State<UserDetailPage> {
         slivers: [
           // 带头像的折叠 AppBar
           SliverAppBar(
-            expandedHeight: 280,
             pinned: true,
-            backgroundColor: AppTheme.primaryColor,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Colors.transparent,
             leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 40),
-                    // 大头像
-                    Hero(
-                      tag: 'avatar_${widget.user.id}',
-                      child: AvatarWidget(avatar: widget.user.avatar, size: 88),
-                    ),
-                    const SizedBox(height: 16),
-                    // 名字
-                    Text(
-                      widget.user.nickname,
-                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    // 账号
-                    Text(
-                      '账号: ${widget.user.account}',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
-                    ),
-                  ],
-                ),
+            title: const Text(
+              '用户详情',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+            ),
+            centerTitle: true,
+            flexibleSpace: Container(
+              decoration: AppTheme.getAppBarDecoration(context),
+            ),
+          ),
+
+          // 顶部个人信息渐变背景区域 - 移入 body
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              decoration: BoxDecoration(
+                gradient: Theme.of(context).brightness == Brightness.dark ? null : AppTheme.headerGradient,
+                color: Theme.of(context).brightness == Brightness.dark ? AppTheme.appBarDarkBg : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 大头像
+                  Hero(
+                    tag: 'avatar_${widget.user.id}',
+                    child: AvatarWidget(avatar: widget.user.avatar, size: 88),
+                  ),
+                  const SizedBox(height: 16),
+                  // 名字
+                  Text(
+                    widget.user.nickname,
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  // 账号
+                  Text(
+                    '账号: ${widget.user.account}',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
+                  ),
+                ],
               ),
             ),
           ),

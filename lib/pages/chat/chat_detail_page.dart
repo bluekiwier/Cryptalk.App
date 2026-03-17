@@ -536,25 +536,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     return PreferredSize(
       preferredSize: const Size.fromHeight(60),
       child: Container(
-        decoration: BoxDecoration(
-          gradient: Theme.of(context).brightness == Brightness.dark
-              ? LinearGradient(
-                  colors: [AppTheme.primaryDark, AppTheme.primaryColor],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                )
-              : AppTheme.headerGradient,
-        ),
+        decoration: AppTheme.getAppBarDecoration(context),
         child: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-              size: 20,
-            ),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
           title: Row(
@@ -566,9 +554,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 backgroundImage: widget.conversation.avatar.isNotEmpty
                     ? NetworkImage(widget.conversation.avatar)
                     : null,
-                child: widget.conversation.avatar.isEmpty
-                    ? Icon(Icons.group, size: 20, color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white)
-                    : null,
+                child: widget.conversation.avatar.isEmpty ? Icon(Icons.group, size: 20, color: Colors.white) : null,
               ),
               const SizedBox(width: 8),
               Row(
@@ -577,23 +563,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   Flexible(
                     child: Text(
                       _currentTitle,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (widget.conversation.isGroup) ...[
                     const SizedBox(width: 4),
-                    Text(
-                      '($_groupMemberCount人)',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                      ),
-                    ),
+                    Text('($_groupMemberCount人)', style: TextStyle(fontSize: 20, color: Colors.white)),
                   ],
                 ],
               ),
@@ -606,11 +582,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             //   onPressed: () {},
             // ),
             IconButton(
-              icon: Icon(
-                Icons.more_horiz_rounded,
-                size: 22,
-                color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-              ),
+              icon: Icon(Icons.more_horiz_rounded, size: 22, color: Colors.white),
               onPressed: () {
                 Navigator.push(
                   context,

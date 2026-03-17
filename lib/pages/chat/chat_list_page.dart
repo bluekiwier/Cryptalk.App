@@ -168,56 +168,42 @@ class _ChatListPageState extends State<ChatListPage> {
 
   Widget _buildAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 60,
-      floating: false,
       pinned: true,
       elevation: 0,
-      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: Theme.of(context).brightness == Brightness.dark
-                ? LinearGradient(
-                    colors: [AppTheme.primaryDark, AppTheme.primaryColor],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  )
-                : AppTheme.headerGradient,
+      scrolledUnderElevation: 0,
+      backgroundColor: Colors.transparent,
+      automaticallyImplyLeading: false,
+      title: Row(
+        children: [
+          const Text(
+            '闲聊',
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Text(
-                    '闲聊',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
-                  ),
-                  const SizedBox(width: 8),
-                  if (_accountService.currentUser?.messageUnreadCount != null &&
-                      _accountService.currentUser!.messageUnreadCount! > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (Theme.of(context).appBarTheme.foregroundColor ?? Colors.white).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '(${_accountService.currentUser!.messageUnreadCount!})',
-                        style: TextStyle(
-                          color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  const Spacer(),
-                  _buildAddMenu(context),
-                ],
+          const SizedBox(width: 8),
+          if (_accountService.currentUser?.messageUnreadCount != null &&
+              _accountService.currentUser!.messageUnreadCount! > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '(${_accountService.currentUser!.messageUnreadCount!})',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ),
-        ),
+          const Spacer(),
+          _buildAddMenu(context),
+        ],
+      ),
+      titleSpacing: 20,
+      flexibleSpace: Container(
+        decoration: AppTheme.getAppBarDecoration(context),
       ),
     );
   }

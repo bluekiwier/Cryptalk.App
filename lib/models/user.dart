@@ -10,7 +10,7 @@ class User {
   final String? inviteCode;
   final int? friendRequestCount; // 好友申请数量（可选）
   final int? messageUnreadCount; // 消息未读数量（可选）
-  final bool onlineStatus;
+  final bool online;
   final DateTime? lastSeen;
 
   const User({
@@ -24,7 +24,7 @@ class User {
     this.inviteCode,
     this.friendRequestCount,
     this.messageUnreadCount,
-    this.onlineStatus = false,
+    this.online = false,
     this.lastSeen,
   });
 
@@ -41,7 +41,38 @@ class User {
       inviteCode: json['inviteCode']?.toString(),
       friendRequestCount: json['friendRequestCount'] is int ? json['friendRequestCount'] : null,
       messageUnreadCount: json['messageUnreadCount'] is int ? json['messageUnreadCount'] : null,
-      onlineStatus: json['onlineStatus'] == 1 || json['onlineStatus'] == true,
+      online: json['online'] == 1 || json['online'] == true,
+    );
+  }
+
+  /// 拷贝并修改部分属性
+  User copyWith({
+    String? id,
+    String? account,
+    String? nickname,
+    String? avatar,
+    String? mobile,
+    String? email,
+    String? signature,
+    String? inviteCode,
+    int? friendRequestCount,
+    int? messageUnreadCount,
+    bool? online,
+    DateTime? lastSeen,
+  }) {
+    return User(
+      id: id ?? this.id,
+      account: account ?? this.account,
+      nickname: nickname ?? this.nickname,
+      avatar: avatar ?? this.avatar,
+      mobile: mobile ?? this.mobile,
+      email: email ?? this.email,
+      signature: signature ?? this.signature,
+      inviteCode: inviteCode ?? this.inviteCode,
+      friendRequestCount: friendRequestCount ?? this.friendRequestCount,
+      messageUnreadCount: messageUnreadCount ?? this.messageUnreadCount,
+      online: online ?? this.online,
+      lastSeen: lastSeen ?? this.lastSeen,
     );
   }
 }

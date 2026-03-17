@@ -108,58 +108,48 @@ class _NewFriendsPageState extends State<NewFriendsPage>
   /// 构建顶部 AppBar
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 60,
-      floating: false,
       pinned: true,
       elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: Colors.transparent,
       automaticallyImplyLeading: false,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4, right: 16),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Text(
-                    '新朋友',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const Spacer(),
-                  // 刷新按钮
-                  GestureDetector(
-                    onTap: _loadPendingRequests,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.refresh_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      title: Row(
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Text(
+            '新朋友',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
             ),
           ),
-        ),
+          const Spacer(),
+          // 刷新按钮
+          GestureDetector(
+            onTap: _loadPendingRequests,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+            ),
+          ),
+        ],
+      ),
+      titleSpacing: 0,
+      flexibleSpace: Container(
+        decoration: AppTheme.getAppBarDecoration(context),
       ),
     );
   }

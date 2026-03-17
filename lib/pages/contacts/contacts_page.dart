@@ -218,76 +218,51 @@ class _ContactsPageState extends State<ContactsPage> {
   /// 构建顶部 AppBar
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 60,
-      floating: false,
       pinned: true,
       elevation: 0,
-      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: Theme.of(context).brightness == Brightness.dark
-                ? LinearGradient(
-                    colors: [AppTheme.primaryDark, AppTheme.primaryColor],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  )
-                : AppTheme.headerGradient,
+      scrolledUnderElevation: 0,
+      backgroundColor: Colors.transparent,
+      automaticallyImplyLeading: false,
+      title: Row(
+        children: [
+          const Text(
+            '通讯录',
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Text(
-                    '通讯录',
-                    style: TextStyle(
-                      color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const Spacer(),
-                  // 扫码按钮
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerPage()));
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (Theme.of(context).appBarTheme.foregroundColor ?? Colors.white).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.qr_code_scanner_rounded,
-                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // 添加好友按钮
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFriendPage()));
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.person_add_outlined, color: Colors.white, size: 20),
-                    ),
-                  ),
-                ],
+          const Spacer(),
+          // 扫码按钮
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerPage()));
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 20),
             ),
           ),
-        ),
+          const SizedBox(width: 10),
+          // 添加好友按钮
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFriendPage()));
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.person_add_outlined, color: Colors.white, size: 20),
+            ),
+          ),
+        ],
       ),
+      titleSpacing: 20,
+      flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
     );
   }
 
@@ -509,7 +484,7 @@ class _ContactTile extends StatelessWidget {
         height: 60,
         child: Row(
           children: [
-            AvatarWidget(avatar: user.avatar, size: 44, showOnline: true, onlineStatus: user.onlineStatus),
+            AvatarWidget(avatar: user.avatar, size: 44, showOnline: true, online: user.online),
             // 头像与文字的间距
             const SizedBox(width: 14),
             Expanded(
