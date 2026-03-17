@@ -31,10 +31,12 @@ class ProfilePage extends StatelessWidget {
             expandedHeight: 120,
             pinned: true,
             elevation: 0,
-            backgroundColor: AppTheme.primaryColor,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(color: AppTheme.primaryColor),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor
+                ),
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -57,11 +59,11 @@ class ProfilePage extends StatelessWidget {
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
                                     shape: BoxShape.circle,
                                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
                                   ),
-                                  child: const Icon(Icons.camera_alt_rounded, size: 16, color: AppTheme.primaryColor),
+                                  child: Icon(Icons.camera_alt_rounded, size: 16, color: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor),
                                 ),
                               ),
                             ],

@@ -222,17 +222,31 @@ class _ContactsPageState extends State<ContactsPage> {
       floating: false,
       pinned: true,
       elevation: 0,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
+          decoration: BoxDecoration(
+            gradient: Theme.of(context).brightness == Brightness.dark
+                ? LinearGradient(
+                    colors: [AppTheme.primaryDark, AppTheme.primaryColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  )
+                : AppTheme.headerGradient,
+          ),
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     '通讯录',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(
+                      color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                   const Spacer(),
                   // 扫码按钮
@@ -243,10 +257,14 @@ class _ContactsPageState extends State<ContactsPage> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        color: (Theme.of(context).appBarTheme.foregroundColor ?? Colors.white).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 20),
+                      child: Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),

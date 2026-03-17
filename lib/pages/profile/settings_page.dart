@@ -27,25 +27,32 @@ class _SettingsPageState extends State<SettingsPage> {
             floating: false,
             pinned: true,
             elevation: 0,
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
             leading: IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
+                color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
                 size: 20,
               ),
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.headerGradient,
+                decoration: BoxDecoration(
+                  gradient: Theme.of(context).brightness == Brightness.dark 
+                    ? LinearGradient(
+                        colors: [AppTheme.primaryDark, AppTheme.primaryColor],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      )
+                    : AppTheme.headerGradient,
                 ),
-                child: const SafeArea(
+                child: SafeArea(
                   child: Center(
                     child: Text(
                       '设置',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,

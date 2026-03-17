@@ -297,15 +297,23 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.primaryDark : AppTheme.primaryColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded, 
+            color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white, 
+            size: 20
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           isGroup ? '群设置' : '聊天设置',
-          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white, 
+            fontSize: 18, 
+            fontWeight: FontWeight.bold
+          ),
         ),
         centerTitle: true,
       ),

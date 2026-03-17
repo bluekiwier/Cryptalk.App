@@ -536,13 +536,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     return PreferredSize(
       preferredSize: const Size.fromHeight(60),
       child: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
+        decoration: BoxDecoration(
+          gradient: Theme.of(context).brightness == Brightness.dark
+              ? LinearGradient(
+                  colors: [AppTheme.primaryDark, AppTheme.primaryColor],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                )
+              : AppTheme.headerGradient,
+        ),
         child: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           title: Row(
@@ -550,12 +562,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: (Theme.of(context).appBarTheme.foregroundColor ?? Colors.white).withValues(alpha: 0.2),
                 backgroundImage: widget.conversation.avatar.isNotEmpty
                     ? NetworkImage(widget.conversation.avatar)
                     : null,
                 child: widget.conversation.avatar.isEmpty
-                    ? const Icon(Icons.group, size: 20, color: Colors.white)
+                    ? Icon(Icons.group, size: 20, color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white)
                     : null,
               ),
               const SizedBox(width: 8),
@@ -565,13 +577,23 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   Flexible(
                     child: Text(
                       _currentTitle,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (widget.conversation.isGroup) ...[
                     const SizedBox(width: 4),
-                    Text('($_groupMemberCount人)', style: TextStyle(fontSize: 20, color: Colors.white)),
+                    Text(
+                      '($_groupMemberCount人)',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -580,11 +602,15 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           centerTitle: true,
           actions: [
             // IconButton(
-            //   icon: const Icon(Icons.phone_outlined, size: 22, color: Colors.white),
+            //   icon: Icon(Icons.phone_outlined, size: 22, color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white),
             //   onPressed: () {},
             // ),
             IconButton(
-              icon: const Icon(Icons.more_horiz_rounded, size: 22, color: Colors.white),
+              icon: Icon(
+                Icons.more_horiz_rounded,
+                size: 22,
+                color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+              ),
               onPressed: () {
                 Navigator.push(
                   context,

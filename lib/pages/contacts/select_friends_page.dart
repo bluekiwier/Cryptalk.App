@@ -182,19 +182,30 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: Icon(
+            Icons.arrow_back, 
+            color: Theme.of(context).colorScheme.onSurface
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '发起群聊',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+              style: TextStyle(
+                fontSize: 18, 
+                fontWeight: FontWeight.w600, 
+                color: Theme.of(context).colorScheme.onSurface
+              ),
             ),
             Text(
               '已选择 ${_selectedUserIds.length} 位好友',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textHint, fontWeight: FontWeight.normal),
+              style: TextStyle(
+                fontSize: 12, 
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), 
+                fontWeight: FontWeight.normal
+              ),
             ),
           ],
         ),
@@ -205,7 +216,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
               '完成',
               style: TextStyle(
                 fontSize: 16,
-                color: _selectedUserIds.length >= 2 ? AppTheme.primaryColor : AppTheme.textHint,
+                color: _selectedUserIds.length >= 2 ? AppTheme.primaryColor : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                 fontWeight: FontWeight.w600,
               ),
             ),

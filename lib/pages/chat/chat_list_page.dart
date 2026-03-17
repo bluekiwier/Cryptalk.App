@@ -173,17 +173,31 @@ class _ChatListPageState extends State<ChatListPage> {
       floating: false,
       pinned: true,
       elevation: 0,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.headerGradient),
+          decoration: BoxDecoration(
+            gradient: Theme.of(context).brightness == Brightness.dark
+                ? LinearGradient(
+                    colors: [AppTheme.primaryDark, AppTheme.primaryColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  )
+                : AppTheme.headerGradient,
+          ),
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     '闲聊',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(
+                      color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   if (_accountService.currentUser?.messageUnreadCount != null &&
@@ -191,12 +205,16 @@ class _ChatListPageState extends State<ChatListPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: (Theme.of(context).appBarTheme.foregroundColor ?? Colors.white).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '(${_accountService.currentUser!.messageUnreadCount!})',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   const Spacer(),
