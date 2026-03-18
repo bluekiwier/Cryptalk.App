@@ -163,7 +163,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       final statusInt = map['status'] as int? ?? 0;
       final seqId = map['seq_id']?.toString() ?? '';
       final msgId = map['id']?.toString() ?? '';
-      _logger.d('消息 $msgId 状态: $statusInt');
+      // _logger.d('消息 $msgId 状态: $statusInt');
       return Message(
         id: msgId,
         senderId: map['sender_id']?.toString() ?? '',
@@ -171,7 +171,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         senderAvatar: map['sender_avatar']?.toString(),
         content: map['content']?.toString() ?? '',
         type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-        createdAt: parseUtcTime(map['created_at']?.toString()) ?? DateTime.now(),
+        createdAt: TimeUtil.parseUtcTime(map['created_at']?.toString()) ?? DateTime.now(),
         isRead: true,
         quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
         status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
@@ -265,7 +265,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         senderAvatar: map['sender_avatar']?.toString(),
         content: map['content']?.toString() ?? '',
         type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-        createdAt: parseUtcTime(map['created_at']?.toString()),
+        createdAt: TimeUtil.parseUtcTime(map['created_at']?.toString()),
         isRead: isReadInt == 1,
         quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
         status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
@@ -372,7 +372,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           senderAvatar: json['senderAvatar']?.toString(),
           content: json['content']?.toString() ?? '',
           type: MessageType.values.firstWhere((e) => e.index == (json['type'] ?? 0), orElse: () => MessageType.text),
-          createdAt: parseUtcTime(json['createdAt']?.toString()),
+          createdAt: TimeUtil.parseUtcTime(json['createdAt']?.toString()),
           isRead: true,
           quoteId: json['quoteId']?.toString() ?? '',
           status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
@@ -654,7 +654,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
-        child: Text(formatMessageTime(time.toLocal()), style: const TextStyle(fontSize: 11, color: AppTheme.textHint)),
+        child: Text(
+          TimeUtil.formatMessageTime(time.toLocal()),
+          style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
+        ),
       ),
     );
   }
@@ -711,7 +714,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1974,7 +1977,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       final currentUser = _accountService.currentUser;
       if (currentUser != null) {
         final messageType = messageData['type'] as int? ?? 1;
-        _logger.d('图片消息 type: $messageType, content: ${messageData['content']}');
+        // _logger.d('图片消息 type: $messageType, content: ${messageData['content']}');
         await DatabaseService().insertMessage({
           'id': int.parse(messageData['id']?.toString() ?? '0'),
           'conversation_id': int.parse(widget.conversation.id),
@@ -2259,7 +2262,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       final currentUser = _accountService.currentUser;
       if (currentUser != null) {
         final messageType = messageData['type'] as int? ?? 4;
-        _logger.d('文件消息 type: $messageType, content: ${messageData['content']}');
+        // _logger.d('文件消息 type: $messageType, content: ${messageData['content']}');
         await DatabaseService().insertMessage({
           'id': int.parse(messageData['id']?.toString() ?? '0'),
           'conversation_id': int.parse(widget.conversation.id),
@@ -2520,7 +2523,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       final currentUser = _accountService.currentUser;
       if (currentUser != null) {
         final messageType = messageData['type'] as int? ?? 2;
-        _logger.d('语音消息 type: $messageType, content: ${messageData['content']}');
+        // _logger.d('语音消息 type: $messageType, content: ${messageData['content']}');
         await DatabaseService().insertMessage({
           'id': int.parse(messageData['id']?.toString() ?? '0'),
           'conversation_id': int.parse(widget.conversation.id),

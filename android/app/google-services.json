@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "713861263583",
+    "project_id": "cryptalk-chatter",
+    "storage_bucket": "cryptalk-chatter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:713861263583:android:2b7ccdf38bc775c17ab96a",
+        "android_client_info": {
+          "package_name": "com.cryptalk.chatter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNu1845kjI_hXDQdzTt6LBwiwv0DvdjW0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -190,11 +190,7 @@ class _ChatListPageState extends State<ChatListPage> {
               ),
               child: Text(
                 '(${_accountService.currentUser!.messageUnreadCount!})',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
               ),
             ),
           const Spacer(),
@@ -202,9 +198,7 @@ class _ChatListPageState extends State<ChatListPage> {
         ],
       ),
       titleSpacing: 20,
-      flexibleSpace: Container(
-        decoration: AppTheme.getAppBarDecoration(context),
-      ),
+      flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
     );
   }
 
@@ -293,90 +287,87 @@ class _ConversationTile extends StatelessWidget {
             const SizedBox(width: 14),
             // 右侧内容（标题 + 最后消息 + 时间 + 未读数 + 分隔线）
             Expanded(
-              child: SizedBox(
-                height: 56,
-                child: Column(
-                  children: [
-                    // 第一行：标题 + 时间
-                    Row(
-                      children: [
-                        if (conversation.isPinned)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Icon(
-                              Icons.push_pin_rounded,
-                              size: 12,
-                              color: AppTheme.primaryColor.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        Expanded(
-                          child: Text(
-                            conversation.title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 第一行：标题 + 时间
+                  Row(
+                    children: [
+                      if (conversation.isPinned)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.push_pin_rounded,
+                            size: 12,
+                            color: AppTheme.primaryColor.withValues(alpha: 0.5),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          formatTime(conversation.lastMessageAt),
+                      Expanded(
+                        child: Text(
+                          conversation.title,
                           style: TextStyle(
-                            fontSize: 11,
-                            color: conversation.unreadCount > 0 ? AppTheme.primaryColor : AppTheme.textHint,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // 第二行：最后消息 + 未读数
-                    Row(
-                      children: [
-                        if (conversation.isMuted)
-                          const Padding(
-                            padding: EdgeInsets.only(right: 4),
-                            child: Icon(Icons.notifications_off_outlined, size: 14, color: AppTheme.textHint),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        TimeUtil.formatTime(conversation.lastMessageAt),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: conversation.unreadCount > 0 ? AppTheme.primaryColor : AppTheme.textHint,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  // 第二行：最后消息 + 未读数
+                  Row(
+                    children: [
+                      if (conversation.isMuted)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(Icons.notifications_off_outlined, size: 14, color: AppTheme.textHint),
+                        ),
+                      Expanded(
+                        child: Text(
+                          conversation.lastMessagePreview ?? '',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: conversation.unreadCount > 0 ? AppTheme.textSecondary : AppTheme.textHint,
                           ),
-                        Expanded(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (conversation.unreadCount > 0)
+                        Container(
+                          margin: const EdgeInsets.only(left: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: conversation.isMuted ? AppTheme.textHint : AppTheme.badgeColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           child: Text(
-                            conversation.lastMessagePreview ?? '',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: conversation.unreadCount > 0 ? AppTheme.textSecondary : AppTheme.textHint,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            conversation.unreadCount > 99 ? '99+' : conversation.unreadCount.toString(),
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        if (conversation.unreadCount > 0)
-                          Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: conversation.isMuted ? AppTheme.textHint : AppTheme.badgeColor,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              conversation.unreadCount > 99 ? '99+' : conversation.unreadCount.toString(),
-                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const SizedBox(height: 6),
-                    // 分隔线
-                    Container(
-                      height: 0.5,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.3)
-                          : Colors.black.withValues(alpha: 0.08),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // 分隔线
+                  Container(
+                    height: 0.5,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : Colors.black.withValues(alpha: 0.08),
+                  ),
+                ],
               ),
             ),
           ],

@@ -11,6 +11,9 @@ import 'services/theme_service.dart';
 class CryptalkApp extends StatelessWidget {
   const CryptalkApp({super.key});
 
+  /// 全局 NavigatorKey，用于在没有 Context 的地方（如通知回调）进行跳转
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     final accountService = AccountService();
@@ -20,6 +23,7 @@ class CryptalkApp extends StatelessWidget {
       listenable: Listenable.merge([accountService, themeService]),
       builder: (context, _) {
         return MaterialApp(
+          navigatorKey: navigatorKey,
           title: '闲聊',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,

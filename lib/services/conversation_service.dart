@@ -60,7 +60,7 @@ class ConversationService extends ChangeNotifier {
       _conversations = list;
       _updateFilteredConversations();
       notifyListeners();
-      _logger.d('本地 DB 加载会话 ${list.length} 条');
+      // _logger.d('本地 DB 加载会话 ${list.length} 条');
     } catch (e) {
       _logger.e('本地加载会话失败: $e');
     }
@@ -104,7 +104,7 @@ class ConversationService extends ChangeNotifier {
       final lastSyncTimeStr = await _db.getConfig('last_sync_conversation_time');
       final since = lastSyncTimeStr != null ? int.tryParse(lastSyncTimeStr) ?? 0 : 0;
 
-      _logger.d('开始同步会话数据 since=$since');
+      // _logger.d('开始同步会话数据 since=$since');
 
       final dio = await AccountService().getDio();
       final response = await dio.get('/api/conversation/sync', queryParameters: {'since': since});
@@ -116,16 +116,16 @@ class ConversationService extends ChangeNotifier {
           final list = data['list'] as List<dynamic>?;
           if (list != null && list.isNotEmpty) {
             final conversations = list.map((item) => Map<String, dynamic>.from(item)).toList();
-            _logger.i('同步会话数据: $data');
+            // _logger.i('同步会话数据: $data');
             // await _db.batchUpdateConversations(conversations);
             await _db.upsertConversations(conversations);
-            _logger.d('同步会话数据成功，更新了 ${conversations.length} 条');
+            // _logger.d('同步会话数据成功，更新了 ${conversations.length} 条');
           }
 
           final serverTime = data['serverTime'];
           if (serverTime != null) {
             await _db.setConfig('last_sync_conversation_time', serverTime.toString());
-            _logger.d('已保存同步时间: $serverTime');
+            // _logger.d('已保存同步时间: $serverTime');
           }
 
           await _loadFromLocal();
@@ -239,7 +239,7 @@ class ConversationService extends ChangeNotifier {
         lastSeqId: old.lastSeqId,
         lastSenderId: senderId.toString(),
         lastMessageId: messageId.toString(),
-        lastMessageAt: parseUtcTime(messageAt),
+        lastMessageAt: TimeUtil.parseUtcTime(messageAt),
         lastMessagePreview: messagePreview,
       );
       _conversations[idx] = updated;
@@ -280,6 +280,22 @@ class ConversationService extends ChangeNotifier {
       _updateFilteredConversations();
       notifyListeners();
     }
+  }
+
+  /// 获取单个会话对象（内存优先，DB 次之）
+  Future<Conversation?> getConversationById(String id) async {
+    // 1. 尝试从内存获取
+    final idx = _conversations.indexWhere((c) => c.id == id);
+    if (idx >= 0) return _conversations[idx];
+
+    // 2. 尝试从 DB 获取
+    final convId = int.tryParse(id);
+    if (convId == null) return null;
+    final row = await _db.getConversation(convId);
+    if (row != null) {
+      return _rowToConversation(row);
+    }
+    return null;
   }
 
   // ─────────────────────────────────────────────
@@ -828,7 +844,7 @@ class ConversationService extends ChangeNotifier {
       lastSeqId: row['last_seq_id']?.toString() ?? '',
       lastSenderId: row['last_sender_id'].toString(),
       lastMessageId: row['last_message_id'].toString(),
-      lastMessageAt: parseUtcTime(row['last_message_at']?.toString()),
+      lastMessageAt: TimeUtil.parseUtcTime(row['last_message_at']?.toString()),
       lastMessagePreview: row['last_message_preview'] as String? ?? '',
     );
   }

@@ -12,6 +12,7 @@ import '../models/db/conversation_entity.dart';
 import '../models/db/conversation_message_entity.dart';
 import '../models/send_message_result.dart';
 import '../utils/time_util.dart';
+import 'notification_service.dart';
 
 /// 统一消息模型
 class MessageResult {
@@ -67,7 +68,7 @@ class ChatMessageDto {
       conversationType: json['conversationType'] ?? 0,
       senderId: json['senderId'] ?? '',
       receiverId: json['receiverId'] ?? '',
-      time: parseUtcTime(json['time']?.toString()) ?? DateTime.now(),
+      time: TimeUtil.parseUtcTime(json['time']?.toString()) ?? DateTime.now(),
       payload: ConversationMessagePayload.fromJson(json['payload'] ?? {}),
       isReceipt: json['isReceipt'] ?? false,
     );
@@ -341,6 +342,17 @@ class ChatService extends ChangeNotifier {
       _receivedMessages.add(message);
       // 按时间升序排列，确保新消息在正确的位置
       _receivedMessages.sort((a, b) => a.time.compareTo(b.time));
+
+      // 如果当前不在该会话页面，且不是自己发送的消息，则显示通知
+      final currentUserId = AccountService().currentUser?.id;
+      if (!isInChatPage(message.conversationId) && message.senderId != currentUserId) {
+        NotificationService().showChatNotification(
+          id: message.payload.id.hashCode,
+          title: message.payload.senderNickname ?? '新消息',
+          body: _getMessagePreview(message.payload.content, message.payload.type),
+          payload: message.conversationId,
+        );
+      }
     }
 
     final payload = message.payload;
@@ -656,7 +668,7 @@ class ChatService extends ChangeNotifier {
       conversationType: 2,
       senderId: senderId.toString(),
       receiverId: conversationId,
-      time: parseUtcTime(createdAtStr) ?? DateTime.now(),
+      time: TimeUtil.parseUtcTime(createdAtStr) ?? DateTime.now(),
       payload: ConversationMessagePayload(
         id: msgId.toString(),
         conversationId: conversationId,
@@ -678,6 +690,17 @@ class ChatService extends ChangeNotifier {
     if (!isDuplicate) {
       _receivedMessages.add(notifyMessage);
       _receivedMessages.sort((a, b) => a.time.compareTo(b.time));
+
+      // 显示群通知消息
+      final currentUserId = AccountService().currentUser?.id;
+      if (!isInChatPage(conversationId) && senderId.toString() != currentUserId) {
+        NotificationService().showChatNotification(
+          id: notifyMessage.payload.id.hashCode,
+          title: '群通知',
+          body: content,
+          payload: conversationId,
+        );
+      }
     }
 
     Future(() async {

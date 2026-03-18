@@ -417,6 +417,17 @@ class DatabaseService {
     return results.map((e) => e).toList();
   }
 
+  /// 获取单个会话
+  Future<Map<String, dynamic>?> getConversation(int id) async {
+    final db = await database;
+    final result = await db.query(
+      ConversationEntity.tableName,
+      where: '${ConversationEntity.id} = ?',
+      whereArgs: [id],
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
   /// 查询本地会话总数
   Future<int> conversationCount() async {
     final db = await database;
