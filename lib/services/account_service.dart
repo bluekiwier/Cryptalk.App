@@ -22,6 +22,18 @@ class AccountService extends ChangeNotifier {
 
   String? _cachedAppVersion;
   String? _cachedUserAgent;
+  String? _cachedAcceptLanguage;
+
+  /// 获取设备语言设置
+  String _getAcceptLanguage() {
+    try {
+      final locale = PlatformDispatcher.instance.locale;
+      return '${locale.languageCode}-${locale.countryCode}';
+    } catch (e) {
+      _logger.e('获取设备语言失败: $e');
+      return 'zh-CN'; // 默认中文
+    }
+  }
 
   /// 获取包含设备信息的 User-Agent
   Future<String> _getUserAgent(String appVersion) async {
@@ -63,8 +75,9 @@ class AccountService extends ChangeNotifier {
       _cachedAppVersion = packageInfo.version;
       _cachedUserAgent = await _getUserAgent(_cachedAppVersion!);
     }
+    _cachedAcceptLanguage ??= _getAcceptLanguage();
 
-    final headers = <String, dynamic>{'App-Version': _cachedAppVersion};
+    final headers = <String, dynamic>{'App-Version': _cachedAppVersion, 'Accept-Language': _cachedAcceptLanguage};
     if (!kIsWeb) {
       headers['User-Agent'] = _cachedUserAgent;
     }

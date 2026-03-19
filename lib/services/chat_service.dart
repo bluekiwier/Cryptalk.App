@@ -754,7 +754,7 @@ class ChatService extends ChangeNotifier {
   void sendMessage(String message) {
     if (_channel != null && _isConnected) {
       _channel!.sink.add(message);
-      _logger.d('发送 WebSocket 消息: $message');
+      // _logger.d('发送 WebSocket 消息: $message');
     } else {
       _logger.w('WebSocket 未连接，无法发送消息');
     }
@@ -789,7 +789,7 @@ class ChatService extends ChangeNotifier {
     try {
       final currentUser = AccountService().currentUser;
       if (currentUser == null) {
-        _logger.w('用户未登录，停止获取 WebSocket 地址');
+        // _logger.w('用户未登录，停止获取 WebSocket 地址');
         return;
       }
 
