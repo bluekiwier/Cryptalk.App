@@ -1,4 +1,5 @@
 import 'package:logger/logger.dart';
+import 'package:dio/dio.dart';
 import '../models/user.dart';
 import 'account_service.dart';
 
@@ -12,7 +13,6 @@ class UserService {
   final accountService = AccountService();
 
   /// 获取当前用户的个人资料
-  /// 调用 GET /api/user/me
   Future<User?> getMe() async {
     try {
       final dio = await accountService.getDio();
@@ -20,7 +20,7 @@ class UserService {
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('获取个人资料成功');
+        // _logger.d('获取个人资料成功');
         final data = responseData['data'] as Map<String, dynamic>;
         return User.fromJson(data);
       } else {
@@ -34,14 +34,13 @@ class UserService {
   }
 
   /// 获取用户详情
-  /// 调用 GET /api/user/profile/:id
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
       final dio = await accountService.getDio();
       final response = await dio.get('/api/user/profile/$userId');
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('获取用户详情成功');
+        // _logger.d('获取用户详情成功');
         return responseData['data'] as Map<String, dynamic>?;
       } else {
         _logger.e('获取用户详情失败: ${responseData?['message']}');
@@ -54,8 +53,6 @@ class UserService {
   }
 
   /// 修改用户信息
-  /// 调用 POST /api/user/change-info
-  /// 参数均为可选，有值则修改
   Future<({bool success, String message})> changeInfo({
     String? nickname,
     String? mobile,
@@ -64,7 +61,6 @@ class UserService {
   }) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
 
       final Map<String, dynamic> data = {};
       if (nickname != null) data['Nickname'] = nickname;
@@ -72,15 +68,19 @@ class UserService {
       if (email != null) data['Email'] = email;
       if (signature != null) data['Signature'] = signature;
 
-      _logger.d('请求修改用户信息: $data');
+      // _logger.d('请求修改用户信息: $data');
 
-      final response = await dio.post('/api/user/change-info', data: data);
+      final response = await dio.post(
+        '/api/user/change-info',
+        data: data,
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '提交完成';
 
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('修改用户信息成功');
+        // _logger.d('修改用户信息成功');
         return (success: true, message: msg);
       } else {
         _logger.e('修改用户信息失败: $msg');
@@ -93,24 +93,22 @@ class UserService {
   }
 
   /// 修改密码
-  /// 调用 POST /api/user/change-password
   Future<({bool success, String message})> changePassword({
     required String oldPassword,
     required String newPassword,
   }) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return (success: false, message: '未登录');
-
       final response = await dio.post(
         '/api/user/change-password',
         data: {'oldpassword': oldPassword, 'newpassword': newPassword},
+        options: Options(extra: {'obfuscate': true}),
       );
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('修改密码成功');
+        // _logger.d('修改密码成功');
         return (success: true, message: msg);
       } else {
         _logger.e('修改密码失败: $msg');
@@ -123,19 +121,21 @@ class UserService {
   }
 
   /// 搜索用户
-  /// 调用 POST /api/user/search
   Future<List<Map<String, dynamic>>?> searchUser(String keyword) async {
     try {
       final dio = await accountService.getDio();
-      // if (dio == null) return null;
 
-      _logger.d('搜索用户 keyword: $keyword');
+      // _logger.d('搜索用户 keyword: $keyword');
 
-      final response = await dio.post('/api/user/search', data: {'keyword': keyword});
+      final response = await dio.post(
+        '/api/user/search',
+        data: {'keyword': keyword},
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('搜索用户成功');
+        // _logger.d('搜索用户成功');
         return (responseData['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>();
       } else {
         _logger.e('搜索用户失败: ${responseData?['message']}');
@@ -148,14 +148,17 @@ class UserService {
   }
 
   /// 修改当前用户头像
-  /// 调用 POST /api/user/change-avatar
   Future<bool> changeAvatar(String avatarUrl) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.post('/api/user/change-avatar', data: {'avatar': avatarUrl});
+      final response = await dio.post(
+        '/api/user/change-avatar',
+        data: {'avatar': avatarUrl},
+        options: Options(extra: {'obfuscate': true}),
+      );
       final data = response.data;
       if (data != null && data['success'] == true) {
-        _logger.d('修改头像成功');
+        // _logger.d('修改头像成功');
         // 同步更新 AccountService 中的用户信息
         final currentUser = accountService.currentUser;
         if (currentUser != null) {

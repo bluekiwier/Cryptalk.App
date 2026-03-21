@@ -202,7 +202,7 @@ class ChatService extends ChangeNotifier {
   /// 检查并重新连接 WebSocket（用于 APP 重新打开时）
   Future<void> checkAndReconnect() async {
     if (!_isConnected) {
-      _logger.i('APP 打开，检查并重新连接 WebSocket');
+      // _logger.i('APP 打开，检查并重新连接 WebSocket');
       await connect();
     }
   }
@@ -857,7 +857,11 @@ class ChatService extends ChangeNotifier {
         data['quoteId'] = int.tryParse(quoteId) ?? quoteId;
       }
 
-      final response = await dio.post('/api/chat/send-private-message', data: data);
+      final response = await dio.post(
+        '/api/chat/send-private-message',
+        data: data,
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -893,7 +897,11 @@ class ChatService extends ChangeNotifier {
         data['quoteId'] = int.tryParse(quoteId) ?? quoteId;
       }
 
-      final response = await dio.post('/api/chat/send-group-message', data: data);
+      final response = await dio.post(
+        '/api/chat/send-group-message',
+        data: data,
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -929,7 +937,7 @@ class ChatService extends ChangeNotifier {
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       _sendHeartbeat();
     });
-    _logger.i('心跳机制已启动');
+    // _logger.i('心跳机制已启动');
   }
 
   /// 停止心跳机制

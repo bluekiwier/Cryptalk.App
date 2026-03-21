@@ -1,15 +1,16 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
-import '../config/api_config.dart';
 import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:device_info_plus/device_info_plus.dart';
+import '../models/user.dart';
+import '../config/api_config.dart';
+import '../utils/device_util.dart';
 import 'chat_service.dart';
 import 'database_service.dart';
+import 'encryption_service.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 /// 认证服务 - 管理用户登录/注册状态
 class AccountService extends ChangeNotifier {
@@ -24,58 +25,14 @@ class AccountService extends ChangeNotifier {
   String? _cachedUserAgent;
   String? _cachedAcceptLanguage;
 
-  /// 获取设备语言设置
-  String _getAcceptLanguage() {
-    try {
-      final locale = PlatformDispatcher.instance.locale;
-      return '${locale.languageCode}-${locale.countryCode}';
-    } catch (e) {
-      _logger.e('获取设备语言失败: $e');
-      return 'zh-CN'; // 默认中文
-    }
-  }
-
-  /// 获取包含设备信息的 User-Agent
-  Future<String> _getUserAgent(String appVersion) async {
-    final deviceInfo = DeviceInfoPlugin();
-    String systemInfo = 'Unknown System';
-
-    try {
-      if (kIsWeb) {
-        final webInfo = await deviceInfo.webBrowserInfo;
-        systemInfo = 'Web; ${webInfo.browserName.name}; ${webInfo.userAgent ?? "Unknown"}';
-      } else if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        systemInfo = 'Android ${androidInfo.version.release}; ${androidInfo.brand}; ${androidInfo.model}';
-      } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        systemInfo = 'iOS ${iosInfo.systemVersion}; Apple; ${iosInfo.utsname.machine}';
-      } else if (Platform.isWindows) {
-        final windowsInfo = await deviceInfo.windowsInfo;
-        systemInfo =
-            'Windows NT ${windowsInfo.majorVersion}.${windowsInfo.minorVersion}.${windowsInfo.buildNumber}; Microsoft; PC';
-      } else if (Platform.isMacOS) {
-        final macInfo = await deviceInfo.macOsInfo;
-        systemInfo = 'macOS ${macInfo.majorVersion}.${macInfo.minorVersion}; Apple; Mac';
-      } else if (Platform.isLinux) {
-        final linuxInfo = await deviceInfo.linuxInfo;
-        systemInfo = 'Linux ${linuxInfo.versionId}; ${linuxInfo.id}; PC';
-      }
-    } catch (e) {
-      _logger.e('获取设备信息失败: $e');
-    }
-
-    return 'Cryptalk/$appVersion ($systemInfo)';
-  }
-
   /// 获取仅仅配置了基础参数和 Header 的基础 Dio 实例（无拦截器）
   Future<Dio> _getBaseDio({Map<String, dynamic>? extraHeaders}) async {
     if (_cachedAppVersion == null || _cachedUserAgent == null) {
       final packageInfo = await PackageInfo.fromPlatform();
       _cachedAppVersion = packageInfo.version;
-      _cachedUserAgent = await _getUserAgent(_cachedAppVersion!);
+      _cachedUserAgent = await DeviceUtil.getUserAgent(_cachedAppVersion!);
     }
-    _cachedAcceptLanguage ??= _getAcceptLanguage();
+    _cachedAcceptLanguage ??= DeviceUtil.getAcceptLanguage();
 
     final headers = <String, dynamic>{'App-Version': _cachedAppVersion, 'Accept-Language': _cachedAcceptLanguage};
     if (!kIsWeb) {
@@ -136,6 +93,9 @@ class AccountService extends ChangeNotifier {
         error: true,
       ),
     );
+
+    // 添加数据加密拦截器
+    dio.interceptors.add(EncryptInterceptor());
 
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -201,6 +161,9 @@ class AccountService extends ChangeNotifier {
       await prefs.setString('userSignature', user.signature!);
     }
     await prefs.setBool('userOnline', user.online);
+    if (user.secretKey != null) {
+      await prefs.setString('userSecretKey', user.secretKey!);
+    }
   }
 
   /// 从本地存储加载用户信息
@@ -223,12 +186,13 @@ class AccountService extends ChangeNotifier {
       mobile: prefs.getString('userMobile') ?? '',
       signature: prefs.getString('userSignature') ?? '',
       online: prefs.getBool('userOnline') ?? false,
+      secretKey: prefs.getString('userSecretKey') ?? '',
     );
-    _logger.d('加载用户信息成功: $_currentUser');
+    // _logger.d('加载用户信息成功: $_currentUser');
 
     // 初始化用户独立数据库
     await DatabaseService().initForUser(_currentUser!.id);
-    _logger.d('用户数据库初始化完成');
+    // _logger.d('用户数据库初始化完成');
 
     notifyListeners();
   }
@@ -260,7 +224,11 @@ class AccountService extends ChangeNotifier {
     try {
       final dio = await getDio();
       // 请求接口
-      final response = await dio.post('/api/account/sign-in', data: {'account': account, 'password': password});
+      final response = await dio.post(
+        '/api/account/sign-in',
+        data: {'account': account, 'password': password},
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       // _logger.d('登录返回数据: $responseData');
@@ -291,6 +259,7 @@ class AccountService extends ChangeNotifier {
           mobile: data['user']['mobile']?.toString() ?? '',
           signature: data['user']['signature']?.toString() ?? '',
           online: true,
+          secretKey: data['user']['secretKey']?.toString() ?? '',
         );
 
         // 保存用户信息到本地
@@ -351,12 +320,18 @@ class AccountService extends ChangeNotifier {
 
     try {
       final dio = await getDio();
-      final requestData = {'account': phone, 'password': password, 'nickname': name};
+      // 生成用户密钥32字节 = 256位（AES-256），并转换为 Base64 字符串
+      final userKey = encrypt.Key.fromSecureRandom(32).base64;
+      final requestData = {'account': phone, 'password': password, 'nickname': name, 'key': userKey};
       if (invitationCode != null && invitationCode.isNotEmpty) {
         requestData['inviteCode'] = invitationCode;
       }
 
-      final response = await dio.post('/api/account/sign-up', data: requestData);
+      final response = await dio.post(
+        '/api/account/sign-up',
+        data: requestData,
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -413,7 +388,11 @@ class AccountService extends ChangeNotifier {
       final dio = await _getBaseDio();
 
       _logger.i('开始刷新refreshToken');
-      final response = await dio.post('/api/account/refresh-token', data: {'refreshToken': currentRefreshToken});
+      final response = await dio.post(
+        '/api/account/refresh-token',
+        data: {'refreshToken': currentRefreshToken},
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -502,6 +481,7 @@ class AccountService extends ChangeNotifier {
     await prefs.remove('userMobile');
     await prefs.remove('userSignature');
     await prefs.remove('userOnline');
+    await prefs.remove('userSecretKey');
 
     // 清理用户数据库
     await DatabaseService().clearForCurrentUser();

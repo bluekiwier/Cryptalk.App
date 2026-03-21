@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import 'account_service.dart';
 
@@ -14,7 +15,11 @@ class MessageService {
     try {
       // 调用后端撤回API
       final dio = await AccountService().getDio();
-      final response = await dio.delete('/api/message/recall', data: {'id': messageId});
+      final response = await dio.delete(
+        '/api/message/recall',
+        data: {'id': messageId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.statusCode == 200;
     } catch (e) {
       _logger.e('撤回消息失败: $e');
@@ -27,7 +32,11 @@ class MessageService {
     try {
       // 调用后端删除API
       final dio = await AccountService().getDio();
-      final response = await dio.delete('/api/message/delete', data: {'id': messageId});
+      final response = await dio.delete(
+        '/api/message/delete',
+        data: {'id': messageId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.statusCode == 200;
     } catch (e) {
       _logger.e('删除消息失败: $e');

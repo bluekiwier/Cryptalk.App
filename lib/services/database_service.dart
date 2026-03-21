@@ -36,7 +36,7 @@ class DatabaseService {
 
     final db = await openDatabase(path, version: 1, onCreate: _onCreate, onUpgrade: _onUpgrade);
 
-    _logger.i('sqflite 数据库初始化成功: $path');
+    // _logger.i('sqflite 数据库初始化成功: $path');
     return db;
   }
 
@@ -45,7 +45,7 @@ class DatabaseService {
     await close();
     _currentUserId = userId;
     _database = await _initDatabase();
-    _logger.i('已为用户初始化独立数据库: $_currentUserId');
+    // _logger.i('已为用户初始化独立数据库: $_currentUserId');
   }
 
   /// 清理当前用户数据库（登出时调用）
@@ -420,11 +420,7 @@ class DatabaseService {
   /// 获取单个会话
   Future<Map<String, dynamic>?> getConversation(int id) async {
     final db = await database;
-    final result = await db.query(
-      ConversationEntity.tableName,
-      where: '${ConversationEntity.id} = ?',
-      whereArgs: [id],
-    );
+    final result = await db.query(ConversationEntity.tableName, where: '${ConversationEntity.id} = ?', whereArgs: [id]);
     return result.isNotEmpty ? result.first : null;
   }
 

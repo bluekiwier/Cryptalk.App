@@ -342,7 +342,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
       // 将消息转换为数据库格式并存储
       final messageRows = list.map((json) {
-        _logger.d('从服务器同步消息: $json');
+        // _logger.d('从服务器同步消息: $json');
         return {
           'id': json['id'],
           'conversation_id': int.parse(widget.conversation.id),

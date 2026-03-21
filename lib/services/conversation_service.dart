@@ -309,6 +309,7 @@ class ConversationService extends ChangeNotifier {
       final response = await dio.post(
         '/api/conversation/list',
         data: (cursor ?? const ConversationListInputDto()).toJson(),
+        options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
@@ -370,6 +371,7 @@ class ConversationService extends ChangeNotifier {
       final response = await dio.post(
         '/api/conversation/$conversationId/messages',
         data: {'messageId': messageId, 'pageSize': pageSize},
+        options: Options(extra: {'obfuscate': true}),
       );
       return response.data;
     } on DioException catch (e) {
@@ -390,7 +392,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> pinTopConversation(String conversationId, int type) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/pin-top', data: {'type': type});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/pin-top',
+        data: {'type': type},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } on DioException catch (e) {
       _logger.e('置顶聊天失败: $e');
@@ -405,7 +411,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> muteConversation(String conversationId, int type) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/mute', data: {'type': type});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/mute',
+        data: {'type': type},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } on DioException catch (e) {
       _logger.e('设置消息免打扰失败: $e');
@@ -423,7 +433,11 @@ class ConversationService extends ChangeNotifier {
     try {
       final dio = await AccountService().getDio();
 
-      final response = await dio.post('/api/conversation/create-group', data: {'userIds': userIds});
+      final response = await dio.post(
+        '/api/conversation/create-group',
+        data: {'userIds': userIds},
+        options: Options(extra: {'obfuscate': true}),
+      );
 
       final responseData = response.data;
       _logger.d('创建群组响应: $responseData');
@@ -591,13 +605,14 @@ class ConversationService extends ChangeNotifier {
   }
 
   /// 修改群名称
-  /// url: /api/conversation/{conversationId}/change-title
-  /// action: post
-  /// 请求数据: {title: "群名称"}
   Future<Map<String, dynamic>?> updateGroupName(String conversationId, String name) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/change-title', data: {'title': name});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/change-title',
+        data: {'title': name},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } on DioException catch (e) {
       _logger.e('修改群名称失败: $e');
@@ -609,15 +624,13 @@ class ConversationService extends ChangeNotifier {
   }
 
   /// 修改群公告
-  /// url: /api/conversation/{conversationId}/change-announcement
-  /// action: post
-  /// 请求数据: {content: "公告内容"}
   Future<Map<String, dynamic>?> updateGroupAnnouncement(String conversationId, String announcement) async {
     try {
       final dio = await AccountService().getDio();
       final response = await dio.post(
         '/api/conversation/$conversationId/change-announcement',
         data: {'content': announcement},
+        options: Options(extra: {'obfuscate': true}),
       );
       return response.data;
     } on DioException catch (e) {
@@ -680,7 +693,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> addGroupAdmin(String conversationId, dynamic userId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/add-admin', data: {'userId': userId});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/add-admin',
+        data: {'userId': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } catch (e) {
       _logger.e('添加群管理员失败: $e');
@@ -692,7 +709,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> removeGroupAdmin(String conversationId, dynamic userId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/remove-admin', data: {'userId': userId});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/remove-admin',
+        data: {'userId': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } catch (e) {
       _logger.e('移除群管理员失败: $e');
@@ -704,7 +725,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> transferGroupOwner(String conversationId, dynamic userId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/transfer-owner', data: {'userId': userId});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/transfer-owner',
+        data: {'userId': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } catch (e) {
       _logger.e('转让群主失败: $e');
@@ -743,7 +768,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> cancelGroupMute(String conversationId, dynamic userId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/cancel-mute', data: {'userId': userId});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/cancel-mute',
+        data: {'userId': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } catch (e) {
       _logger.e('取消群内禁言失败: $e');
@@ -755,7 +784,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> removeGroupMember(String conversationId, dynamic userId) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/remove-member', data: {'userId': userId});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/remove-member',
+        data: {'userId': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } catch (e) {
       _logger.e('踢出群成员失败: $e');
@@ -767,7 +800,11 @@ class ConversationService extends ChangeNotifier {
   Future<Map<String, dynamic>?> addGroupMember(String conversationId, String account) async {
     try {
       final dio = await AccountService().getDio();
-      final response = await dio.post('/api/conversation/$conversationId/add-member', data: {'account': account});
+      final response = await dio.post(
+        '/api/conversation/$conversationId/add-member',
+        data: {'account': account},
+        options: Options(extra: {'obfuscate': true}),
+      );
       return response.data;
     } catch (e) {
       _logger.e('邀请成员失败: $e');

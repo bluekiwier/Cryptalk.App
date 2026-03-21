@@ -27,7 +27,7 @@ class FriendService {
       if (responseData != null && responseData['success'] == true) {
         final List<dynamic> dataList = responseData['data'] ?? [];
         final requests = dataList.map((item) => FriendRequest.fromJson(item)).toList();
-        _logger.d('获取到 ${requests.length} 条好友申请');
+        // _logger.d('获取到 ${requests.length} 条好友申请');
         return requests;
       } else {
         _logger.e('获取好友申请列表失败: ${responseData?['message']}');
@@ -47,16 +47,18 @@ class FriendService {
   }
 
   /// 接受好友申请
-  /// 调用 POST /api/friend/requests/agree
-  /// [requestId] 为 Requests 接口返回的申请记录 ID
   Future<({bool success, String message})> agreeFriendRequest(String requestId) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.post('/api/friend/requests/agree', data: {'id': requestId});
+      final response = await dio.post(
+        '/api/friend/requests/agree',
+        data: {'id': requestId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('接受好友申请成功');
+        // _logger.d('接受好友申请成功');
         return (success: true, message: msg);
       } else {
         _logger.e('接受好友申请失败: $msg');
@@ -69,15 +71,18 @@ class FriendService {
   }
 
   /// 拒绝好友申请
-  /// 调用 POST /api/friend/requests/disagree
   Future<({bool success, String message})> disagreeFriendRequest(String requestId) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.post('/api/friend/requests/disagree', data: {'id': requestId});
+      final response = await dio.post(
+        '/api/friend/requests/disagree',
+        data: {'id': requestId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('拒绝好友申请成功');
+        // _logger.d('拒绝好友申请成功');
         return (success: true, message: msg);
       } else {
         _logger.e('拒绝好友申请失败: $msg');
@@ -90,15 +95,18 @@ class FriendService {
   }
 
   /// 拉黑用户
-  /// 调用 POST /api/friend/block
   Future<({bool success, String message})> blockFriendRequest(String userId) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.post('/api/friend/blacklist-add', data: {'id': userId});
+      final response = await dio.post(
+        '/api/friend/blacklist-add',
+        data: {'id': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('拉黑用户成功');
+        // _logger.d('拉黑用户成功');
         return (success: true, message: msg);
       } else {
         _logger.e('拉黑用户失败: $msg');
@@ -111,15 +119,18 @@ class FriendService {
   }
 
   /// 移除黑名单
-  /// 调用 DELETE /api/friend/block-remove
   Future<({bool success, String message})> removeBlock(String userId) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.delete('/api/friend/blacklist-remove', data: {'id': userId});
+      final response = await dio.delete(
+        '/api/friend/blacklist-remove',
+        data: {'id': userId},
+        options: Options(extra: {'obfuscate': true}),
+      );
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('移除黑名单成功');
+        // _logger.d('移除黑名单成功');
         return (success: true, message: msg);
       } else {
         _logger.e('移除黑名单失败: $msg');
@@ -132,7 +143,6 @@ class FriendService {
   }
 
   /// 删除好友
-  /// 调用 DELETE /api/friend/delete
   Future<({bool success, String message})> deleteFriend(String userId) async {
     try {
       final dio = await accountService.getDio();
@@ -141,12 +151,13 @@ class FriendService {
         data: {
           'ids': [userId],
         },
+        options: Options(extra: {'obfuscate': true}),
       );
 
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('删除好友成功');
+        // _logger.d('删除好友成功');
         return (success: true, message: msg);
       } else {
         _logger.e('删除好友失败: $msg');
@@ -159,7 +170,6 @@ class FriendService {
   }
 
   /// 获取好友申请数量
-  /// 调用 GET /api/friend/requests/count
   Future<int> getRequestsCount() async {
     try {
       final dio = await accountService.getDio();
@@ -167,7 +177,7 @@ class FriendService {
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         final count = responseData['data'];
-        _logger.d('好友申请数量: $count');
+        // _logger.d('好友申请数量: $count');
         return count is int ? count : int.tryParse(count.toString()) ?? 0;
       }
       return 0;
@@ -178,16 +188,19 @@ class FriendService {
   }
 
   /// 添加好友
-  /// 调用 POST /api/friend/add
   /// [account] 可以是 ID / 账号 / 手机号
   Future<({bool success, String message})> addFriend(String account) async {
     try {
       final dio = await accountService.getDio();
-      final response = await dio.post('/api/friend/add', data: {'account': account});
+      final response = await dio.post(
+        '/api/friend/add',
+        data: {'account': account},
+        options: Options(extra: {'obfuscate': true}),
+      );
       final responseData = response.data;
       final msg = responseData?['message']?.toString() ?? '操作完成';
       if (responseData != null && responseData['success'] == true) {
-        _logger.d('添加好友成功: $msg');
+        // _logger.d('添加好友成功: $msg');
         return (success: true, message: msg);
       } else {
         _logger.e('添加好友失败: $msg');
@@ -200,7 +213,6 @@ class FriendService {
   }
 
   /// 获取好友列表
-  /// 调用 GET /api/friend/list
   Future<List<Map<String, dynamic>>> getFriendList() async {
     try {
       final dio = await accountService.getDio();
@@ -208,7 +220,7 @@ class FriendService {
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
         final List<dynamic> dataList = responseData['data'] ?? [];
-        _logger.d('获取到 ${dataList.length} 位好友');
+        // _logger.d('获取到 ${dataList.length} 位好友');
         return dataList.cast<Map<String, dynamic>>();
       } else {
         _logger.e('获取好友列表失败: ${responseData?['message']}');

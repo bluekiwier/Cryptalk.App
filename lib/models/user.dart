@@ -8,6 +8,7 @@ class User {
   final String? email;
   final String? signature;
   final String? inviteCode;
+  final String? secretKey;
   final int? friendRequestCount; // 好友申请数量（可选）
   final int? messageUnreadCount; // 消息未读数量（可选）
   final bool online;
@@ -22,6 +23,7 @@ class User {
     this.email,
     this.signature,
     this.inviteCode,
+    this.secretKey,
     this.friendRequestCount,
     this.messageUnreadCount,
     this.online = false,
@@ -39,6 +41,7 @@ class User {
       email: json['email']?.toString(),
       signature: json['signature']?.toString(),
       inviteCode: json['inviteCode']?.toString(),
+      secretKey: json['secretKey']?.toString(),
       friendRequestCount: json['friendRequestCount'] is int ? json['friendRequestCount'] : null,
       messageUnreadCount: json['messageUnreadCount'] is int ? json['messageUnreadCount'] : null,
       online: json['online'] == 1 || json['online'] == true,
@@ -55,6 +58,7 @@ class User {
     String? email,
     String? signature,
     String? inviteCode,
+    String? secretKey,
     int? friendRequestCount,
     int? messageUnreadCount,
     bool? online,
@@ -69,6 +73,7 @@ class User {
       email: email ?? this.email,
       signature: signature ?? this.signature,
       inviteCode: inviteCode ?? this.inviteCode,
+      secretKey: secretKey ?? this.secretKey,
       friendRequestCount: friendRequestCount ?? this.friendRequestCount,
       messageUnreadCount: messageUnreadCount ?? this.messageUnreadCount,
       online: online ?? this.online,
