@@ -2,8 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logger/logger.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../app.dart';
 import 'conversation_service.dart';
+import 'user_service.dart';
+import '../utils/device_util.dart';
 import '../pages/chat/chat_detail_page.dart';
 
 /// 通知服务 - 负责本地通知的初始化与展示
@@ -17,6 +20,15 @@ class NotificationService {
 
   /// 初始化通知设置
   Future<void> initialize() async {
+    // 1. 初始化本地通知
+    await _initLocalNotifications();
+
+    // 2. 初始化 FCM
+    await _initFirebaseMessaging();
+  }
+
+  /// 初始化本地通知
+  Future<void> _initLocalNotifications() async {
     // Android 配置
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -56,12 +68,115 @@ class NotificationService {
       },
     );
 
-    // Android 13+ 权限请求
+    // Android 13+ 本地通知权限请求（可选，FCM 也会请求）
     if (Platform.isAndroid) {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
           _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidImplementation != null) {
         await androidImplementation.requestNotificationsPermission();
+      }
+    }
+  }
+
+  /// 初始化 Firebase Cloud Messaging
+  Future<void> _initFirebaseMessaging() async {
+    if (Platform.isWindows || Platform.isLinux) {
+      _logger.d('当前平台不支持 FCM');
+      return;
+    }
+
+    try {
+      // 3. 请求推送权限（iOS/Android 13+）
+      NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        _logger.d('用户授予了推送权限');
+      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+        _logger.d('用户授予了临时推送权限');
+      } else {
+        _logger.w('用户拒绝或未授予推送权限');
+      }
+
+      // 前台消息处理
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        _logger.d('收到 FCM 前台消息: ${message.messageId}');
+        _handleForegroundMessage(message);
+      });
+
+      // 当 App 从后台被点击时触发
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        _logger.d('用户点击了 FCM 通知，进入 App');
+        _handleNotificationClick(message.data);
+      });
+
+      // 检查是否有由于点击通知而启动 App 的初始消息
+      RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        _logger.d('App 通过点击 FCM 通知启动');
+        _handleNotificationClick(initialMessage.data);
+      }
+    } catch (e) {
+      _logger.e('初始化 FCM 异常: $e');
+    }
+  }
+
+  /// 注册推送 Token 到后端
+  Future<void> registerPushToken() async {
+    if (Platform.isWindows || Platform.isLinux) return;
+
+    try {
+      // 4. 获取 FCM Token
+      String? token = await FirebaseMessaging.instance.getToken();
+      if (token == null) {
+        _logger.e('获取 FCM Token 失败');
+        return;
+      }
+      _logger.i('获取到 FCM Token: $token');
+
+      // 5. 获取设备 ID 并上传到后端
+      final deviceId = await DeviceUtil.getDeviceId();
+      final platform = Platform.isIOS ? 'ios' : 'android';
+
+      await UserService().deviceRegister(
+        deviceId: deviceId,
+        pushToken: token,
+        platform: platform,
+        pushProvider: 'fcm',
+      );
+    } catch (e) {
+      _logger.e('注册推送 Token 异常: $e');
+    }
+  }
+
+  /// 处理前台收到的 FCM 消息（转换为本地通知展示）
+  void _handleForegroundMessage(RemoteMessage message) {
+    RemoteNotification? notification = message.notification;
+    // AndroidNotification? android = message.notification?.android;
+
+    if (notification != null) {
+      showChatNotification(
+        id: message.hashCode,
+        title: notification.title ?? '收到新消息',
+        body: notification.body ?? '',
+        payload: message.data['conversationId'], // 假设后端在 data 中传了 conversationId
+      );
+    }
+  }
+
+  /// 处理通知点击跳转逻辑
+  Future<void> _handleNotificationClick(Map<String, dynamic> data) async {
+    final conversationId = data['conversationId'];
+    if (conversationId != null && conversationId.isNotEmpty) {
+      final conversation = await ConversationService().getConversationById(conversationId);
+      if (conversation != null) {
+        CryptalkApp.navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (context) => ChatDetailPage(conversation: conversation)),
+        );
       }
     }
   }

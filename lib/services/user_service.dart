@@ -175,4 +175,32 @@ class UserService {
       return false;
     }
   }
+
+  /// 设备注册
+  Future<bool> deviceRegister({
+    required String deviceId,
+    required String pushToken,
+    required String platform,
+    String pushProvider = 'fcm',
+  }) async {
+    try {
+      final dio = await accountService.getDio();
+      final response = await dio.post(
+        '/api/user/device-register',
+        data: {'deviceId': deviceId, 'pushToken': pushToken, 'platform': platform, 'pushProvider': pushProvider},
+        options: Options(extra: {'obfuscate': true}),
+      );
+      final data = response.data;
+      if (data != null && data['success'] == true) {
+        _logger.d('设备注册成功');
+        return true;
+      } else {
+        _logger.e('设备注册失败: ${data?['message']}');
+        return false;
+      }
+    } catch (e) {
+      _logger.e('设备注册异常: $e');
+      return false;
+    }
+  }
 }

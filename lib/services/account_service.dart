@@ -10,6 +10,7 @@ import '../utils/device_util.dart';
 import 'chat_service.dart';
 import 'database_service.dart';
 import 'encryption_service.dart';
+import 'notification_service.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 
 /// 认证服务 - 管理用户登录/注册状态
@@ -142,6 +143,14 @@ class AccountService extends ChangeNotifier {
     _logger.d('开始初始化 AccountService...');
     await _loadUserFromLocal();
     _logger.d('AccountService 初始化完成，currentUser: $_currentUser');
+
+    // 如果已登录，则注册推送 Token 并连接 WebSocket
+    if (isLoggedIn) {
+      NotificationService().registerPushToken();
+      // 当 App 被杀进程后重新打开（冷启动），或者从后台切到前台（热启动），
+      // 都会触发这个初始化过程，从而自动重连 WebSocket
+      ChatService().checkAndReconnect();
+    }
   }
 
   /// 保存用户信息到本地
@@ -222,7 +231,8 @@ class AccountService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final dio = await getDio();
+      final deviceId = await DeviceUtil.getDeviceId();
+      final dio = await getDio(extraHeaders: {'Dev-Id': deviceId});
       // 请求接口
       final response = await dio.post(
         '/api/account/sign-in',
@@ -245,9 +255,15 @@ class AccountService extends ChangeNotifier {
         }
 
         // WebSocket 服务器地址
-        final wsServer = data['server'];
-        if (wsServer != null) {
-          await prefs.setString('wsServer', wsServer.toString());
+        String? wsServer = data['server']?.toString();
+        if (wsServer != null && wsServer.isNotEmpty) {
+          // 协议修正
+          if (wsServer.startsWith('http://')) {
+            wsServer = wsServer.replaceFirst('http://', 'ws://');
+          } else if (wsServer.startsWith('https://')) {
+            wsServer = wsServer.replaceFirst('https://', 'wss://');
+          }
+          await prefs.setString('wsServer', wsServer);
         }
 
         _currentUser = User(
@@ -280,6 +296,9 @@ class AccountService extends ChangeNotifier {
             _scheduleTokenRefresh(expiresTicks);
           }
         }
+
+        // 成功登录后请求推送权限并注册 Token
+        NotificationService().registerPushToken();
 
         _isLoading = false;
         notifyListeners();
@@ -337,8 +356,12 @@ class AccountService extends ChangeNotifier {
       if (responseData != null && responseData['success'] == true) {
         // 注册成功，自动调用登录完成状态变更
         _isLoading = false;
-        // 注意：loginWithPhone内部会处理_isLoading和notifyListeners
-        return await loginWithPhone(phone, password);
+        final loggedIn = await loginWithPhone(phone, password);
+        if (loggedIn) {
+          // 注册并登录成功后注册推送 Token
+          NotificationService().registerPushToken();
+        }
+        return loggedIn;
       } else {
         _errorMessage = responseData?['message'] ?? '注册失败';
         _isLoading = false;
@@ -381,11 +404,11 @@ class AccountService extends ChangeNotifier {
     try {
       final currentRefreshToken = prefs.getString('refreshToken');
       if (currentRefreshToken == null || currentRefreshToken.isEmpty) {
-        // _logger.e('未找到 refreshToken，无法刷新');
+        _logger.e('未找到 refreshToken，无法刷新');
         return false;
       }
 
-      final dio = await _getBaseDio();
+      final dio = await getDio();
 
       _logger.i('开始刷新refreshToken');
       final response = await dio.post(
@@ -421,17 +444,29 @@ class AccountService extends ChangeNotifier {
         // 刷新失败可考虑强制退出
         // await signOut();
 
-        await clearLocalData();
+        // await clearLocalData();
+        return false;
+      }
+    } on DioException catch (e) {
+      // 网络异常处理：区分不同类型的网络错误
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        _logger.w('刷新令牌超时（网络不稳定）: $e');
+        // 网络超时不清理数据，让用户重试
+        return false;
+      } else if (e.type == DioExceptionType.connectionError) {
+        _logger.w('刷新令牌连接错误（网络不可用）: $e');
+        // 连接错误不清理数据，等待网络恢复
+        return false;
+      } else {
+        _logger.e('刷新令牌网络异常: $e');
+        // 其他网络异常也不清理数据
         return false;
       }
     } catch (e) {
-      _logger.e('刷新令牌异常: $e');
-      // 刷新异常也退出登录
-      // await signOut();
-
-      // 清除本地存储的 Token 和用户信息
-      await clearLocalData();
-
+      _logger.e('刷新令牌未知异常: $e');
+      // 未知异常也不清理数据，保持用户登录状态
       return false;
     }
   }
@@ -444,7 +479,8 @@ class AccountService extends ChangeNotifier {
       final accessToken = prefs.getString('accessToken');
 
       if (accessToken != null && accessToken.isNotEmpty) {
-        final dio = await getDio(extraHeaders: {'Authorization': 'Bearer $accessToken'});
+        final deviceId = await DeviceUtil.getDeviceId();
+        final dio = await getDio(extraHeaders: {'Authorization': 'Bearer $accessToken', 'Dev-Id': deviceId});
 
         // 调用退出登录接口
         final response = await dio.post('/api/account/sign-out');

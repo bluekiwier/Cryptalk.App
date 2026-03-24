@@ -94,33 +94,55 @@ flutter run -d ios
 根据目标平台和模式，使用以下命令：
 
 ## 1. 构建 Android APK
-Debug 模式： 
+
+Debug 模式：
 flutter build apk --debug
 
-Release 模式： 
+Release 模式：
 flutter build apk --release
 
 输出文件路径：build/app/outputs/flutter-apk/app-release.apk
 
 ## 2. 构建 iOS 应用
-Release 模式： 
+
+Release 模式：
 flutter build ios --release
 
 构建完成后需使用 Xcode 打包签名。
 
 ## 3. 构建 Web 应用
-Release 模式： 
+
+Release 模式：
 flutter build web --release
 
 输出文件路径：build/web
 
 ## 4. 构建桌面应用
 
-### Windows: 
+### Windows:
+
 flutter build windows --release
 
-### macOS: 
+### macOS:
+
 flutter build macos --release
 
-### Linux: 
+### Linux:
+
 flutter build linux --release
+
+### Firebase 配置文件放置位置
+
+这两个文件是 Firebase 与 Android/iOS 原生工程连接的关键：
+
+google-services.json (Android): 放置在：
+
+android/app/google-services.json
+
+这是 Android Studio 识别 Firebase 项目的配置文件。
+
+GoogleService-Info.plist (iOS): 放置在：
+
+ios/Runner/GoogleService-Info.plist
+
+特别注意：对于 iOS，仅仅把文件丢进文件夹是不够的。您必须使用 Xcode 打开项目的 .xcworkspace 文件，然后将 GoogleService-Info.plist 拖入项目（通常放在 Runner 文件夹下），并确保勾选 "Copy items if needed" 和 "Add to targets"。

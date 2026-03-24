@@ -163,7 +163,7 @@ class EncryptInterceptor extends Interceptor {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final nonce = const Uuid().v4();
 
-        _logger.d("随机数: $nonce");
+        // _logger.d("随机数: $nonce");
 
         options.extra['originalData'] ??= options.data; // 备份原始请求数据以便在遇到406时重发
         final actualData = options.extra['originalData'];

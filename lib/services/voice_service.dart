@@ -62,7 +62,7 @@ class VoiceService {
     try {
       final hasPermission = await _recorder!.hasPermission();
       if (hasPermission) {
-        _logger.d('语音服务已初始化（支持录音）');
+        // _logger.d('语音服务已初始化（支持录音）');
       } else {
         onError?.call('没有录音权限，请开启麦克风权限');
       }

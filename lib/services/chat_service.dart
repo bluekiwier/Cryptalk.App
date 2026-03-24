@@ -12,6 +12,7 @@ import '../models/db/conversation_entity.dart';
 import '../models/db/conversation_message_entity.dart';
 import '../models/send_message_result.dart';
 import '../utils/time_util.dart';
+import '../utils/device_util.dart';
 import 'notification_service.dart';
 
 /// 统一消息模型
@@ -180,7 +181,11 @@ class ChatService extends ChangeNotifier {
   int _reconnectAttempts = 0;
   // 最大重连尝试次数
   static const int maxReconnectAttempts = 5;
-  static const int baseReconnectDelay = 3; // 基础重连延迟（秒）
+  static const int baseReconnectDelay = 2; // 基础重连延迟（秒）
+
+  // App 是否在后台
+  bool _isAppInBackground = false;
+  bool get isAppInBackground => _isAppInBackground;
 
   // 存储接收到的消息
   final List<ChatMessageDto> _receivedMessages = [];
@@ -191,7 +196,7 @@ class ChatService extends ChangeNotifier {
   /// 设置当前打开的聊天会话ID
   void setCurrentChatConversation(String? conversationId) {
     _currentChatConversationId = conversationId;
-    _logger.d('当前聊天会话ID设置为: $conversationId');
+    // _logger.d('当前聊天会话ID设置为: $conversationId');
   }
 
   /// 检查是否在指定会话的聊天页面
@@ -199,11 +204,27 @@ class ChatService extends ChangeNotifier {
     return _currentChatConversationId == conversationId;
   }
 
+  /// 更新 App 生命周期状态
+  void setAppLifecycleState(bool isBackground) {
+    _isAppInBackground = isBackground;
+    _logger.i('ChatService 感知 App 状态: ${isBackground ? "后台/暂停" : "前台/活跃"}');
+
+    if (isBackground) {
+      // 进入后台时，不再主动断开 WebSocket，尽量保持连接
+      _logger.i('App 进入后台，尝试维持现有连接');
+    } else {
+      // 回到前台，检查并重连
+      checkAndReconnect();
+    }
+  }
+
   /// 检查并重新连接 WebSocket（用于 APP 重新打开时）
   Future<void> checkAndReconnect() async {
     if (!_isConnected) {
       // _logger.i('APP 打开，检查并重新连接 WebSocket');
-      await connect();
+      // await connect();
+      // ✅ 强制从后台接口获取最新带 token 的地址，而不是使用 prefs 里的旧地址
+      await _fetchWsServerAndConnect();
     }
   }
 
@@ -214,16 +235,27 @@ class ChatService extends ChangeNotifier {
     _isConnecting = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final wsServer = prefs.getString('wsServer');
+      String? wsServer = prefs.getString('wsServer')?.trim();
 
       if (wsServer == null || wsServer.isEmpty) {
         _logger.w('没有获取到 WebSocket 服务器地址');
         return;
       }
 
-      // 直接使用地址，如果重连获取的新地址自带 token，则无需再次拼接
-      final uri = Uri.parse(wsServer);
+      // 核心修复：如果后端返回的是 http 开头的，转换为 ws（否则 WebSocketChannel 无法连接）
+      String wsUrl = wsServer;
+      String lowerUrl = wsUrl.toLowerCase();
 
+      if (lowerUrl.startsWith('http://')) {
+        wsUrl = wsUrl.replaceFirst(RegExp(r'http://', caseSensitive: false), 'ws://');
+      } else if (lowerUrl.startsWith('https://')) {
+        wsUrl = wsUrl.replaceFirst(RegExp(r'https://', caseSensitive: false), 'wss://');
+      } else if (!lowerUrl.startsWith('ws://') && !lowerUrl.startsWith('wss://')) {
+        // 兜底：如果既没有 http 也没有 ws，强制补齐 ws://
+        wsUrl = 'ws://$wsUrl';
+      }
+
+      final uri = Uri.parse(wsUrl);
       _logger.i('正在连接 WebSocket: $uri');
 
       _channel = WebSocketChannel.connect(uri);
@@ -776,6 +808,15 @@ class ChatService extends ChangeNotifier {
     _logger.i('断线重连: $delaySeconds秒后尝试重新获取地址并连接 WebSocket... (第$_reconnectAttempts次)');
 
     Future.delayed(Duration(seconds: delaySeconds), () async {
+      // 如果 App 在后台且当前未连接，减少重连频率或暂停重连（保持连接 vs 降低资源消耗的平衡）
+      // 如果此时 App 在后台，我们仍然可以尝试一次重连以“尽量保持连接状态”
+      // 但为了防止无限死循环消耗资源，这里保留原有逻辑：在后台时不发起自动重连，等回到前台再重构
+      // 这里的注释和逻辑保持一致，重点是上面进入后台时不主动断开
+      if (_isAppInBackground) {
+        _logger.i('App 仍处于后台，且连接已断开，暂停自动重连计划直至回到前台');
+        return;
+      }
+
       if (!_isConnected) {
         await _fetchWsServerAndConnect();
       } else {
@@ -793,13 +834,22 @@ class ChatService extends ChangeNotifier {
         return;
       }
 
-      final dio = await AccountService().getDio();
+      final deviceId = await DeviceUtil.getDeviceId();
+      final extraHeaders = <String, dynamic>{'Dev-Id': deviceId};
+      final dio = await AccountService().getDio(extraHeaders: extraHeaders);
       final response = await dio.post('/api/chat/create-server-url');
       final responseData = response.data;
 
       if (responseData != null && responseData['success'] == true) {
-        final serverUrl = responseData['data']?.toString();
-        if (serverUrl != null && serverUrl.isNotEmpty) {
+        String serverUrl = responseData['data']?.toString() ?? '';
+        if (serverUrl.isNotEmpty) {
+          // 同样在保存前也进行一次简单的协议修正（可选，但 connect 里一定要有）
+          if (serverUrl.startsWith('http://')) {
+            serverUrl = serverUrl.replaceFirst('http://', 'ws://');
+          } else if (serverUrl.startsWith('https://')) {
+            serverUrl = serverUrl.replaceFirst('https://', 'wss://');
+          }
+
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('wsServer', serverUrl);
           await connect();

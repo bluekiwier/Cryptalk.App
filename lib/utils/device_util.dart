@@ -6,19 +6,29 @@ import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 
 class DeviceUtil {
-  static const _key = "device_id";
+  static const _key = "cryptalk_device_id";
   static const _storage = FlutterSecureStorage();
   static const _uuid = Uuid();
   static final _logger = Logger();
 
   /// 获取设备ID（持久化存储）
   static Future<String> getDeviceId() async {
-    String? deviceId = await _storage.read(key: _key);
-    if (deviceId == null) {
-      deviceId = _uuid.v4();
-      await _storage.write(key: _key, value: deviceId);
+    final deviceInfo = DeviceInfoPlugin();
+
+    if (Platform.isAndroid) {
+      var androidInfo = await deviceInfo.androidInfo;
+      return androidInfo.id; // 或 ANDROID_ID
+    } else if (Platform.isIOS) {
+      var iosInfo = await deviceInfo.iosInfo;
+      return iosInfo.identifierForVendor!;
+    } else {
+      String? deviceId = await _storage.read(key: _key);
+      if (deviceId == null) {
+        deviceId = _uuid.v4();
+        await _storage.write(key: _key, value: deviceId);
+      }
+      return deviceId;
     }
-    return deviceId;
   }
 
   /// 获取设备语言设置
