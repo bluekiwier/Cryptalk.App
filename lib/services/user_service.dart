@@ -179,6 +179,7 @@ class UserService {
   /// 设备注册
   Future<bool> deviceRegister({
     required String deviceId,
+    String deviceName = 'Unknown Device',
     required String pushToken,
     required String platform,
     String pushProvider = 'fcm',
@@ -187,7 +188,13 @@ class UserService {
       final dio = await accountService.getDio();
       final response = await dio.post(
         '/api/user/device-register',
-        data: {'deviceId': deviceId, 'pushToken': pushToken, 'platform': platform, 'pushProvider': pushProvider},
+        data: {
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+          'pushToken': pushToken,
+          'platform': platform,
+          'pushProvider': pushProvider,
+        },
         options: Options(extra: {'obfuscate': true}),
       );
       final data = response.data;

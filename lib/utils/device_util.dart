@@ -31,6 +31,35 @@ class DeviceUtil {
     }
   }
 
+  /// 获取设备名称
+  static Future<String> getDeviceName() async {
+    final deviceInfo = DeviceInfoPlugin();
+    try {
+      if (kIsWeb) {
+        final webInfo = await deviceInfo.webBrowserInfo;
+        return webInfo.browserName.name;
+      } else if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        return androidInfo.model;
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        return iosInfo.name;
+      } else if (Platform.isWindows) {
+        final windowsInfo = await deviceInfo.windowsInfo;
+        return windowsInfo.computerName;
+      } else if (Platform.isMacOS) {
+        final macInfo = await deviceInfo.macOsInfo;
+        return macInfo.computerName;
+      } else if (Platform.isLinux) {
+        final linuxInfo = await deviceInfo.linuxInfo;
+        return linuxInfo.name;
+      }
+    } catch (e) {
+      _logger.e('获取设备名称失败: $e');
+    }
+    return 'Unknown Device';
+  }
+
   /// 获取设备语言设置
   static String getAcceptLanguage() {
     try {

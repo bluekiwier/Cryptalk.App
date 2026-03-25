@@ -122,90 +122,91 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     super.dispose();
   }
 
+  /// 转换 DTO 为端上 Message 模型
+  Message _dtoToMessage(ChatMessageDto dto) {
+    final payload = dto.payload;
+    return Message(
+      id: payload.id,
+      senderId: payload.senderId,
+      senderNickname: payload.senderNickname,
+      senderAvatar: payload.senderAvatar,
+      content: payload.content,
+      type: MessageType.values.firstWhere((e) => e.index == payload.type, orElse: () => MessageType.text),
+      createdAt: TimeUtil.parseUtcTime(payload.createdAt) ?? DateTime.now(),
+      isRead: true,
+      quoteId: payload.quoteId.isNotEmpty && payload.quoteId != '0' ? payload.quoteId : null,
+      status: MessageStatus.values.firstWhere((e) => e.index == payload.status, orElse: () => MessageStatus.normal),
+      seqId: payload.seqId,
+    );
+  }
+
+  /// 滚动到列表底部
+  void _scrollToBottom([bool animated = true]) {
+    if (!mounted || !_scrollController.hasClients) return;
+
+    // 延迟一帧，确保 UI 渲染完成并计算出了最新的 maxScrollExtent
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        final target = _scrollController.position.maxScrollExtent;
+        if (animated) {
+          _scrollController.animateTo(
+            target,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollController.jumpTo(target);
+        }
+      }
+    });
+  }
+
   /// 处理ChatService更新（收到新消息或删除消息等事件）
   void _onChatServiceUpdated() async {
+    if (!mounted) return;
     _logger.d('收到 ChatService 更新通知');
 
-    // 从ChatService获取当前会话的新消息
-    final newMessages = _chatService.getMessagesForConversation(widget.conversation.id);
-    _logger.d('新消息数量: ${newMessages.length}');
+    // 1. 从ChatService获取当前会话的新消息（内存缓存）
+    final conversationId = widget.conversation.id;
+    final incomingDtos = _chatService.getMessagesForConversation(conversationId);
 
-    // 保存到本地数据库并更新UI（无论是否有新消息，都需要更新UI以反映删除等状态变化）
-    if (newMessages.isNotEmpty) {
-      // 保存到本地数据库
-      for (final chatMessage in newMessages) {
-        final quoteIdStr = chatMessage.payload.quoteId;
-        final quoteId = quoteIdStr.isNotEmpty ? (int.tryParse(quoteIdStr) ?? 0) : 0;
-        final seqId = int.tryParse(chatMessage.payload.seqId) ?? 0;
-        await DatabaseService().insertMessage({
-          'id': int.tryParse(chatMessage.payload.id) ?? 0,
-          'conversation_id': int.parse(widget.conversation.id),
-          'conversation_type': widget.conversation.isGroup ? 2 : 1,
-          'sender_id': int.tryParse(chatMessage.payload.senderId) ?? 0,
-          'sender_nickname': chatMessage.payload.senderNickname,
-          'sender_avatar': chatMessage.payload.senderAvatar,
-          'quote_id': quoteId,
-          'content': chatMessage.payload.content,
-          'type': chatMessage.payload.type,
-          'status': chatMessage.payload.status,
-          'seq_id': seqId,
-          'created_at': chatMessage.payload.createdAt,
-        });
-      }
+    // 2. 如果没有内存中的新消息（可能是由于删除/撤回导致的逻辑更新）
+    // 或者目前列表为空，保守起见全量刷新一次
+    if (incomingDtos.isEmpty || _messages.isEmpty) {
+      await _loadMessages();
+      return;
     }
 
-    // 从数据库重新读取所有消息（包括状态变化，如删除）
-    final messageMaps = await DatabaseService().getMessages(int.parse(widget.conversation.id), limit: 1000);
-    _logger.d('从数据库读取到 ${messageMaps.length} 条消息');
+    _logger.d('增量处理新消息数量: ${incomingDtos.length}');
 
-    final updatedMessages = messageMaps.map((map) {
-      final quoteIdInt = map['quote_id'] as int?;
-      final statusInt = map['status'] as int? ?? 0;
-      final seqId = map['seq_id']?.toString() ?? '';
-      final msgId = map['id']?.toString() ?? '';
-      // _logger.d('消息 $msgId 状态: $statusInt');
-      return Message(
-        id: msgId,
-        senderId: map['sender_id']?.toString() ?? '',
-        senderNickname: map['sender_nickname']?.toString(),
-        senderAvatar: map['sender_avatar']?.toString(),
-        content: map['content']?.toString() ?? '',
-        type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
-        createdAt: TimeUtil.parseUtcTime(map['created_at']?.toString()) ?? DateTime.now(),
-        isRead: true,
-        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
-        status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
-        seqId: seqId,
-      );
-    }).toList();
+    // 3. 增量更新 UI
+    setState(() {
+      for (final dto in incomingDtos) {
+        final msgId = dto.payload.id;
+        final existingIndex = _messages.indexWhere((m) => m.id == msgId);
 
-    // 按seqId升序排序（旧在前、新在后）
-    updatedMessages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
-
-    if (mounted) {
-      setState(() {
-        _messages = updatedMessages;
-      });
-
-      // 滚动到底部 - 使用更可靠的方式
-      if (newMessages.isNotEmpty) {
-        // 等待 UI 完全渲染后滚动
-        Future.delayed(const Duration(milliseconds: 200), () {
-          if (mounted && _scrollController.hasClients) {
-            // 确保滚动到最底部
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        });
+        if (existingIndex == -1) {
+          // 不存在：直接添加
+          _messages.add(_dtoToMessage(dto));
+        } else {
+          // 已存在：可能状态变了（例如变为撤回状态），更新之
+          _messages[existingIndex] = _dtoToMessage(dto);
+        }
       }
 
-      // 更新群名称（如果有变化）
-      if (widget.conversation.isGroup) {
-        _updateGroupTitle();
-      }
+      // 4. 按 seqId 排序（保证乱序到达的消息顺序正确）
+      _messages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+    });
+
+    // 5. 滑动到底部
+    _scrollToBottom(true);
+
+    // 6. 已消费的消息清理，防止下次 notifyListeners 再次循环处理
+    _chatService.clearMessagesForConversation(conversationId);
+
+    // 7. 更新群组标题（如果需要）
+    if (widget.conversation.isGroup) {
+      _updateGroupTitle();
     }
   }
 
@@ -2620,16 +2621,39 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         messageType: messageData['type'] ?? 0,
       );
 
-      // 重新加载消息并更新 UI
-      if (mounted) {
-        await _loadMessagesAndSync();
-      }
-
+      // 增量更新 UI
       if (mounted) {
         setState(() {
+          final newMessage = Message(
+            id: messageData['id']?.toString() ?? '',
+            senderId: messageData['senderId']?.toString() ?? currentUser.id,
+            senderNickname: messageData['senderNickname'] ?? currentUser.nickname,
+            senderAvatar: messageData['senderAvatar'] ?? currentUser.avatar,
+            content: messageData['content'] ?? text,
+            type: MessageType.values.firstWhere(
+              (e) => e.index == (messageData['type'] ?? 0),
+              orElse: () => MessageType.text,
+            ),
+            createdAt: TimeUtil.parseUtcTime(messageData['createdAt']?.toString()) ?? DateTime.now(),
+            isRead: true,
+            quoteId: messageData['quoteId']?.toString() != '0' ? messageData['quoteId']?.toString() : null,
+            status: MessageStatus.normal,
+            seqId: messageData['seqId']?.toString() ?? '',
+          );
+
+          // 去重并添加
+          if (!_messages.any((m) => m.id == newMessage.id)) {
+            _messages.add(newMessage);
+            // 排序
+            _messages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+          }
+
           _messageController.clear();
           _quotedMessage = null;
         });
+
+        // 滚动到底部
+        _scrollToBottom(true);
       }
     } else {
       if (mounted) {

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cryptography/cryptography.dart';
+import 'package:cryptalk/services/encryption_service.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:logger/logger.dart';
@@ -36,6 +38,25 @@ class MessageResult {
   }
 }
 
+class CryptMessageDto {
+  // 数据
+  final String data;
+  // 签名 (Nonce)
+  final String nonce;
+  // 验证标签 (Auth Tag)
+  final String tag;
+
+  CryptMessageDto({required this.data, required this.nonce, required this.tag});
+
+  factory CryptMessageDto.fromJson(Map<String, dynamic> json) {
+    return CryptMessageDto(
+      data: json['meta'] ?? json['data'] ?? '',
+      nonce: json['nonce'] ?? '',
+      tag: json['tag'] ?? '',
+    );
+  }
+}
+
 /// 聊天消息结构
 class ChatMessageDto {
   // 会话ID
@@ -65,10 +86,10 @@ class ChatMessageDto {
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     return ChatMessageDto(
-      conversationId: json['conversationId'] ?? '',
+      conversationId: json['conversationId']?.toString() ?? '',
       conversationType: json['conversationType'] ?? 0,
-      senderId: json['senderId'] ?? '',
-      receiverId: json['receiverId'] ?? '',
+      senderId: json['senderId']?.toString() ?? '',
+      receiverId: json['receiverId']?.toString() ?? '',
       time: TimeUtil.parseUtcTime(json['time']?.toString()) ?? DateTime.now(),
       payload: ConversationMessagePayload.fromJson(json['payload'] ?? {}),
       isReceipt: json['isReceipt'] ?? false,
@@ -103,7 +124,7 @@ class ConversationMessagePayload {
   final String quoteId;
 
   // 加密后的消息内容（二进制）
-  final String content;
+  String content;
 
   // 消息类型：0=文字,1=图片,2=语音,3=视频,4=文件,5=位置,6=名片,7=红包,8=系统通知,9=广播,10=群通知消息
   final int type;
@@ -131,14 +152,14 @@ class ConversationMessagePayload {
 
   factory ConversationMessagePayload.fromJson(Map<String, dynamic> json) {
     return ConversationMessagePayload(
-      id: json['id'] ?? '',
-      conversationId: json['conversationId'] ?? '',
+      id: json['id']?.toString() ?? '',
+      conversationId: json['conversationId']?.toString() ?? '',
       conversationType: json['conversationType'] ?? 0,
-      seqId: json['seqId'] ?? '',
-      senderId: json['senderId'] ?? '',
+      seqId: json['seqId']?.toString() ?? '',
+      senderId: json['senderId']?.toString() ?? '',
       senderNickname: json['senderNickname']?.toString(),
       senderAvatar: json['senderAvatar']?.toString(),
-      quoteId: json['quoteId'] ?? '',
+      quoteId: json['quoteId']?.toString() ?? '',
       content: json['content'] ?? '',
       type: json['type'] ?? 0,
       status: json['status'] ?? 0,
@@ -267,8 +288,8 @@ class ChatService extends ChangeNotifier {
       _startHeartbeat();
 
       _channel!.stream.listen(
-        (message) {
-          _handleMessage(message);
+        (message) async {
+          await _handleMessage(message);
         },
         onDone: () {
           _logger.w('WebSocket 连接已关闭');
@@ -299,7 +320,7 @@ class ChatService extends ChangeNotifier {
   }
 
   /// 处理接收到的消息
-  void _handleMessage(dynamic message) {
+  Future<void> _handleMessage(dynamic message) async {
     // 处理非JSON消息（如心跳响应）
     if (message is String) {
       if (message == 'pong') {
@@ -316,10 +337,10 @@ class ChatService extends ChangeNotifier {
         // 根据消息类型处理
         switch (messageResult.type) {
           case 'chat':
-            handleChatEvent(messageResult);
+            await handleChatEvent(messageResult);
             break;
           case 'group':
-            _handleGroupEvent(messageResult);
+            await _handleGroupEvent(messageResult);
             break;
           case 'user':
             _handleUserEvent(messageResult);
@@ -338,11 +359,32 @@ class ChatService extends ChangeNotifier {
     }
   }
 
-  void handleChatEvent(MessageResult message) {
+  Future<void> handleChatEvent(MessageResult message) async {
     switch (message.event) {
       case "message":
-        final chat = ChatMessageDto.fromJson(message.data!);
-        _handleChatMessage(chat);
+        try {
+          _logger.i('处理私聊消息: ${message.data}');
+
+          final prefs = await SharedPreferences.getInstance();
+          final userSecretKeyBase64 = prefs.getString('userSecretKey');
+          if (userSecretKeyBase64 == null || userSecretKeyBase64.isEmpty) {
+            _logger.e('未找到用户密钥，无法解密消息');
+            return;
+          }
+
+          final aesKey = SecretKey(base64Decode(userSecretKeyBase64));
+
+          final cryptMessage = CryptMessageDto.fromJson(message.data!);
+          final encryptedDataMap = {'data': cryptMessage.data, 'nonce': cryptMessage.nonce, 'tag': cryptMessage.tag};
+
+          final decryptedData = await EncryptionService().aesGcmDecrypt(encryptedDataMap, aesKey);
+          _logger.d('解密后原始数据: $decryptedData');
+
+          final chat = ChatMessageDto.fromJson(decryptedData is Map ? Map<String, dynamic>.from(decryptedData) : {});
+          _handleChatMessage(chat);
+        } catch (e) {
+          _logger.e('解密或处理私聊消息失败: $e');
+        }
         break;
 
       case "delete":
@@ -605,6 +647,11 @@ class ChatService extends ChangeNotifier {
     _receivedMessages.clear();
   }
 
+  /// 清空指定会话的消息列表
+  void clearMessagesForConversation(String conversationId) {
+    _receivedMessages.removeWhere((msg) => msg.conversationId == conversationId);
+  }
+
   /// 处理用户事件
   void _handleUserEvent(MessageResult message) {
     _logger.i('处理用户事件: ${message.data}');
@@ -620,11 +667,14 @@ class ChatService extends ChangeNotifier {
   }
 
   /// 处理群组消息
-  void _handleGroupEvent(MessageResult message) {
+  Future<void> _handleGroupEvent(MessageResult message) async {
     _logger.i('处理群组消息: ${message.data}');
     switch (message.event) {
       case "message":
         final chat = ChatMessageDto.fromJson(message.data!);
+        String originalContent = utf8.decode(base64.decode(chat.payload.content));
+        chat.payload.content = originalContent;
+        _logger.i('收到群组聊天消息: ${chat.payload.content}');
         _handleChatMessage(chat);
         break;
       case "delete":

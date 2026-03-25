@@ -30,8 +30,9 @@ class NotificationService {
   /// 初始化本地通知
   Future<void> _initLocalNotifications() async {
     // Android 配置
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
 
     // iOS/macOS 配置
     const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
@@ -70,8 +71,8 @@ class NotificationService {
 
     // Android 13+ 本地通知权限请求（可选，FCM 也会请求）
     if (Platform.isAndroid) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidImplementation != null) {
         await androidImplementation.requestNotificationsPermission();
       }
@@ -140,10 +141,12 @@ class NotificationService {
 
       // 5. 获取设备 ID 并上传到后端
       final deviceId = await DeviceUtil.getDeviceId();
+      final deviceName = await DeviceUtil.getDeviceName();
       final platform = Platform.isIOS ? 'ios' : 'android';
 
       await UserService().deviceRegister(
         deviceId: deviceId,
+        deviceName: deviceName,
         pushToken: token,
         platform: platform,
         pushProvider: 'fcm',
