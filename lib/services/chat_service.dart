@@ -671,11 +671,78 @@ class ChatService extends ChangeNotifier {
     _logger.i('处理群组消息: ${message.data}');
     switch (message.event) {
       case "message":
-        final chat = ChatMessageDto.fromJson(message.data!);
-        String originalContent = utf8.decode(base64.decode(chat.payload.content));
-        chat.payload.content = originalContent;
-        _logger.i('收到群组聊天消息: ${chat.payload.content}');
-        _handleChatMessage(chat);
+        try {
+          if (message.data == null) return;
+
+          final conversationId = message.extra!['conversationId']?.toString();
+          if (conversationId == null) {
+            _logger.e('收到群聊消息缺少 conversationId');
+            return;
+          }
+
+          // 获取发送过来的密钥版本
+          final version = message.extra!['version']?.toString();
+
+          // 判断本地密钥版本号与收到的版本号是否一致，获取或更新群聊密钥
+          final keyInfo = await ConversationService().getGroupKeyWithVersionCheck(
+            conversationId,
+            requiredVersion: version,
+          );
+
+          if (keyInfo == null || keyInfo.secretKey.isEmpty) {
+            _logger.e('未找到群聊密钥，无法解密消息');
+            return;
+          }
+
+          final aesKey = SecretKey(base64Decode(keyInfo.secretKey));
+          ChatMessageDto chat;
+
+          // 1. 判断是否整个 message.data 都被 AES-GCM 加密了（类似私聊）
+          if (message.data!.containsKey('nonce') && message.data!.containsKey('tag')) {
+            final cryptMessage = CryptMessageDto.fromJson(message.data!);
+            final encryptedDataMap = {'data': cryptMessage.data, 'nonce': cryptMessage.nonce, 'tag': cryptMessage.tag};
+
+            final decryptedData = await EncryptionService().aesGcmDecrypt(encryptedDataMap, aesKey);
+            chat = ChatMessageDto.fromJson(decryptedData is Map ? Map<String, dynamic>.from(decryptedData) : {});
+          } else {
+            // 2. 否则，假设是 content 的值做了处理
+            chat = ChatMessageDto.fromJson(message.data!);
+
+            try {
+              // 兼容 content 是被 AES-GCM 加密的 JSON 字符串的情况
+              String decodedString = utf8.decode(base64.decode(chat.payload.content));
+              bool isDecrypted = false;
+
+              try {
+                final contentJson = jsonDecode(decodedString);
+                if (contentJson is Map && contentJson.containsKey('nonce') && contentJson.containsKey('tag')) {
+                  final encryptedDataMap = <String, String>{
+                    'data': (contentJson['meta'] ?? contentJson['data'] ?? '').toString(),
+                    'nonce': (contentJson['nonce'] ?? '').toString(),
+                    'tag': (contentJson['tag'] ?? '').toString(),
+                  };
+                  final decryptedContent = await EncryptionService().aesGcmDecrypt(encryptedDataMap, aesKey);
+                  chat.payload.content = decryptedContent.toString();
+                  isDecrypted = true;
+                }
+              } catch (_) {
+                // Ignore json decode error
+              }
+
+              // 如果没有被 AES-GCM 格式解析，则假设为普通 base64（向前兼容）
+              if (!isDecrypted) {
+                chat.payload.content = decodedString;
+              }
+            } catch (e) {
+              _logger.e('内容解码异常: $e');
+            }
+          }
+
+          _logger.i('收到群组聊天消息: ${chat.payload.content}');
+          _handleChatMessage(chat);
+        } catch (e) {
+          _logger.e('解密或处理群聊消息失败: $e');
+        }
         break;
       case "delete":
         final del = DeleteMessageDto.fromJson(message.data!);

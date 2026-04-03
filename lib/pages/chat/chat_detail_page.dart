@@ -80,10 +80,20 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _loadMessagesAndSync();
     // 监听WebSocket消息
     _chatService.addListener(_onChatServiceUpdated);
-    // 如果是群聊，加载群成员数量
+    // 如果是群聊，加载群成员数量并检查/同步群聊密钥
     if (widget.conversation.isGroup) {
       _loadGroupMemberCount();
+      _checkGroupKey();
       // ConversationService().enterGroup(widget.conversation.id);
+    }
+  }
+
+  /// 检查群聊密钥，如果本地不存在则会通过接口获取并缓存
+  Future<void> _checkGroupKey() async {
+    try {
+      await ConversationService().getGroupKeyWithVersionCheck(widget.conversation.id);
+    } catch (e) {
+      _logger.e('检查群聊密钥异常: $e');
     }
   }
 

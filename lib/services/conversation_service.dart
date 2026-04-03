@@ -7,8 +7,10 @@ import '../models/conversation.dart';
 import '../models/conversation_detail_result.dart';
 import '../models/conversation_list_input_dto.dart';
 import '../models/conversation_list_result.dart';
+import '../models/conversation_keyinfo_result.dart';
 import '../utils/time_util.dart';
 import '../models/db/conversation_entity.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// 会话服务（ChangeNotifier）
 /// 策略：本地 DB 优先呈现，后台异步同步网络数据
@@ -19,6 +21,7 @@ class ConversationService extends ChangeNotifier {
 
   final _logger = Logger();
   final _db = DatabaseService();
+  final _secureStorage = const FlutterSecureStorage();
 
   // 内存中的会话列表（排序后）
   List<Conversation> _conversations = [];
@@ -298,10 +301,66 @@ class ConversationService extends ChangeNotifier {
     return null;
   }
 
+  /// 获取群聊会话密钥信息
+  Future<ConversationKeyInfoResult?> _fetchGroupConversationKeyInfo(String conversationId) async {
+    try {
+      final dio = await AccountService().getDio();
+
+      final response = await dio.post(
+        '/api/conversation/key-info',
+        data: {'id': conversationId},
+        options: Options(extra: {'obfuscate': true}),
+      );
+      final responseData = response.data;
+      if (responseData != null && responseData['success'] == true) {
+        final data = responseData['data'];
+        if (data != null) return ConversationKeyInfoResult.fromJson(data);
+      }
+    } catch (e) {
+      _logger.e('获取群聊会话密钥信息失败: $e');
+    }
+    return null;
+  }
+
+  /// 获取群聊密钥：先查本地，若无或版本不匹配，则请求网络并更新本地缓存
+  Future<ConversationKeyInfoResult?> getGroupKeyWithVersionCheck(
+    String conversationId, {
+    String? requiredVersion,
+  }) async {
+    final storageKey = 'group_key_$conversationId';
+    final storageVersionKey = 'group_key_version_$conversationId';
+
+    // 检查本地缓存
+    try {
+      final key = await _secureStorage.read(key: storageKey);
+      final versionStr = await _secureStorage.read(key: storageVersionKey);
+
+      if (key != null && versionStr != null) {
+        // 如果未指定需校验的版本，或版本一致，直接返回本地缓存
+        if (requiredVersion == null || requiredVersion == versionStr) {
+          return ConversationKeyInfoResult(id: conversationId, secretKey: key, secretVersion: versionStr);
+        }
+      }
+    } catch (e) {
+      _logger.e('读取本地群聊密钥异常: $e');
+    }
+
+    // 版本不匹配或无缓存，通过接口获取
+    final result = await _fetchGroupConversationKeyInfo(conversationId);
+    if (result != null) {
+      try {
+        await _secureStorage.write(key: storageKey, value: result.secretKey);
+        await _secureStorage.write(key: storageVersionKey, value: result.secretVersion);
+      } catch (e) {
+        _logger.e('缓存本地群聊密钥异常: $e');
+      }
+    }
+    return result;
+  }
+
   // ─────────────────────────────────────────────
   // 私有：分页获取会话列表
   // ─────────────────────────────────────────────
-
   Future<ConversationListResult?> _fetchConversationList({ConversationListInputDto? cursor}) async {
     try {
       final dio = await AccountService().getDio();
