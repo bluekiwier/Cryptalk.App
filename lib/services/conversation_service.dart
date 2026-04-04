@@ -663,6 +663,25 @@ class ConversationService extends ChangeNotifier {
     }
   }
 
+  /// 修改群头像
+  Future<Map<String, dynamic>?> updateGroupAvatar(String conversationId, String avatar) async {
+    try {
+      final dio = await AccountService().getDio();
+      final response = await dio.post(
+        '/api/conversation/$conversationId/change-avatar',
+        data: {'avatar': avatar},
+        options: Options(extra: {'obfuscate': true}),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      _logger.e('修改群头像失败: $e');
+      return {'success': false, 'message': '网络错误', 'code': 200};
+    } catch (e) {
+      _logger.e('修改群头像异常: $e');
+      return {'success': false, 'message': '未知错误', 'code': 200};
+    }
+  }
+
   /// 修改群名称
   Future<Map<String, dynamic>?> updateGroupName(String conversationId, String name) async {
     try {

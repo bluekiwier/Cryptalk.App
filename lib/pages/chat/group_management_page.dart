@@ -1,6 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../models/conversation.dart';
 import '../../services/conversation_service.dart';
+import '../../services/file_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/app_switch.dart';
@@ -23,6 +28,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
   int _currentPage = 1;
   bool _hasMore = true;
   bool _isAllMuted = false;
+  bool _isUpdatingAvatar = false;
   String _searchKeyword = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -363,14 +369,112 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     }
   }
 
+  /// 选择并上传群头像
+  Future<void> _pickAndUploadAvatar() async {
+    final ImagePicker picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('拍照'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final XFile? pickedFile = await picker.pickImage(source: source);
+      if (pickedFile == null || !mounted) return;
+
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        maxWidth: 512,
+        maxHeight: 512,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: '裁剪头像',
+            toolbarColor: AppTheme.primaryColor,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(title: '裁剪头像', aspectRatioLockEnabled: true),
+        ],
+      );
+
+      if (croppedFile == null || !mounted) return;
+
+      setState(() => _isUpdatingAvatar = true);
+
+      final filePath = croppedFile.path;
+      final outPath = "${Directory.systemTemp.path}/group_avatar_${DateTime.now().millisecondsSinceEpoch}.png";
+
+      final result = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        quality: 90,
+        minWidth: 512,
+        minHeight: 512,
+        format: CompressFormat.png,
+      );
+
+      if (result == null) throw Exception("压缩图片失败");
+
+      final compressedFile = File(result.path);
+      final fileSize = await compressedFile.length();
+      final fileName = "group_${widget.conversation.id}_${DateTime.now().millisecondsSinceEpoch}.png";
+
+      final uploadResult = await FileService().createUploadUrl("image/png", fileName, fileSize, "group-avatar");
+
+      if (uploadResult == null || !uploadResult.isSuccess) {
+        throw Exception("获取上传凭证失败");
+      }
+
+      final fileBytes = await compressedFile.readAsBytes();
+      final uploaded = await FileService().uploadToR2(uploadResult.uploadUrl!, fileBytes, "image/png");
+
+      if (!uploaded) {
+        throw Exception("上传图片到存储失败");
+      }
+
+      final updateResult = await ConversationService().updateGroupAvatar(widget.conversation.id, uploadResult.fileUrl!);
+
+      if (mounted) {
+        if (updateResult != null && updateResult['success'] == true) {
+          _showToast('群头像更新成功', isSuccess: true);
+          // 发送全局通知或通过回调更新上一级页面
+          await ConversationService().notifyConversationListChanged();
+        } else {
+          _showToast(updateResult?['message'] ?? '头像更新失败');
+        }
+      }
+    } catch (e) {
+      if (mounted) _showToast('操作失败: $e');
+    } finally {
+      if (mounted) setState(() => _isUpdatingAvatar = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg,
       appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: AppTheme.getAppBarDecoration(context),
-        ),
+        flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: Colors.transparent,
@@ -404,6 +508,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                       _buildLoadMoreButton(),
                       const SizedBox(height: 10),
                       _buildMuteAllSwitch(),
+                      _buildUpdateAvatarItem(),
                       const SizedBox(height: 80),
                       _buildManagementSection(),
                     ],
@@ -540,6 +645,39 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
         ),
         child: const Text('解散群聊'),
       ),
+    );
+  }
+
+  Widget _buildUpdateAvatarItem() {
+    return Column(
+      children: [
+        const Divider(height: 1, indent: 16, endIndent: 16),
+        InkWell(
+          onTap: _isUpdatingAvatar ? null : _pickAndUploadAvatar,
+          child: Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('修改群头像', style: TextStyle(fontSize: 16)),
+                Row(
+                  children: [
+                    if (_isUpdatingAvatar)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+                      )
+                    else
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
