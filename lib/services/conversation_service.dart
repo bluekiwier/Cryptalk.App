@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:logger/logger.dart';
+import '../utils/logger_util.dart';
 import 'package:dio/dio.dart';
 import 'database_service.dart';
 import 'account_service.dart';
@@ -19,7 +19,7 @@ class ConversationService extends ChangeNotifier {
   factory ConversationService() => _instance;
   ConversationService._internal();
 
-  final _logger = Logger();
+  final _logger = Log.logger;
   final _db = DatabaseService();
   final _secureStorage = const FlutterSecureStorage();
 
@@ -189,9 +189,9 @@ class ConversationService extends ChangeNotifier {
   /// 收到新消息时调用（由 ChatService 触发）
   /// 自动更新 DB 中的会话信息并刷新内存列表
   Future<void> onNewMessage({
-    required int conversationId,
-    required int senderId,
-    required int messageId,
+    required String conversationId,
+    required String senderId,
+    required String messageId,
     required String messageAt,
     required String messagePreview,
     required int messageType,
@@ -240,8 +240,8 @@ class ConversationService extends ChangeNotifier {
         isMuted: old.isMuted,
         unreadCount: isInChatPage ? old.unreadCount : old.unreadCount + 1,
         lastSeqId: old.lastSeqId,
-        lastSenderId: senderId.toString(),
-        lastMessageId: messageId.toString(),
+        lastSenderId: senderId,
+        lastMessageId: messageId,
         lastMessageAt: TimeUtil.parseUtcTime(messageAt),
         lastMessagePreview: messagePreview,
       );
@@ -258,9 +258,7 @@ class ConversationService extends ChangeNotifier {
 
   /// 进入聊天页时清零未读数
   Future<void> clearUnread(String conversationId) async {
-    final convId = int.tryParse(conversationId);
-    if (convId == null) return;
-    await _db.clearUnreadCount(convId);
+    await _db.clearUnreadCount(conversationId);
 
     final idx = _conversations.indexWhere((c) => c.id == conversationId);
     if (idx >= 0) {
@@ -291,10 +289,8 @@ class ConversationService extends ChangeNotifier {
     final idx = _conversations.indexWhere((c) => c.id == id);
     if (idx >= 0) return _conversations[idx];
 
-    // 2. 尝试从 DB 获取
-    final convId = int.tryParse(id);
-    if (convId == null) return null;
-    final row = await _db.getConversation(convId);
+    // 2. 尝试 from DB 获取
+    final row = await _db.getConversation(id);
     if (row != null) {
       return _rowToConversation(row);
     }
@@ -423,16 +419,21 @@ class ConversationService extends ChangeNotifier {
   }
 
   /// 获取会话的聊天消息列表（网络）
-  Future<Map<String, dynamic>?> getMessages(dynamic conversationId, {int messageId = 0, int pageSize = 20}) async {
+  Future<Map<String, dynamic>?> getMessages(dynamic conversationId, {int seqId = 0, int pageSize = 20}) async {
     try {
       final dio = await AccountService().getDio();
 
       final response = await dio.post(
         '/api/conversation/$conversationId/messages',
-        data: {'messageId': messageId, 'pageSize': pageSize},
+        data: {'seqId': seqId, 'pageSize': pageSize},
         options: Options(extra: {'obfuscate': true}),
       );
-      return response.data;
+
+      final data = response.data;
+      if (data != null && data['success'] == true) {
+        return data;
+      }
+      return data;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout) {
         _logger.e('获取消息列表超时: $e');
@@ -723,20 +724,15 @@ class ConversationService extends ChangeNotifier {
   /// 更新本地会话的群名称（用于WebSocket事件）
   Future<void> updateConversationTitle(String conversationId, String title) async {
     final db = await _db.database;
-    await db.update(
-      ConversationEntity.tableName,
-      {'title': title},
-      where: 'id = ?',
-      whereArgs: [int.tryParse(conversationId) ?? 0],
-    );
+    await db.update(ConversationEntity.tableName, {'title': title}, where: 'id = ?', whereArgs: [conversationId]);
     await notifyConversationListChanged();
   }
 
   /// 发送消息后更新会话信息（发送方专用）
   Future<void> updateConversationAfterSendMessage({
-    required int conversationId,
-    required int senderId,
-    required int messageId,
+    required String conversationId,
+    required String senderId,
+    required String messageId,
     required String messageAt,
     required String messagePreview,
     required int messageType,
@@ -956,7 +952,7 @@ class ConversationService extends ChangeNotifier {
       isPinned: (row['is_pinned'] as int? ?? 0) == 1,
       isMuted: (row['is_muted'] as int? ?? 0) == 1,
       unreadCount: row['unread_count'] as int? ?? 0,
-      lastSeqId: row['last_seq_id']?.toString() ?? '',
+      lastSeqId: row['last_seq_id'],
       lastSenderId: row['last_sender_id'].toString(),
       lastMessageId: row['last_message_id'].toString(),
       lastMessageAt: TimeUtil.parseUtcTime(row['last_message_at']?.toString()),

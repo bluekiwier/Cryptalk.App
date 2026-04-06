@@ -11,7 +11,7 @@ class Conversation {
   final bool isPinned;
   final bool isMuted;
   final List<User> members;
-  final String lastSeqId;
+  final int lastSeqId;
   final String lastSenderId;
   final String lastMessageId;
   final DateTime? lastMessageAt;
@@ -27,7 +27,7 @@ class Conversation {
     this.isPinned = false,
     this.isMuted = false,
     this.members = const [],
-    this.lastSeqId = '',
+    this.lastSeqId = 0,
     this.lastSenderId = '',
     this.lastMessageId = '',
     this.lastMessageAt,

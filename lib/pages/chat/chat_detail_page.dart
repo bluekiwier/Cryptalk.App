@@ -58,6 +58,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   Timer? _recordingTimer;
   String? _playingVoiceId;
 
+  // 已读回执相关
+  int _peerLastReadSeqId = 0; // 对方已读的最大序号（私聊）
+  int _myLastReadSeqId = 0; // 我已读的最大序号
+  int _lastMarkedReadSeqId = 0; // 最近一次通知服务端已读的序号，避免重复调用
+  Timer? _readThrottleTimer; // 节流定时器
+  int _currentConversationMaxSeqId = 0; // 当前会话后端最大的序号
+  int _unreadCount = 0; // 仅群聊：未读消息总数
+
   @override
   void initState() {
     super.initState();
@@ -84,7 +92,39 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (widget.conversation.isGroup) {
       _loadGroupMemberCount();
       _checkGroupKey();
-      // ConversationService().enterGroup(widget.conversation.id);
+    }
+
+    // 监听滚动，实现已读节流更新
+    _scrollController.addListener(_onScroll);
+  }
+
+  /// 滚动监听，用于更新已读状态
+  void _onScroll() {
+    if (_messages.isEmpty) return;
+
+    // 如果已经在节流中，则不做处理
+    if (_readThrottleTimer != null && _readThrottleTimer!.isActive) return;
+
+    _readThrottleTimer = Timer(const Duration(seconds: 2), () {
+      _updateMyReadStatus();
+    });
+  }
+
+  /// 更新我的已读进度给服务端
+  Future<void> _updateMyReadStatus() async {
+    if (_messages.isEmpty) return;
+
+    // 获取列表最后一项的 seqId（通常是最新的）
+    // 或者根据可见区域判断（更精确，但此处先简化为最新列表序号）
+    final maxSeqId = _messages.last.seqId;
+
+    if (maxSeqId > _lastMarkedReadSeqId) {
+      final success = await MessageService().markAsRead(_messages.last.id);
+      if (success) {
+        _lastMarkedReadSeqId = maxSeqId;
+        _myLastReadSeqId = maxSeqId;
+        // _logger.d('更新已读进度成功: $maxSeqId');
+      }
     }
   }
 
@@ -129,6 +169,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     // if (widget.conversation.isGroup) {
     //   ConversationService().exitGroup(widget.conversation.id);
     // }
+    _scrollController.removeListener(_onScroll);
+    _readThrottleTimer?.cancel();
     super.dispose();
   }
 
@@ -159,11 +201,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (mounted && _scrollController.hasClients) {
         final target = _scrollController.position.maxScrollExtent;
         if (animated) {
-          _scrollController.animateTo(
-            target,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
+          _scrollController.animateTo(target, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
         } else {
           _scrollController.jumpTo(target);
         }
@@ -176,11 +214,21 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (!mounted) return;
     _logger.d('收到 ChatService 更新通知');
 
-    // 1. 从ChatService获取当前会话的新消息（内存缓存）
+    // 1. 获取最新的对方已读序号并更新 UI
     final conversationId = widget.conversation.id;
+    final newPeerReadSeqId = _chatService.getPeerLastReadSeqId(conversationId);
+    if (newPeerReadSeqId > _peerLastReadSeqId) {
+      if (mounted) {
+        setState(() {
+          _peerLastReadSeqId = newPeerReadSeqId;
+        });
+      }
+    }
+
+    // 2. 从ChatService获取当前会话的新消息（内存缓存）
     final incomingDtos = _chatService.getMessagesForConversation(conversationId);
 
-    // 2. 如果没有内存中的新消息（可能是由于删除/撤回导致的逻辑更新）
+    // 3. 如果没有内存中的新消息（可能是由于删除/撤回导致的逻辑更新）
     // 或者目前列表为空，保守起见全量刷新一次
     if (incomingDtos.isEmpty || _messages.isEmpty) {
       await _loadMessages();
@@ -189,7 +237,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     _logger.d('增量处理新消息数量: ${incomingDtos.length}');
 
-    // 3. 增量更新 UI
+    // 4. 增量更新 UI
     setState(() {
       for (final dto in incomingDtos) {
         final msgId = dto.payload.id;
@@ -205,7 +253,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       }
 
       // 4. 按 seqId 排序（保证乱序到达的消息顺序正确）
-      _messages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+      _messages.sort((a, b) => a.seqId.compareTo(b.seqId));
     });
 
     // 5. 滑动到底部
@@ -227,7 +275,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       ConversationEntity.tableName,
       columns: ['title'],
       where: 'id = ?',
-      whereArgs: [int.tryParse(widget.conversation.id) ?? 0],
+      whereArgs: [widget.conversation.id],
     );
     if (result.isNotEmpty && mounted) {
       final newTitle = result.first['title']?.toString() ?? '';
@@ -248,27 +296,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _isLoading = true;
     });
 
-    int minMessageId = 0;
+    String? minMessageId;
     if (isLoadMore && _messages.isNotEmpty) {
-      // 找出当前列表中最小的消息ID作为翻页依据
-      minMessageId = _messages
-          .map((m) => int.tryParse(m.id) ?? 0)
-          .where((id) => id > 0)
-          .fold(0, (minId, id) => (minId == 0 || id < minId) ? id : minId);
+      // 找出当前列表中最早（第一个）的消息ID作为翻页依据（按 seqId 排序，旧在前新在后，所以第一条是最旧的）
+      // 注意：这里的 getLocalMessages 实现是查询 id < minMessageId，这在 ID 是递增的情况下才有效
+      // 如果 ID 不是递增的，建议使用 seqId 或 createdAt 作为游标
+      minMessageId = _messages.first.id;
     }
 
-    final messageMaps = await DatabaseService().getMessages(
-      int.parse(widget.conversation.id),
+    final messageMaps = await DatabaseService().getLocalMessages(
+      widget.conversation.id,
       limit: 20,
       minMessageId: minMessageId,
     );
 
     final newMessages = messageMaps.map((map) {
       // _logger.d('从数据库读取消息: $map');
-      final quoteIdInt = map['quote_id'] as int?;
       final statusInt = map['status'] as int? ?? 0;
       final isReadInt = map['is_read'] as int? ?? 1;
-      final seqId = map['seq_id']?.toString() ?? '';
+      final seqId = map['seq_id'] as int? ?? 0;
       return Message(
         id: map['id']?.toString() ?? '',
         senderId: map['sender_id']?.toString() ?? '',
@@ -278,14 +324,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         type: MessageType.values.firstWhere((e) => e.index == (map['type'] ?? 0), orElse: () => MessageType.text),
         createdAt: TimeUtil.parseUtcTime(map['created_at']?.toString()),
         isRead: isReadInt == 1,
-        quoteId: quoteIdInt != null && quoteIdInt > 0 ? quoteIdInt.toString() : null,
+        quoteId: map['quote_id']?.toString(),
         status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
         seqId: seqId,
       );
     }).toList();
 
     // 按seqId升序排序（旧在前、新在后）
-    newMessages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+    newMessages.sort((a, b) => a.seqId.compareTo(b.seqId));
 
     if (mounted) {
       setState(() {
@@ -315,27 +361,19 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   /// 后台非阻塞同步最新消息
   Future<void> _syncLatestMessages() async {
-    // 获取本地最新消息ID
-    int latestMessageId = 0;
+    // 获取本地最新消息序列ID
+    int latestSeqId = 0;
     if (_messages.isNotEmpty) {
-      // 检查消息ID是否为数字格式
-      final numericIds = _messages
-          .map((m) => int.tryParse(m.id))
-          .where((id) => id != null && id > 0)
-          .cast<int>()
-          .toList();
+      // 检查序列ID是否为数字格式
+      final numericSeqIds = _messages.map((m) => m.seqId).where((id) => id > 0).toList();
 
-      if (numericIds.isNotEmpty) {
-        latestMessageId = numericIds.reduce((a, b) => a > b ? a : b);
+      if (numericSeqIds.isNotEmpty) {
+        latestSeqId = numericSeqIds.reduce((a, b) => a > b ? a : b);
       }
     }
 
     // 从服务器同步最新消息
-    final response = await ConversationService().getMessages(
-      int.parse(widget.conversation.id),
-      messageId: latestMessageId,
-      pageSize: 30,
-    );
+    final response = await ConversationService().getMessages(widget.conversation.id, seqId: latestSeqId, pageSize: 30);
 
     // 检查是否有网络超时错误
     if (response != null && response['success'] == false && response['error'] == 'connection_timeout') {
@@ -355,18 +393,18 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       final messageRows = list.map((json) {
         // _logger.d('从服务器同步消息: $json');
         return {
-          'id': json['id'],
-          'conversation_id': int.parse(widget.conversation.id),
+          'id': json['id']?.toString() ?? '',
+          'conversation_id': widget.conversation.id,
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
-          'sender_id': json['senderId'],
+          'sender_id': json['senderId']?.toString() ?? '',
           'sender_nickname': json['senderNickname'] ?? '',
           'sender_avatar': json['senderAvatar'] ?? '',
-          'quote_id': json['quoteId'] ?? 0,
+          'quote_id': json['quoteId']?.toString() ?? '',
           'content': json['content'],
           'type': json['type'] ?? 0,
           'status': json['status'] ?? 0,
           'is_read': 0,
-          'seq_id': json['seqId'] ?? '',
+          'seq_id': int.tryParse(json['seqId']?.toString() ?? '0') ?? 0,
           'created_at': json['createdAt'],
         };
       }).toList();
@@ -387,15 +425,42 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           isRead: true,
           quoteId: json['quoteId']?.toString() ?? '',
           status: MessageStatus.values.firstWhere((e) => e.index == statusInt, orElse: () => MessageStatus.normal),
-          seqId: json['seqId']?.toString() ?? '',
+          seqId: int.tryParse(json['seqId']?.toString() ?? '0') ?? 0,
         );
       }).toList();
 
       // 对新的消息按seqId升序排序（旧在前、新在后）确保 UI 表现正常
-      newMessages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+      newMessages.sort((a, b) => a.seqId.compareTo(b.seqId));
 
       if (mounted) {
         setState(() {
+          // 更新对方已读进度（私聊）
+          final extra = data['extra'];
+          if (extra != null) {
+            final type = extra['type'] as int?; // 1-私聊 2-群聊
+            _currentConversationMaxSeqId = extra['lastSeqId'] as int? ?? 0;
+            _myLastReadSeqId = extra['myLastReadSeqId'] as int? ?? 0;
+
+            if (type == 1 && extra['peerLastReadSeqId'] != null) {
+              _peerLastReadSeqId = extra['peerLastReadSeqId'] as int? ?? 0;
+              // 同步给 ChatService 缓存
+              _chatService.updatePeerLastReadSeqId(widget.conversation.id, _peerLastReadSeqId);
+            }
+
+            if (type == 2) {
+              _unreadCount = extra['unreadCount'] as int? ?? 0;
+            }
+
+            _logger.d(
+              '同步会话状态: 会话最大Seq=$_currentConversationMaxSeqId, 我已读Seq=$_myLastReadSeqId, 对方已读Seq=$_peerLastReadSeqId',
+            );
+
+            // 如果我是首次进入，且当前列表已经有消息，尝试标记一次已读
+            if (_messages.isNotEmpty && _lastMarkedReadSeqId == 0) {
+              _updateMyReadStatus();
+            }
+          }
+
           // 去重合并新消息
           for (final message in newMessages) {
             if (!_messages.any((m) => m.id == message.id)) {
@@ -403,7 +468,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             }
           }
           // 重新排序所有消息（按seqId排序）
-          _messages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+          _messages.sort((a, b) => a.seqId.compareTo(b.seqId));
         });
       }
     }
@@ -413,11 +478,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   /// 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
   /// 2. 如果删除的消息是会话的最后一条消息，则更新会话表中的 last_message_id, last_message_at, last_message_preview, last_sender_id 为最新消息信息
   Future<void> _handleMessageDeleted(String messageId, String conversationId) async {
-    // 解析消息ID和会话ID
-    final msgId = int.tryParse(messageId) ?? 0;
-    final convId = int.tryParse(conversationId) ?? 0;
-
-    if (msgId == 0 || convId == 0) return;
+    if (messageId.isEmpty || conversationId.isEmpty) return;
 
     try {
       final dbService = DatabaseService();
@@ -428,28 +489,28 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         ConversationMessageEntity.tableName,
         {ConversationMessageEntity.status: 2},
         where: '${ConversationMessageEntity.id} = ?',
-        whereArgs: [msgId],
+        whereArgs: [messageId],
       );
 
       // 2. 查询会话表，获取当前会话信息
       final conversationResult = await db.query(
         ConversationEntity.tableName,
         where: '${ConversationEntity.id} = ?',
-        whereArgs: [convId],
+        whereArgs: [conversationId],
       );
 
       // 如果会话存在
       if (conversationResult.isNotEmpty) {
         final conversation = conversationResult.first;
-        final lastMessageId = conversation[ConversationEntity.lastMessageId] as int?;
+        final lastMessageId = conversation[ConversationEntity.lastMessageId] as String?;
 
         // 判断删除的消息是否为会话的最后一条消息
-        if (lastMessageId == msgId) {
+        if (lastMessageId == messageId) {
           // 查询该会话中未删除的最新一条消息
           final latestMessages = await db.query(
             ConversationMessageEntity.tableName,
             where: '${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.status} != 2',
-            whereArgs: [convId],
+            whereArgs: [conversationId],
             orderBy: '${ConversationMessageEntity.id} DESC',
             limit: 1,
           );
@@ -457,13 +518,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           // 如果还有未删除的消息，则更新会话的最后一条消息信息
           if (latestMessages.isNotEmpty) {
             final latestMessage = latestMessages.first;
-            final newLastMessageId = latestMessage[ConversationMessageEntity.id] as int;
+            final newLastMessageId = latestMessage[ConversationMessageEntity.id] as String;
             final newLastMessageAt = latestMessage[ConversationMessageEntity.createdAt] as String;
             final newLastMessagePreview = _truncate(
               latestMessage[ConversationMessageEntity.content] as String? ?? '',
               50,
             );
-            final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as int;
+            final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as String;
 
             await db.update(
               ConversationEntity.tableName,
@@ -475,21 +536,21 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
               },
               where: '${ConversationEntity.id} = ?',
-              whereArgs: [convId],
+              whereArgs: [conversationId],
             );
           } else {
             // 如果该会话所有消息都已删除，则将会话的最后一条消息信息置空
             await db.update(
               ConversationEntity.tableName,
               {
-                ConversationEntity.lastMessageId: 0,
+                ConversationEntity.lastMessageId: '',
                 ConversationEntity.lastMessageAt: '',
                 ConversationEntity.lastMessagePreview: '',
-                ConversationEntity.lastSenderId: 0,
+                ConversationEntity.lastSenderId: '',
                 ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
               },
               where: '${ConversationEntity.id} = ?',
-              whereArgs: [convId],
+              whereArgs: [conversationId],
             );
           }
         }
@@ -533,6 +594,31 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          // 顶部显示未读消息提醒（仅群聊且未读数大于0时）
+          if (widget.conversation.isGroup && _unreadCount > 0)
+            GestureDetector(
+              onTap: () {
+                // 跳转到第一条未读消息或清空未读
+                setState(() => _unreadCount = 0);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                color: AppTheme.badgeColor.withValues(alpha: 0.1),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: AppTheme.badgeColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      '有 $_unreadCount 条新消息',
+                      style: TextStyle(color: AppTheme.badgeColor, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.close, size: 16, color: AppTheme.badgeColor),
+                  ],
+                ),
+              ),
+            ),
           // 消息列表
           Expanded(child: _buildMessageList()),
           // 底部输入栏
@@ -788,7 +874,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                             )
                           : null,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (quotedMessage != null && quotedMessage.id.isNotEmpty)
@@ -869,6 +955,18 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                 fontSize: 15,
                                 color: isDeleted ? Colors.grey[500] : (isMe ? Colors.white : AppTheme.textPrimary),
                                 height: 1.4,
+                              ),
+                            ),
+                          // 显示已读回执（仅限自己发送的消息且非群聊且非删除消息）
+                          if (isMe && !isDeleted && !widget.conversation.isGroup)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(
+                                message.seqId <= _peerLastReadSeqId ? Icons.done_all_rounded : Icons.done_rounded,
+                                size: 14,
+                                color: message.seqId <= _peerLastReadSeqId
+                                    ? Colors.white.withValues(alpha: 0.9)
+                                    : Colors.white.withValues(alpha: 0.6),
                               ),
                             ),
                         ],
@@ -990,7 +1088,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         // 在异步操作前获取 ScaffoldMessenger，避免 context 跨异步 gap 使用
                         final scaffoldMessenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
-                        final success = await MessageService().deleteMessage(message.id);
+                        final success = await MessageService().delete(message.id);
                         if (success && mounted) {
                           // 异步执行本地数据库操作，与收消息人删除逻辑保持一致
                           _handleMessageDeleted(message.id, widget.conversation.id);
@@ -1335,8 +1433,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   void _toggleVoicePlay(Message message, String url) async {
-    final messageId = int.tryParse(message.id);
-    if (messageId != null && !message.isRead) {
+    final messageId = message.id;
+    if (messageId.isNotEmpty && !message.isRead) {
       await DatabaseService().markMessageAsRead(messageId);
       if (mounted) {
         setState(() {
@@ -1353,6 +1451,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               isRead: true,
               quoteId: message.quoteId,
               status: message.status,
+              seqId: message.seqId,
             );
           }
         });
@@ -1988,27 +2087,26 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       final currentUser = _accountService.currentUser;
       if (currentUser != null) {
         final messageType = messageData['type'] as int? ?? 1;
-        // _logger.d('图片消息 type: $messageType, content: ${messageData['content']}');
         await DatabaseService().insertMessage({
-          'id': int.parse(messageData['id']?.toString() ?? '0'),
-          'conversation_id': int.parse(widget.conversation.id),
+          'id': messageData['id']?.toString() ?? '',
+          'conversation_id': widget.conversation.id,
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
-          'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          'sender_id': messageData['senderId']?.toString() ?? currentUser.id,
           'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
           'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
-          'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+          'quote_id': messageData['quoteId']?.toString() ?? '',
           'content': messageData['content'] ?? imageJsonContent,
           'type': messageType,
           'status': messageData['status'] ?? 0,
-          'seq_id': messageData['seqId'] ?? 0,
+          'seq_id': int.tryParse(messageData['seqId']?.toString() ?? '0') ?? 0,
           'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         });
 
         // 更新会话的最后一条消息信息
         await ConversationService().updateConversationAfterSendMessage(
-          conversationId: int.parse(widget.conversation.id),
-          senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
-          messageId: int.parse(messageData['id']?.toString() ?? '0'),
+          conversationId: widget.conversation.id,
+          senderId: messageData['senderId']?.toString() ?? currentUser.id,
+          messageId: messageData['id']?.toString() ?? '0',
           messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
           messagePreview: '[图片]',
           messageType: 1,
@@ -2275,25 +2373,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         final messageType = messageData['type'] as int? ?? 4;
         // _logger.d('文件消息 type: $messageType, content: ${messageData['content']}');
         await DatabaseService().insertMessage({
-          'id': int.parse(messageData['id']?.toString() ?? '0'),
-          'conversation_id': int.parse(widget.conversation.id),
+          'id': messageData['id']?.toString() ?? '',
+          'conversation_id': widget.conversation.id,
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
-          'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          'sender_id': messageData['senderId']?.toString() ?? currentUser.id,
           'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
           'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
-          'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+          'quote_id': messageData['quoteId']?.toString() ?? '',
           'content': messageData['content'] ?? fileJsonContent,
           'type': messageType,
           'status': messageData['status'] ?? 0,
-          'seq_id': messageData['seqId'] ?? 0,
+          'seq_id': int.tryParse(messageData['seqId']?.toString() ?? '0') ?? 0,
           'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         });
 
         // 更新会话的最后一条消息信息
         await ConversationService().updateConversationAfterSendMessage(
-          conversationId: int.parse(widget.conversation.id),
-          senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
-          messageId: int.parse(messageData['id']?.toString() ?? '0'),
+          conversationId: widget.conversation.id,
+          senderId: messageData['senderId']?.toString() ?? currentUser.id,
+          messageId: messageData['id']?.toString() ?? '0',
           messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
           messagePreview: '[文件]',
           messageType: 4,
@@ -2536,25 +2634,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         final messageType = messageData['type'] as int? ?? 2;
         // _logger.d('语音消息 type: $messageType, content: ${messageData['content']}');
         await DatabaseService().insertMessage({
-          'id': int.parse(messageData['id']?.toString() ?? '0'),
-          'conversation_id': int.parse(widget.conversation.id),
+          'id': messageData['id']?.toString() ?? '',
+          'conversation_id': widget.conversation.id,
           'conversation_type': widget.conversation.isGroup ? 2 : 1,
-          'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+          'sender_id': messageData['senderId']?.toString() ?? currentUser.id,
           'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
           'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
-          'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+          'quote_id': messageData['quoteId']?.toString() ?? '',
           'content': messageData['content'] ?? voiceJsonContent,
           'type': messageType,
           'status': messageData['status'] ?? 0,
-          'seq_id': messageData['seqId'] ?? 0,
+          'seq_id': int.tryParse(messageData['seqId']?.toString() ?? '0') ?? 0,
           'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         });
 
         // 更新会话的最后一条消息信息
         await ConversationService().updateConversationAfterSendMessage(
-          conversationId: int.parse(widget.conversation.id),
-          senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
-          messageId: int.parse(messageData['id']?.toString() ?? '0'),
+          conversationId: widget.conversation.id,
+          senderId: messageData['senderId']?.toString() ?? currentUser.id,
+          messageId: messageData['id']?.toString() ?? '0',
           messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
           messagePreview: '[语音]',
           messageType: 2,
@@ -2607,25 +2705,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       // 使用服务端返回的完整消息数据插入到本地数据库
       final messageData = result.messageData!;
       await DatabaseService().insertMessage({
-        'id': int.parse(messageData['id']?.toString() ?? '0'),
-        'conversation_id': int.parse(widget.conversation.id),
+        'id': messageData['id']?.toString() ?? '',
+        'conversation_id': widget.conversation.id,
         'conversation_type': widget.conversation.isGroup ? 2 : 1,
-        'sender_id': int.parse(messageData['senderId']?.toString() ?? currentUser.id),
+        'sender_id': messageData['senderId']?.toString() ?? currentUser.id,
         'sender_nickname': messageData['senderNickname'] ?? currentUser.nickname,
         'sender_avatar': messageData['senderAvatar'] ?? currentUser.avatar,
-        'quote_id': int.parse(messageData['quoteId']?.toString() ?? '0'),
+        'quote_id': messageData['quoteId']?.toString() ?? '',
         'content': messageData['content'] ?? text,
         'type': messageData['type'] ?? 0,
         'status': messageData['status'] ?? 0,
-        'seq_id': messageData['seqId'] ?? 0,
+        'seq_id': int.tryParse(messageData['seqId']?.toString() ?? '0') ?? 0,
         'created_at': messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
       });
 
       // 更新会话的最后一条消息信息
       await ConversationService().updateConversationAfterSendMessage(
-        conversationId: int.parse(widget.conversation.id),
-        senderId: int.parse(messageData['senderId']?.toString() ?? currentUser.id),
-        messageId: int.parse(messageData['id']?.toString() ?? '0'),
+        conversationId: widget.conversation.id,
+        senderId: messageData['senderId']?.toString() ?? currentUser.id,
+        messageId: messageData['id']?.toString() ?? '0',
         messageAt: messageData['createdAt'] ?? DateTime.now().toUtc().toIso8601String(),
         messagePreview: messageData['content'] ?? text,
         messageType: messageData['type'] ?? 0,
@@ -2644,18 +2742,18 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               (e) => e.index == (messageData['type'] ?? 0),
               orElse: () => MessageType.text,
             ),
-            createdAt: TimeUtil.parseUtcTime(messageData['createdAt']?.toString()) ?? DateTime.now(),
+            createdAt: TimeUtil.parseUtcTime(messageData['createdAt']?.toString()) ?? DateTime.now().toUtc(),
             isRead: true,
             quoteId: messageData['quoteId']?.toString() != '0' ? messageData['quoteId']?.toString() : null,
             status: MessageStatus.normal,
-            seqId: messageData['seqId']?.toString() ?? '',
+            seqId: int.tryParse(messageData['seqId']?.toString() ?? '0') ?? 0,
           );
 
           // 去重并添加
           if (!_messages.any((m) => m.id == newMessage.id)) {
             _messages.add(newMessage);
             // 排序
-            _messages.sort((a, b) => int.parse(a.seqId).compareTo(int.parse(b.seqId)));
+            _messages.sort((a, b) => a.seqId.compareTo(b.seqId));
           }
 
           _messageController.clear();

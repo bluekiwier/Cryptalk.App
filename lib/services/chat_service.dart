@@ -4,9 +4,9 @@ import 'package:cryptography/cryptography.dart';
 import 'package:cryptalk/services/encryption_service.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import '../utils/logger_util.dart';
 import 'account_service.dart';
 import 'database_service.dart';
 import 'conversation_service.dart';
@@ -21,17 +21,17 @@ import 'notification_service.dart';
 class MessageResult {
   final String type;
   final String event;
-  final int timestamp;
+  final String time;
   final Map<String, dynamic>? data;
   final Map<String, dynamic>? extra;
 
-  MessageResult({required this.type, required this.event, required this.timestamp, this.data, this.extra});
+  MessageResult({required this.type, required this.event, required this.time, this.data, this.extra});
 
   factory MessageResult.fromJson(Map<String, dynamic> json) {
     return MessageResult(
       type: json['type'],
       event: json['event'],
-      timestamp: json['timestamp'],
+      time: json['time'],
       data: json['data'],
       extra: json['extra'],
     );
@@ -109,7 +109,7 @@ class ConversationMessagePayload {
   final int conversationType;
 
   // 消息顺序号
-  final String seqId;
+  final int seqId;
 
   // 发送者ID
   final String senderId;
@@ -155,7 +155,7 @@ class ConversationMessagePayload {
       id: json['id']?.toString() ?? '',
       conversationId: json['conversationId']?.toString() ?? '',
       conversationType: json['conversationType'] ?? 0,
-      seqId: json['seqId']?.toString() ?? '',
+      seqId: int.tryParse(json['seqId']?.toString() ?? '0') ?? 0,
       senderId: json['senderId']?.toString() ?? '',
       senderNickname: json['senderNickname']?.toString(),
       senderAvatar: json['senderAvatar']?.toString(),
@@ -169,16 +169,36 @@ class ConversationMessagePayload {
 }
 
 /// 删除消息Dto
-class DeleteMessageDto {
+class MessageDeleteDto {
   // 会话ID
   final String conversationId;
   // 删除消息ID
   final String messageId;
 
-  DeleteMessageDto({required this.conversationId, required this.messageId});
+  MessageDeleteDto({required this.conversationId, required this.messageId});
 
-  factory DeleteMessageDto.fromJson(Map<String, dynamic> json) {
-    return DeleteMessageDto(conversationId: json['conversationId'] ?? '', messageId: json['messageId'] ?? '');
+  factory MessageDeleteDto.fromJson(Map<String, dynamic> json) {
+    return MessageDeleteDto(conversationId: json['conversationId'] ?? '', messageId: json['messageId'] ?? '');
+  }
+}
+
+/// 已读消息Dto
+class MessageReadDto {
+  // 会话ID
+  final String conversationId;
+  // 已读消息ID
+  final String messageId;
+  // 消息排序ID
+  final int seqId;
+
+  MessageReadDto({required this.conversationId, required this.messageId, required this.seqId});
+
+  factory MessageReadDto.fromJson(Map<String, dynamic> json) {
+    return MessageReadDto(
+      conversationId: json['conversationId'] ?? '',
+      messageId: json['messageId'] ?? '',
+      seqId: int.tryParse(json['seqId']?.toString() ?? '0') ?? 0,
+    );
   }
 }
 
@@ -188,7 +208,7 @@ class ChatService extends ChangeNotifier {
   factory ChatService() => _instance;
   ChatService._internal();
 
-  final _logger = Logger();
+  final _logger = Log.logger;
   // final httpService = HttpService();
   WebSocketChannel? _channel;
   bool _isConnected = false;
@@ -210,6 +230,21 @@ class ChatService extends ChangeNotifier {
 
   // 存储接收到的消息
   final List<ChatMessageDto> _receivedMessages = [];
+
+  // 各个会话对方已读的最大 seqId (私聊会话)
+  final Map<String, int> _peerLastReadSeqIds = {};
+
+  /// 获取指定会话对方已读的最大 seqId
+  int getPeerLastReadSeqId(String conversationId) {
+    return _peerLastReadSeqIds[conversationId] ?? 0;
+  }
+
+  /// 设置对方已读的最大 seqId（供详情页请求拉取后回传设置）
+  void updatePeerLastReadSeqId(String conversationId, int seqId) {
+    if (seqId > (_peerLastReadSeqIds[conversationId] ?? 0)) {
+      _peerLastReadSeqIds[conversationId] = seqId;
+    }
+  }
 
   // 当前打开的聊天会话ID
   String? _currentChatConversationId;
@@ -388,8 +423,14 @@ class ChatService extends ChangeNotifier {
         break;
 
       case "delete":
-        final del = DeleteMessageDto.fromJson(message.data!);
+        final del = MessageDeleteDto.fromJson(message.data!);
         _handleDeleteMessage(del);
+        break;
+
+      case "read_receipt":
+        _logger.i('收到已读回执消息:${message.data}');
+        final read = MessageReadDto.fromJson(message.data!);
+        _handleReadReceiptMessage(read);
         break;
 
       // case "recall":
@@ -430,15 +471,15 @@ class ChatService extends ChangeNotifier {
     }
 
     final payload = message.payload;
-    final convId = int.tryParse(message.conversationId) ?? 0;
-    if (convId == 0) {
-      _logger.w('conversationId 无效，跳过 DB 写入');
+    final convId = message.conversationId;
+    if (convId.isEmpty) {
+      _logger.w('conversationId 为空，跳过 DB 写入');
       notifyListeners();
       return;
     }
 
-    final msgId = int.tryParse(payload.id) ?? 0;
-    final senderId = int.tryParse(payload.senderId) ?? 0;
+    final msgId = payload.id;
+    final senderId = payload.senderId;
     final createdAt = payload.createdAt;
 
     // 异步写 DB，不阻塞消息处理
@@ -451,11 +492,11 @@ class ChatService extends ChangeNotifier {
         'sender_id': senderId,
         'sender_nickname': payload.senderNickname,
         'sender_avatar': payload.senderAvatar,
-        'quote_id': int.tryParse(payload.quoteId) ?? 0,
+        'quote_id': payload.quoteId,
         'content': payload.content,
         'type': payload.type,
         'status': payload.status,
-        'seq_id': int.tryParse(payload.seqId) ?? 0,
+        'seq_id': payload.seqId,
         'created_at': createdAt,
       });
 
@@ -483,7 +524,7 @@ class ChatService extends ChangeNotifier {
         messageAt: createdAt,
         messagePreview: messagePreview,
         messageType: payload.type,
-        isInChatPage: isInChatPage(convId.toString()),
+        isInChatPage: isInChatPage(convId),
       );
     });
 
@@ -494,15 +535,15 @@ class ChatService extends ChangeNotifier {
   /// 1. 将本地数据库消息表 messages 中的对应消息的 status 设置为已删除(2)
   /// 2. 如果删除的消息是会话的最后一条消息，则更新会话表中的 last_message_id, last_message_at, last_message_preview, last_sender_id 为最新消息信息
   /// 3. 从内存中的消息列表移除对应消息，并通知 UI 更新
-  void _handleDeleteMessage(DeleteMessageDto message) {
-    _logger.i('收到删除消息: messageId=${message.messageId}, conversationId=${message.conversationId}');
+  void _handleDeleteMessage(MessageDeleteDto message) {
+    _logger.i('收到删除消息: $message');
     // 直接使用字符串 ID，不转换为 int，避免大数问题
     final msgIdStr = message.messageId;
-    final convId = int.tryParse(message.conversationId) ?? 0;
+    final convId = message.conversationId;
 
     _logger.i('使用字符串 msgId=$msgIdStr, convId=$convId');
 
-    if (msgIdStr.isEmpty || convId == 0) return;
+    if (msgIdStr.isEmpty || convId.isEmpty) return;
 
     // 异步执行数据库操作，避免阻塞主线程
     Future(() async {
@@ -577,7 +618,7 @@ class ChatService extends ChangeNotifier {
               latestMessage[ConversationMessageEntity.content] as String? ?? '',
               50,
             );
-            final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as int;
+            final newLastSenderId = latestMessage[ConversationMessageEntity.senderId] as String;
 
             // 处理 newLastMessageId，确保它是 int 类型
             final int? newLastMessageIdInt;
@@ -606,10 +647,10 @@ class ChatService extends ChangeNotifier {
               ConversationEntity.tableName,
               {
                 ConversationEntity.lastSeqId: 0,
-                ConversationEntity.lastMessageId: 0,
+                ConversationEntity.lastMessageId: '',
                 ConversationEntity.lastMessageAt: '',
                 ConversationEntity.lastMessagePreview: '',
-                ConversationEntity.lastSenderId: 0,
+                ConversationEntity.lastSenderId: '',
                 ConversationEntity.updatedAt: DateTime.now().toUtc().toString(),
               },
               where: '${ConversationEntity.id} = ?',
@@ -626,6 +667,19 @@ class ChatService extends ChangeNotifier {
       _logger.i('通知 UI 更新');
       notifyListeners();
     });
+  }
+
+  /// 处理已读回执消息
+  void _handleReadReceiptMessage(MessageReadDto message) {
+    _logger.i(
+      '处理已读回执消息: conversationId:${message.conversationId}, seqId:${message.seqId}, messageId:${message.messageId}',
+    );
+    // 更新对应会话的对方已读序号
+    if (message.seqId > (_peerLastReadSeqIds[message.conversationId] ?? 0)) {
+      _peerLastReadSeqIds[message.conversationId] = message.seqId;
+    }
+    // 通知 UI 更新（例如 ChatDetailPage 会重新 build 并检查 peerLastReadSeqId）
+    notifyListeners();
   }
 
   /// 截断字符串到指定长度，超过部分用省略号替代
@@ -745,7 +799,7 @@ class ChatService extends ChangeNotifier {
         }
         break;
       case "delete":
-        final del = DeleteMessageDto.fromJson(message.data!);
+        final del = MessageDeleteDto.fromJson(message.data!);
         _handleDeleteMessage(del);
         break;
       case "change_title":
@@ -801,13 +855,12 @@ class ChatService extends ChangeNotifier {
 
   /// 处理群通知消息（加入/退出群等）
   Future<void> _handleGroupNotifyMessage(String conversationId, Map<String, dynamic> payload) async {
-    final msgId = int.tryParse(payload['id']?.toString() ?? '') ?? 0;
-    final senderId = int.tryParse(payload['senderId']?.toString() ?? '') ?? 0;
+    final messageId = payload['id']?.toString() ?? '0';
+    final senderId = payload['senderId']?.toString() ?? '0';
     final content = payload['content']?.toString() ?? '';
     final createdAtStr = payload['createdAt']?.toString() ?? DateTime.now().toUtc().toIso8601String();
-    final convId = int.tryParse(conversationId) ?? 0;
 
-    if (msgId == 0 || convId == 0) {
+    if (messageId == '0' || conversationId == '0') {
       _logger.w('群通知消息无效，跳过处理');
       return;
     }
@@ -815,15 +868,15 @@ class ChatService extends ChangeNotifier {
     final notifyMessage = ChatMessageDto(
       conversationId: conversationId,
       conversationType: 2,
-      senderId: senderId.toString(),
+      senderId: senderId,
       receiverId: conversationId,
       time: TimeUtil.parseUtcTime(createdAtStr) ?? DateTime.now(),
       payload: ConversationMessagePayload(
-        id: msgId.toString(),
+        id: messageId,
         conversationId: conversationId,
         conversationType: 2,
-        seqId: payload['seqId']?.toString() ?? '',
-        senderId: senderId.toString(),
+        seqId: payload['seqId'],
+        senderId: senderId,
         senderNickname: payload['senderNickname']?.toString(),
         senderAvatar: payload['senderAvatar']?.toString(),
         quoteId: '0',
@@ -854,13 +907,13 @@ class ChatService extends ChangeNotifier {
 
     Future(() async {
       await DatabaseService().insertMessage({
-        'id': msgId,
-        'conversation_id': convId,
+        'id': messageId,
+        'conversation_id': conversationId,
         'conversation_type': 2,
         'sender_id': senderId,
         'sender_nickname': payload['senderNickname'] ?? '',
         'sender_avatar': payload['senderAvatar'] ?? '',
-        'quote_id': 0,
+        'quote_id': '0',
         'content': content,
         'type': notifyMessage.payload.type,
         'status': notifyMessage.payload.status,
@@ -869,9 +922,9 @@ class ChatService extends ChangeNotifier {
       });
 
       await ConversationService().onNewMessage(
-        conversationId: convId,
+        conversationId: conversationId,
         senderId: senderId,
-        messageId: msgId,
+        messageId: messageId,
         messageAt: createdAtStr,
         messagePreview: _getMessagePreview(content, notifyMessage.payload.type),
         messageType: notifyMessage.payload.type,

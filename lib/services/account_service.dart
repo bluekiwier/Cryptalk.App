@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../models/user.dart';
 import '../config/api_config.dart';
 import '../utils/device_util.dart';
+import '../utils/logger_util.dart';
 import 'chat_service.dart';
 import 'database_service.dart';
 import 'encryption_service.dart';
@@ -19,7 +19,7 @@ class AccountService extends ChangeNotifier {
   factory AccountService() => _instance;
   AccountService._internal();
 
-  final _logger = Logger();
+  final _logger = Log.logger;
   Timer? _refreshTimer;
 
   String? _cachedAppVersion;
@@ -92,6 +92,7 @@ class AccountService extends ChangeNotifier {
         // responseHeader: true,
         responseBody: true,
         error: true,
+        logPrint: Log.dioPrint,
       ),
     );
 

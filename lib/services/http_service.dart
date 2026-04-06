@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:logger/logger.dart';
+import '../utils/logger_util.dart';
 import '../config/api_config.dart';
 
 class HttpService {
@@ -9,7 +9,7 @@ class HttpService {
   factory HttpService() => _instance;
   HttpService._internal();
 
-  final Logger _logger = Logger();
+  final _logger = Log.logger;
 
   /// 创建基础 Dio 实例（不包含认证相关配置）
   Future<Dio> _getBaseDio({Map<String, dynamic>? extraHeaders}) async {
@@ -32,6 +32,7 @@ class HttpService {
         // responseHeader: true,
         // responseBody: true,
         error: true,
+        logPrint: Log.dioPrint,
       ),
     );
 

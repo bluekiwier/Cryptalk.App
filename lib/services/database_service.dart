@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:logger/logger.dart';
+import '../utils/logger_util.dart';
 import '../models/db/conversation_entity.dart';
 import '../models/db/conversation_message_entity.dart';
 
@@ -11,7 +11,7 @@ class DatabaseService {
   DatabaseService._internal();
 
   Database? _database;
-  final _logger = Logger();
+  final _logger = Log.logger;
   String? _currentUserId;
 
   /// 截断字符串到指定长度
@@ -34,7 +34,7 @@ class DatabaseService {
     final dbName = _currentUserId != null ? 'cryptalk_$_currentUserId.db' : 'cryptalk.db';
     final path = join(dbPath, dbName);
 
-    final db = await openDatabase(path, version: 1, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    final db = await openDatabase(path, version: 2, onCreate: _onCreate, onUpgrade: _onUpgrade);
 
     // _logger.i('sqflite 数据库初始化成功: $path');
     return db;
@@ -71,14 +71,14 @@ class DatabaseService {
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE ${ConversationEntity.tableName} (
-        ${ConversationEntity.id} INTEGER PRIMARY KEY,
+        ${ConversationEntity.id} TEXT PRIMARY KEY,
         ${ConversationEntity.type} INTEGER NOT NULL,
-        ${ConversationEntity.chatUserId} INTEGER NOT NULL,
+        ${ConversationEntity.chatUserId} TEXT NOT NULL,
         ${ConversationEntity.title} TEXT NOT NULL,
         ${ConversationEntity.avatar} TEXT NOT NULL,
         ${ConversationEntity.lastSeqId} INTEGER NOT NULL DEFAULT 0,
-        ${ConversationEntity.lastSenderId} INTEGER NOT NULL,
-        ${ConversationEntity.lastMessageId} INTEGER NOT NULL,
+        ${ConversationEntity.lastSenderId} TEXT NOT NULL,
+        ${ConversationEntity.lastMessageId} TEXT NOT NULL,
         ${ConversationEntity.lastMessageAt} TEXT,
         ${ConversationEntity.lastMessagePreview} TEXT,
         ${ConversationEntity.unreadCount} INTEGER NOT NULL DEFAULT 0,
@@ -90,14 +90,14 @@ class DatabaseService {
 
     await db.execute('''
       CREATE TABLE ${ConversationMessageEntity.tableName} (
-        ${ConversationMessageEntity.id} INTEGER PRIMARY KEY,
-        ${ConversationMessageEntity.conversationId} INTEGER NOT NULL,
+        ${ConversationMessageEntity.id} TEXT PRIMARY KEY,
+        ${ConversationMessageEntity.conversationId} TEXT NOT NULL,
         ${ConversationMessageEntity.conversationType} INTEGER,
         ${ConversationMessageEntity.seqId} INTEGER NOT NULL,
-        ${ConversationMessageEntity.senderId} INTEGER NOT NULL,
+        ${ConversationMessageEntity.senderId} TEXT NOT NULL,
         ${ConversationMessageEntity.senderNickname} TEXT,
         ${ConversationMessageEntity.senderAvatar} TEXT,
-        ${ConversationMessageEntity.quoteId} INTEGER NOT NULL DEFAULT 0,
+        ${ConversationMessageEntity.quoteId} TEXT NOT NULL DEFAULT '',
         ${ConversationMessageEntity.content} TEXT NOT NULL,
         ${ConversationMessageEntity.type} INTEGER NOT NULL DEFAULT 0,
         ${ConversationMessageEntity.status} INTEGER NOT NULL DEFAULT 0,
@@ -130,13 +130,15 @@ class DatabaseService {
 
   /// 数据库版本升级
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // _logger.i('数据库升级：$oldVersion -> $newVersion');
-    // if (oldVersion < 2) {
-    //   await db.execute(
-    //     'ALTER TABLE ${ConversationMessageEntity.tableName} ADD COLUMN ${ConversationMessageEntity.isRead} INTEGER NOT NULL DEFAULT 0',
-    //   );
-    //   _logger.i('已添加 is_read 字段到 messages 表');
-    // }
+    _logger.i('数据库升级：$oldVersion -> $newVersion');
+    if (oldVersion < 2) {
+      // 由于多个核心 ID 字段从 INTEGER 改为 TEXT，最安全简单的方法是删除并重建表
+      // 如果需要保留数据，则需要复杂的 ALTER TABLE + 临时表数据迁移逻辑
+      await db.execute('DROP TABLE IF EXISTS ${ConversationEntity.tableName}');
+      await db.execute('DROP TABLE IF EXISTS ${ConversationMessageEntity.tableName}');
+      await _onCreate(db, newVersion);
+      _logger.i('数据库版本升级到 2：已重置会话和消息表');
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -259,9 +261,9 @@ class DatabaseService {
 
   /// 更新单条会话（收到新消息时调用）
   Future<void> updateConversationFromMessage({
-    required int conversationId,
-    required int senderId,
-    required int messageId,
+    required String conversationId,
+    required String senderId,
+    required String messageId,
     required String messageAt,
     required String messagePreview,
     required int messageType,
@@ -279,7 +281,7 @@ class DatabaseService {
   }
 
   /// 更新群名称（收到WebSocket事件或手动修改时调用）
-  Future<void> updateConversationTitle(int conversationId, String title) async {
+  Future<void> updateConversationTitle(String conversationId, String title) async {
     final db = await database;
     await db.update(
       ConversationEntity.tableName,
@@ -353,12 +355,16 @@ class DatabaseService {
   }
 
   /// 获取指定会话的消息
-  Future<List<Map<String, dynamic>>> getMessages(int conversationId, {int limit = 20, int minMessageId = 0}) async {
+  Future<List<Map<String, dynamic>>> getLocalMessages(
+    String conversationId, {
+    int limit = 20,
+    String? minMessageId,
+  }) async {
     final db = await database;
-    final sql = minMessageId > 0
+    final sql = minMessageId != null && minMessageId.isNotEmpty
         ? 'SELECT * FROM ${ConversationMessageEntity.tableName} WHERE ${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.id} < ? ORDER BY ${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC LIMIT ?'
         : 'SELECT * FROM ${ConversationMessageEntity.tableName} WHERE ${ConversationMessageEntity.conversationId} = ? ORDER BY ${ConversationMessageEntity.seqId} DESC, ${ConversationMessageEntity.createdAt} DESC LIMIT ?';
-    final params = minMessageId > 0 ? [conversationId, minMessageId, limit] : [conversationId, limit];
+    final params = minMessageId != null && minMessageId.isNotEmpty ? [conversationId, minMessageId, limit] : [conversationId, limit];
     final results = await db.rawQuery(sql, params);
     return results;
   }
@@ -394,7 +400,7 @@ class DatabaseService {
   }
 
   /// 将指定会话的未读数清零
-  Future<void> clearUnreadCount(int conversationId) async {
+  Future<void> clearUnreadCount(String conversationId) async {
     final db = await database;
     await db.update(
       ConversationEntity.tableName,
@@ -418,7 +424,7 @@ class DatabaseService {
   }
 
   /// 获取单个会话
-  Future<Map<String, dynamic>?> getConversation(int id) async {
+  Future<Map<String, dynamic>?> getConversation(String id) async {
     final db = await database;
     final result = await db.query(ConversationEntity.tableName, where: '${ConversationEntity.id} = ?', whereArgs: [id]);
     return result.isNotEmpty ? result.first : null;
@@ -432,7 +438,7 @@ class DatabaseService {
   }
 
   /// 检查会话是否存在本地
-  Future<bool> conversationExists(int conversationId) async {
+  Future<bool> conversationExists(String conversationId) async {
     final db = await database;
     final count = Sqflite.firstIntValue(
       await db.rawQuery('SELECT COUNT(*) FROM ${ConversationEntity.tableName} WHERE ${ConversationEntity.id} = ?', [
@@ -478,7 +484,7 @@ class DatabaseService {
           ConversationMessageEntity.senderId: row['sender_id'],
           ConversationMessageEntity.senderNickname: row['sender_nickname'],
           ConversationMessageEntity.senderAvatar: row['sender_avatar'],
-          ConversationMessageEntity.quoteId: row['quote_id'] ?? 0,
+          ConversationMessageEntity.quoteId: row['quote_id']?.toString() ?? '',
           ConversationMessageEntity.content: row['content'],
           ConversationMessageEntity.type: row['type'] ?? 0,
           ConversationMessageEntity.status: row['status'] ?? 0,
@@ -492,14 +498,14 @@ class DatabaseService {
 
   /// 分页查询某会话的消息（按 seq_id 和 created_at 降序，翻页用 cursor）
   Future<List<Map<String, dynamic>>> queryMessages({
-    required int conversationId,
+    required String conversationId,
     int pageSize = 20,
-    int? beforeId,
+    String? beforeId,
   }) async {
     final db = await database;
 
     List<Map<String, dynamic>> results;
-    if (beforeId != null && beforeId > 0) {
+    if (beforeId != null && beforeId.isNotEmpty) {
       results = await db.query(
         ConversationMessageEntity.tableName,
         where: '${ConversationMessageEntity.conversationId} = ? AND ${ConversationMessageEntity.id} < ?',
@@ -521,7 +527,7 @@ class DatabaseService {
   }
 
   /// 标记消息为已读
-  Future<void> markMessageAsRead(int messageId) async {
+  Future<void> markMessageAsRead(String messageId) async {
     final db = await database;
     await db.update(
       ConversationMessageEntity.tableName,
@@ -532,7 +538,7 @@ class DatabaseService {
   }
 
   /// 标记某会话的所有消息为已读
-  Future<void> markConversationMessagesAsRead(int conversationId) async {
+  Future<void> markConversationMessagesAsRead(String conversationId) async {
     final db = await database;
     await db.update(
       ConversationMessageEntity.tableName,

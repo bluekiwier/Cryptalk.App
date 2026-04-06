@@ -11,7 +11,7 @@ class MessageService {
   final Logger _logger = Logger();
 
   /// 撤回消息
-  Future<bool> recallMessage(String messageId) async {
+  Future<bool> recall(String messageId) async {
     try {
       // 调用后端撤回API
       final dio = await AccountService().getDio();
@@ -28,7 +28,7 @@ class MessageService {
   }
 
   /// 删除消息
-  Future<bool> deleteMessage(String messageId) async {
+  Future<bool> delete(String messageId) async {
     try {
       // 调用后端删除API
       final dio = await AccountService().getDio();
@@ -40,6 +40,19 @@ class MessageService {
       return response.statusCode == 200;
     } catch (e) {
       _logger.e('删除消息失败: $e');
+      return false;
+    }
+  }
+
+  /// 更新已读序号
+  Future<bool> markAsRead(String messageId) async {
+    try {
+      // 调用后端删除API
+      final dio = await AccountService().getDio();
+      final response = await dio.post('/api/message/mark-as-read', data: {'id': messageId});
+      return response.data != null && response.data['success'] == true;
+    } catch (e) {
+      _logger.e('标记已读失败: $e');
       return false;
     }
   }

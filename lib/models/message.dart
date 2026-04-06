@@ -17,7 +17,7 @@ class Message {
   final bool isRead;
   final String? quoteId;
   final MessageStatus status;
-  final String seqId;
+  final int seqId;
 
   const Message({
     required this.id,
@@ -30,7 +30,7 @@ class Message {
     this.isRead = false,
     this.quoteId,
     this.status = MessageStatus.normal,
-    this.seqId = '',
+    this.seqId = 0,
   });
 }
 

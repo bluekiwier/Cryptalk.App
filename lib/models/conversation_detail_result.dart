@@ -15,7 +15,7 @@ class ConversationDetailResult {
   final String avatar;
 
   /// 最后一条消息序列ID
-  final String lastSeqId;
+  final int lastSeqId;
 
   /// 最后一条消息发送者ID
   final String lastSenderId;
@@ -69,13 +69,13 @@ class ConversationDetailResult {
       chatUserId: json['chatUserId'].toString(),
       title: json['title']?.toString() ?? '',
       avatar: json['avatar']?.toString() ?? '',
-      lastSeqId: json['lastSeqId'].toString(),
+      lastSeqId: int.tryParse(json['lastSeqId']?.toString() ?? '0') ?? 0,
       lastSenderId: json['lastSenderId'].toString(),
       lastMessageId: json['lastMessageId'].toString(),
       lastMessageAt: json['lastMessageAt'] != null ? DateTime.tryParse(json['lastMessageAt'].toString()) : null,
       lastMessagePreview: json['lastMessagePreview']?.toString(),
       announcement: json['announcement']?.toString(),
-      unreadCount: json['unreadCount'],
+      unreadCount: int.tryParse(json['unreadCount']?.toString() ?? '0') ?? 0,
       isPinned: json['isPinned'] == true || json['isPinned'] == 1,
       isMuted: json['isMuted'] == true || json['isMuted'] == 1,
       isAllMuted: json['isAllMuted'] == true || json['isAllMuted'] == 1,

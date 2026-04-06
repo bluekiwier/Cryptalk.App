@@ -4,7 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/><!-- 如果你有录视频需求 -->
+    <uses-permission android:name="android.permission.CAMERA"/><!-- 打开摄像头权限 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/><!-- 访问相册 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /><!-- 保存照片 -->
 </manifest>
