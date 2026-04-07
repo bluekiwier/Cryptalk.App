@@ -55,7 +55,7 @@ class Log {
   static void t(dynamic message, [dynamic error, StackTrace? stackTrace]) =>
       logger.t(message, error: error, stackTrace: stackTrace);
   static void v(dynamic message, [dynamic error, StackTrace? stackTrace]) =>
-      logger.v(message, error: error, stackTrace: stackTrace);
+      logger.t(message, error: error, stackTrace: stackTrace);
   static void d(dynamic message, [dynamic error, StackTrace? stackTrace]) =>
       logger.d(message, error: error, stackTrace: stackTrace);
   static void i(dynamic message, [dynamic error, StackTrace? stackTrace]) =>

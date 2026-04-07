@@ -133,11 +133,12 @@ class _ChatListPageState extends State<ChatListPage> {
                     key: ValueKey(filteredConversations[index].id),
                     conversation: filteredConversations[index],
                     onTap: () async {
+                      final conversation = filteredConversations[index];
                       // 进入聊天页时清零未读数
-                      await _conversationService.clearUnread(filteredConversations[index].id);
-                      if (!mounted) return;
-                      // 用局部变量捕获 context，避免跨异步使用
-                      await _openChat(context, filteredConversations[index]);
+                      await _conversationService.clearUnread(conversation.id);
+                      
+                      if (!mounted || !context.mounted) return;
+                      await _openChat(context, conversation);
                     },
                   );
                 }, childCount: filteredConversations.length + 1),

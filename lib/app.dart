@@ -61,12 +61,11 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
     try {
       // 检查网络连接状态
       final connectivityResult = await Connectivity().checkConnectivity();
-
-      if (connectivityResult == ConnectivityResult.none) {
+      if (connectivityResult.contains(ConnectivityResult.none)) {
         // 没有网络连接，延迟 3 秒后重试
         await Future.delayed(const Duration(seconds: 3));
         final retryResult = await Connectivity().checkConnectivity();
-        if (retryResult == ConnectivityResult.none) {
+        if (retryResult.contains(ConnectivityResult.none)) {
           // 仍然没有网络，不进行重连
           return;
         }

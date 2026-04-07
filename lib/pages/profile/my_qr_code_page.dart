@@ -202,7 +202,7 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
 
                       // 底部提示
                       Text(
-                        '扫一扫上面的二维码图案，加我为好友',
+                        '扫一扫上面的二维码图案，加我为朋友。',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 13, color: const Color(0xFF6B7280).withValues(alpha: 0.8)),
                       ),
