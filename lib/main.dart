@@ -7,8 +7,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 import 'services/account_service.dart';
-import 'config/api_config.dart';
 import 'services/notification_service.dart';
+import 'config/api_config.dart';
+import 'config/app_config.dart';
 
 /// 应用入口
 void main() async {
@@ -30,7 +31,7 @@ void main() async {
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
-      title: '闲聊',
+      title: AppConfig.appName,
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
@@ -48,15 +49,13 @@ void main() async {
   // 为 FCM 注册后台消息处理器
   if (!Platform.isWindows && !Platform.isLinux) {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     } catch (e) {
       debugPrint('Firebase 初始化失败: $e');
     }
   }
-  
+
   // 初始化 NotificationService，用于展示 WebSocket 推送的消息
   // ignore: unused_local_variable
   final notificationService = NotificationService();

@@ -6,10 +6,12 @@ import 'package:flutter/rendering.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../services/account_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/avatar_widget.dart';
 import '../contacts/scanner_page.dart';
+import '../../config/app_config.dart';
 
 /// 我的二维码页面
 class MyQrCodePage extends StatefulWidget {
@@ -23,6 +25,27 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
   final GlobalKey _qrKey = GlobalKey();
   bool _isSaving = false;
 
+  /// 截取二维码卡片并保存为临时文件
+  Future<String?> _captureQrImage() async {
+    try {
+      final RenderRepaintBoundary? boundary = _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) throw Exception('无法找到二维码区域');
+
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw Exception('图片转换失败');
+
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+      final tempDir = await getTemporaryDirectory();
+      final String filePath = '${tempDir.path}/cryptalk_qr_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(filePath);
+      await file.writeAsBytes(pngBytes);
+      return filePath;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// 保存二维码到相册
   Future<void> _saveQrCode() async {
     if (_isSaving) return;
@@ -30,36 +53,18 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. 获取权限 (gal 权限检查)
-      // 注意：Gal.hasAccess 并不能完全代表存储权限，但在 gal 2.x 中是推荐的检查方式之一
+      // 1. 获取权限
       final hasAccess = await Gal.hasAccess();
       if (!hasAccess) {
         await Gal.requestAccess();
       }
 
-      // 2. 截取图片
-      final RenderRepaintBoundary? boundary = _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      // 2. 截屏
+      final filePath = await _captureQrImage();
+      if (filePath == null) throw Exception('截屏失败');
 
-      if (boundary == null) {
-        throw Exception('无法找到二维码区域');
-      }
-
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-
-      if (byteData == null) {
-        throw Exception('图片转换失败');
-      }
-
-      final Uint8List pngBytes = byteData.buffer.asUint8List();
-
-      // 3. 临时保存并导出到相册
-      final tempDir = await getTemporaryDirectory();
-      final String filePath = '${tempDir.path}/qr_code_${DateTime.now().millisecondsSinceEpoch}.png';
-      final file = File(filePath);
-      await file.writeAsBytes(pngBytes);
-
-      await Gal.putImage(file.path);
+      // 3. 导出到相册
+      await Gal.putImage(filePath);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,9 +86,40 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
         );
       }
     } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  /// 分享二维码图片
+  Future<void> _shareQrCode() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // 1. 截屏
+      final filePath = await _captureQrImage();
+      if (filePath == null) throw Exception('截屏失败');
+
+      // 2. 调用分享
+      final user = AccountService().currentUser;
+      final String text = '这是 ${user?.nickname ?? ""} 的 ${AppConfig.appName} 二维码，快来加我为朋友吧！';
+
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(filePath)], text: text, subject: '分享 ${AppConfig.appName} 二维码'),
+      );
+    } catch (e) {
       if (mounted) {
-        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分享失败: $e'),
+            backgroundColor: AppTheme.badgeColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -122,9 +158,7 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.share_rounded, color: Colors.white),
-            onPressed: () {
-              // TODO: 实现分享
-            },
+            onPressed: _shareQrCode,
           ),
           const SizedBox(width: 8),
         ],

@@ -7,6 +7,7 @@ import 'pages/account/register_page.dart';
 import 'services/account_service.dart';
 import 'services/theme_service.dart';
 import 'services/chat_service.dart';
+import 'config/app_config.dart';
 
 /// 应用根组件
 /// 根据登录状态决定初始页面，并配置命名路由
@@ -89,7 +90,7 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
       builder: (context, _) {
         return MaterialApp(
           navigatorKey: CryptalkApp.navigatorKey,
-          title: '闲聊',
+          title: AppConfig.appName,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

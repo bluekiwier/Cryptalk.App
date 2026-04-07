@@ -11,6 +11,7 @@ import '../contacts/add_friend_page.dart';
 import '../contacts/select_friends_page.dart';
 import '../profile/my_qr_code_page.dart';
 import 'chat_detail_page.dart';
+import '../../config/app_config.dart';
 
 /// 聊天列表页面
 /// 策略：冷启动 < 100ms（本地 DB），60fps（ListView.builder），实时未读（ChangeNotifier）
@@ -177,7 +178,7 @@ class _ChatListPageState extends State<ChatListPage> {
       title: Row(
         children: [
           const Text(
-            '闲聊',
+            AppConfig.appName,
             style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
           const SizedBox(width: 8),

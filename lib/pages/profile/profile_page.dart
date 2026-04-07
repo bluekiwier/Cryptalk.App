@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_switch.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../services/account_service.dart';
 import '../../services/theme_service.dart';
@@ -11,7 +12,7 @@ import 'about_page.dart';
 import 'user_info_page.dart';
 import 'my_qr_code_page.dart';
 import 'change_avatar_page.dart';
-import '../../widgets/app_switch.dart';
+import '../../config/app_config.dart';
 
 /// 个人中心页面
 /// 展示个人信息、功能入口和设置
@@ -249,7 +250,7 @@ class ProfilePage extends StatelessWidget {
               return _buildMenuItem(
                 icon: Icons.info_outline_rounded,
                 iconColor: const Color(0xFF06B6D4),
-                label: '关于闲聊',
+                label: '关于${AppConfig.appName}',
                 subtitle: '版本 $version',
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutPage()));
