@@ -59,9 +59,12 @@ class EncryptionService {
     }
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final companyId = prefs.getString('companyId');
+      final requestData = {'companyId': companyId};
       final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl));
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final response = await dio.get('/api/account/public-key?t=$timestamp');
+      //final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final response = await dio.post('/api/account/public-key', data: requestData);
       if (response.statusCode == 200 && response.data['success'] == true) {
         final data = response.data['data'];
         _publicKeyString = data['key'];
@@ -175,6 +178,8 @@ class EncryptInterceptor extends Interceptor {
         // 4. RSA-OAEP 加密 AES key
         final encryptedKey = await encryptionService.encryptAesKeyWithRSA(aesKeyBytes);
 
+        final prefs = await SharedPreferences.getInstance();
+        final companyId = prefs.getString('companyId');
         // 5. 替换请求体
         options.data = {
           'data': encrypted['data'],
@@ -182,6 +187,7 @@ class EncryptInterceptor extends Interceptor {
           'nonce': encrypted['nonce'],
           'tag': encrypted['tag'],
           'version': encryptionService.keyVersion ?? '',
+          'companyId': companyId,
         };
 
         options.extra['_isObfuscated'] = true;

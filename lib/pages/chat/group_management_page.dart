@@ -193,7 +193,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     );
   }
 
-  Future<void> _addAdmin(int userId) async {
+  Future<void> _addAdmin(String userId) async {
     final result = await ConversationService().addGroupAdmin(widget.conversation.id, userId);
     if (result != null && result['success'] == true) {
       _showToast('已设为管理员', isSuccess: true);
@@ -203,7 +203,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     }
   }
 
-  Future<void> _removeAdmin(int userId) async {
+  Future<void> _removeAdmin(String userId) async {
     final result = await ConversationService().removeGroupAdmin(widget.conversation.id, userId);
     if (result != null && result['success'] == true) {
       _showToast('已移除管理员', isSuccess: true);
@@ -251,7 +251,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     );
   }
 
-  Future<void> _showRemoveMemberDialog(int userId, String nickname) async {
+  Future<void> _showRemoveMemberDialog(String userId, String nickname) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -278,7 +278,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     }
   }
 
-  Future<void> _showTransferOwnerDialog(int userId, String nickname) async {
+  Future<void> _showTransferOwnerDialog(String userId, String nickname) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -601,7 +601,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('全体禁言', style: TextStyle(fontSize: 16)),
+              const Text('全体禁言（群主和管理员除外）', style: TextStyle(fontSize: 16)),
               AppSwitch(
                 value: _isAllMuted,
                 onChanged: (value) async {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/account_service.dart';
+import '../company/company_page.dart';
 import 'register_page.dart';
 
 /// 登录页面
@@ -21,6 +23,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String? _currentCompanyId;
 
   // 动画控制器
   late AnimationController _fadeController;
@@ -32,34 +35,39 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _loadCurrentCompanyId();
 
     // 淡入动画
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
     // 滑入动画
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-        );
-    _formSlideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-        );
+    _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _formSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
 
     // 启动动画
     _fadeController.forward();
     _slideController.forward();
+  }
+
+  /// 加载当前 companyId
+  Future<void> _loadCurrentCompanyId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentCompanyId = prefs.getString('companyId');
+    });
+  }
+
+  /// 切换到 CompanyPage
+  void _navigateToCompanyPage() {
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const CompanyPage()));
   }
 
   @override
@@ -77,10 +85,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     setState(() => _isLoading = true);
 
-    final success = await _accountService.loginWithPhone(
-      _phoneController.text.trim(),
-      _passwordController.text,
-    );
+    final success = await _accountService.loginWithPhone(_phoneController.text.trim(), _passwordController.text);
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -98,20 +103,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void _navigateToRegister() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const RegisterPage(),
+        pageBuilder: (context, animation, secondaryAnimation) => const RegisterPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
-            position:
-                Tween<Offset>(
-                  begin: const Offset(1.0, 0.0),
-                  end: Offset.zero,
-                ).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
             child: child,
           );
         },
@@ -213,21 +211,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             // 应用名称
             const Text(
               '闲聊',
-              style: TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 4,
-              ),
+              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4),
             ),
             const SizedBox(height: 8),
             Text(
               '与朋友畅快聊天',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withValues(alpha: 0.85),
-                letterSpacing: 1,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 1),
             ),
           ],
         ),
@@ -247,11 +236,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 40,
-                offset: const Offset(0, 16),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 40, offset: const Offset(0, 16)),
             ],
           ),
           child: Form(
@@ -262,21 +247,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 // 标题
                 const Text(
                   '欢迎回来',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '登录您的账号',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textSecondary.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                Text('登录您的账号', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary.withValues(alpha: 0.8))),
+                const SizedBox(height: 16),
+
+                // 当前服务器信息
+                if (_currentCompanyId != null) _buildCompanyInfo(),
+                const SizedBox(height: 16),
 
                 // 手机号输入
                 _buildInputLabel('手机号'),
@@ -284,18 +263,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(11),
-                  ],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.textPrimary,
-                  ),
-                  decoration: _buildInputDecoration(
-                    hintText: '请输入手机号',
-                    prefixIcon: Icons.phone_android_rounded,
-                  ),
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
+                  style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+                  decoration: _buildInputDecoration(hintText: '请输入手机号', prefixIcon: Icons.phone_android_rounded),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return '请输入手机号';
@@ -314,10 +284,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
                   decoration: _buildInputDecoration(
                     hintText: '请输入密码',
                     prefixIcon: Icons.lock_rounded,
@@ -326,9 +293,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         setState(() => _obscurePassword = !_obscurePassword);
                       },
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
+                        _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                         color: AppTheme.textHint,
                         size: 20,
                       ),
@@ -352,10 +317,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   child: TextButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('忘记密码功能开发中...'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                        const SnackBar(content: Text('忘记密码功能开发中...'), behavior: SnackBarBehavior.floating),
                       );
                     },
                     style: TextButton.styleFrom(
@@ -365,11 +327,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     ),
                     child: const Text(
                       '忘记密码？',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),
@@ -385,30 +343,72 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  /// 构建输入框标签
-  Widget _buildInputLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppTheme.textSecondary,
+  /// 构建公司信息显示
+  Widget _buildCompanyInfo() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.business_rounded, color: AppTheme.primaryColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '当前服务器',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _currentCompanyId ?? '',
+                  style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: _navigateToCompanyPage,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              '切换',
+              style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  /// 构建输入框标签
+  Widget _buildInputLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+    );
+  }
+
   /// 构建输入框装饰
-  InputDecoration _buildInputDecoration({
-    required String hintText,
-    required IconData prefixIcon,
-    Widget? suffixIcon,
-  }) {
+  InputDecoration _buildInputDecoration({required String hintText, required IconData prefixIcon, Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(
-        color: AppTheme.textHint.withValues(alpha: 0.7),
-        fontSize: 15,
-      ),
+      hintStyle: TextStyle(color: AppTheme.textHint.withValues(alpha: 0.7), fontSize: 15),
       prefixIcon: Container(
         margin: const EdgeInsets.only(left: 4, right: 8),
         child: Icon(prefixIcon, color: AppTheme.primaryColor, size: 20),
@@ -417,10 +417,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: AppTheme.scaffoldBg,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
@@ -447,10 +444,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           gradient: _isLoading
               ? LinearGradient(
-                  colors: [
-                    AppTheme.primaryColor.withValues(alpha: 0.5),
-                    AppTheme.primaryDark.withValues(alpha: 0.5),
-                  ],
+                  colors: [AppTheme.primaryColor.withValues(alpha: 0.5), AppTheme.primaryDark.withValues(alpha: 0.5)],
                 )
               : const LinearGradient(
                   colors: [AppTheme.primaryColor, AppTheme.primaryDark],
@@ -473,9 +467,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: _isLoading
               ? const SizedBox(
@@ -488,12 +480,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 )
               : const Text(
                   '登 录',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    letterSpacing: 2,
-                  ),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 2),
                 ),
         ),
       ),
@@ -507,13 +494,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            '还没有账号？',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 14,
-            ),
-          ),
+          Text('还没有账号？', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
           TextButton(
             onPressed: _navigateToRegister,
             style: TextButton.styleFrom(

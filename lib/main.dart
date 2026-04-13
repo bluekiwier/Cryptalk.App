@@ -59,7 +59,7 @@ void main() async {
   // 初始化 NotificationService，用于展示 WebSocket 推送的消息
   // ignore: unused_local_variable
   final notificationService = NotificationService();
-  await NotificationService().initialize();
+  await notificationService.initialize();
 
   runApp(const CryptalkApp());
 }

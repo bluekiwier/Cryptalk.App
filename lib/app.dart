@@ -4,6 +4,8 @@ import 'theme/app_theme.dart';
 import 'pages/home_page.dart';
 import 'pages/account/login_page.dart';
 import 'pages/account/register_page.dart';
+import 'pages/company/company_page.dart';
+import 'pages/splash/splash_page.dart';
 import 'services/account_service.dart';
 import 'services/theme_service.dart';
 import 'services/chat_service.dart';
@@ -37,11 +39,9 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     // 监听应用进入后台/暂停/不活跃状态，并通知 ChatService
-    if (state == AppLifecycleState.hidden || 
-        state == AppLifecycleState.paused || 
-        state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       ChatService().setAppLifecycleState(true);
       return;
     }
@@ -50,7 +50,7 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // 首先通知 ChatService 已回到前台，让其能继续之后的重连
       ChatService().setAppLifecycleState(false);
-      
+
       if (AccountService().isLoggedIn) {
         _handleAppResume();
       }
@@ -95,18 +95,20 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeService.themeMode,
-          // 初始页面：未登录显示登录页，已登录显示首页
-          home: accountService.isLoggedIn ? const HomePage() : const LoginPage(),
+          // 初始页面：显示启动页检查 companyId
+          home: const SplashPage(),
           // 命名路由表
           routes: {
-            '/login': (context) => const LoginPage(),
+            '/company': (context) => const CompanyPage(),
             '/register': (context) => const RegisterPage(),
+            '/login': (context) => const LoginPage(),
             '/home': (context) => const HomePage(),
           },
           // 全局路由拦截
           onGenerateRoute: (settings) {
             // 1. 定义白名单（允许未登录访问的页面）
-            final bool isWhiteList = settings.name == '/login' || settings.name == '/register';
+            final bool isWhiteList =
+                settings.name == '/login' || settings.name == '/register' || settings.name == '/company';
 
             // 2. 如果未登录且访问的不是白名单页面，强制跳转到登录页
             if (!accountService.isLoggedIn && !isWhiteList) {

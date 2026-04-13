@@ -298,27 +298,17 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg,
       appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: AppTheme.getAppBarDecoration(context),
-        ),
+        flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded, 
-            color: Colors.white, 
-            size: 20
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           isGroup ? '群设置' : '聊天设置',
-          style: const TextStyle(
-            color: Colors.white, 
-            fontSize: 18, 
-            fontWeight: FontWeight.bold
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -330,7 +320,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
                 if (isGroup) ...[
                   _buildSettingItem(
                     icon: Icons.group_outlined,
-                    title: '群聊名称',
+                    title: '群名称',
                     subtitle: _groupName,
                     onTap: _updateGroupName,
                   ),
@@ -347,18 +337,12 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
                 _buildSettingItem(
                   icon: Icons.notifications_off_outlined,
                   title: '消息免打扰',
-                  trailing: AppSwitch(
-                    value: _isMuted,
-                    onChanged: _toggleMute,
-                  ),
+                  trailing: AppSwitch(value: _isMuted, onChanged: _toggleMute),
                 ),
                 _buildSettingItem(
                   icon: Icons.push_pin_outlined,
                   title: '置顶聊天',
-                  trailing: AppSwitch(
-                    value: _isPinned,
-                    onChanged: _togglePin,
-                  ),
+                  trailing: AppSwitch(value: _isPinned, onChanged: _togglePin),
                 ),
                 if (isGroup) ...[
                   const SizedBox(height: 10),

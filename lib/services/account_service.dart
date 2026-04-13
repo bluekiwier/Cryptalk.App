@@ -232,12 +232,20 @@ class AccountService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final companyId = prefs.getString('companyId');
       final deviceId = await DeviceUtil.getDeviceId();
       final dio = await getDio(extraHeaders: {'Dev-Id': deviceId});
+
+      final requestData = {'account': account, 'password': password};
+      if (companyId != null && companyId.isNotEmpty) {
+        requestData['companyId'] = companyId;
+      }
+
       // 请求接口
       final response = await dio.post(
         '/api/account/sign-in',
-        data: {'account': account, 'password': password},
+        data: requestData,
         options: Options(extra: {'obfuscate': true}),
       );
 
@@ -339,12 +347,18 @@ class AccountService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final companyId = prefs.getString('companyId');
       final dio = await getDio();
+
       // 生成用户密钥32字节 = 256位（AES-256），并转换为 Base64 字符串
       final userKey = encrypt.Key.fromSecureRandom(32).base64;
       final requestData = {'account': phone, 'password': password, 'nickname': name, 'key': userKey};
       if (invitationCode != null && invitationCode.isNotEmpty) {
         requestData['inviteCode'] = invitationCode;
+      }
+      if (companyId != null && companyId.isNotEmpty) {
+        requestData['companyId'] = companyId;
       }
 
       final response = await dio.post(
@@ -412,9 +426,10 @@ class AccountService extends ChangeNotifier {
       final dio = await getDio();
 
       _logger.i('开始刷新refreshToken');
+      final companyId = prefs.getString('companyId');
       final response = await dio.post(
         '/api/account/refresh-token',
-        data: {'refreshToken': currentRefreshToken},
+        data: {'refreshToken': currentRefreshToken, 'companyId': companyId},
         options: Options(extra: {'obfuscate': true}),
       );
 
