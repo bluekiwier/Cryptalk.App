@@ -1,11 +1,12 @@
+import 'dart:io';
+import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:dio/dio.dart';
-import 'dart:io';
-import 'dart:convert';
-import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:logger/logger.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1074,14 +1075,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       if (mounted) {
                         ScaffoldMessenger.of(
                           context,
-                        ).showSnackBar(const SnackBar(content: Text('已复制到剪贴板'), backgroundColor: AppTheme.onlineColor));
+                        ).showSnackBar(SnackBar(content: Text('已复制到剪贴板'.tr()), backgroundColor: AppTheme.onlineColor));
                       }
                     },
                   ),
                   if (isMe)
                     _buildMenuButton(
                       icon: Icons.delete_sharp,
-                      label: '删除',
+                      label: '删除'.tr(),
                       labelColor: Colors.red,
                       iconColor: Colors.red,
                       onTap: () async {
@@ -1108,9 +1109,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                               );
                             }
                           });
-                          scaffoldMessenger.showSnackBar(const SnackBar(content: Text('消息已删除')));
+                          scaffoldMessenger.showSnackBar(SnackBar(content: Text('消息已删除'.tr())));
                         } else if (mounted) {
-                          scaffoldMessenger.showSnackBar(const SnackBar(content: Text('删除失败，请稍后重试')));
+                          scaffoldMessenger.showSnackBar(SnackBar(content: Text('删除失败，请稍后重试'.tr())));
                         }
                       },
                     ),
@@ -1498,7 +1499,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('无法打开文件链接'), backgroundColor: AppTheme.badgeColor));
+          ).showSnackBar(SnackBar(content: Text('无法打开文件链接'.tr()), backgroundColor: AppTheme.badgeColor));
         }
       }
     } catch (e) {
@@ -1506,7 +1507,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('下载文件失败'), backgroundColor: AppTheme.badgeColor));
+        ).showSnackBar(SnackBar(content: Text('下载文件失败'.tr()), backgroundColor: AppTheme.badgeColor));
       }
     }
   }
@@ -1896,7 +1897,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final currentUser = _accountService.currentUser;
     if (currentUser == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('未登录'.tr())));
       }
       return;
     }
@@ -2206,7 +2207,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final maxSize = 50 * 1024 * 1024; // 50MB限制
     if (fileSize > maxSize) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('文件大小不能超过50MB')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('文件大小不能超过50MB'.tr())));
       }
       return;
     }
@@ -2214,7 +2215,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final currentUser = _accountService.currentUser;
     if (currentUser == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('未登录'.tr())));
       }
       return;
     }
@@ -2223,14 +2224,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (context) => AlertDialog(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(height: 20),
             CircularProgressIndicator(),
             SizedBox(height: 20),
-            Text('正在获取上传链接...', style: TextStyle(fontSize: 16)),
+            Text('正在获取上传链接...'.tr(), style: TextStyle(fontSize: 16)),
           ],
         ),
       ),
@@ -2250,7 +2251,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     if (uploadResult == null || !uploadResult.isSuccess) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取上传链接失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('获取上传链接失败'.tr())));
       }
       return;
     }
@@ -2274,7 +2275,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   const SizedBox(height: 20),
                   CircularProgressIndicator(value: progress > 0 ? progress : null),
                   const SizedBox(height: 20),
-                  const Text('正在上传文件...', style: TextStyle(fontSize: 16)),
+                  Text('正在上传文件...'.tr(), style: TextStyle(fontSize: 16)),
                   const SizedBox(height: 10),
                   Text('${(progress * 100).toInt()}%', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   const SizedBox(height: 5),
@@ -2283,11 +2284,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   TextButton(
                     onPressed: () {
                       isCancelled = true;
-                      cancelToken?.cancel('用户取消上传');
+                      cancelToken?.cancel('用户取消上传'.tr());
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('上传已取消')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('上传已取消'.tr())));
                     },
-                    child: const Text('取消上传', style: TextStyle(color: Colors.red)),
+                    child: Text('取消上传'.tr(), style: TextStyle(color: Colors.red)),
                   ),
                 ],
               ),
@@ -2489,7 +2490,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final currentUser = _accountService.currentUser;
     if (currentUser == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('未登录'.tr())));
       }
       return;
     }
@@ -2508,7 +2509,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     if (uploadResult == null || !uploadResult.isSuccess) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取上传链接失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('获取上传链接失败'.tr())));
       }
       return;
     }
@@ -2532,7 +2533,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   const SizedBox(height: 20),
                   CircularProgressIndicator(value: progress > 0 ? progress : null),
                   const SizedBox(height: 20),
-                  const Text('正在上传语音...', style: TextStyle(fontSize: 16)),
+                  Text('正在上传语音...'.tr(), style: TextStyle(fontSize: 16)),
                   const SizedBox(height: 10),
                   Text('${(progress * 100).toInt()}%', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   const SizedBox(height: 5),
@@ -2541,11 +2542,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   TextButton(
                     onPressed: () {
                       isCancelled = true;
-                      cancelToken?.cancel('用户取消上传');
+                      cancelToken?.cancel('用户取消上传'.tr());
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('上传已取消')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('上传已取消'.tr())));
                     },
-                    child: const Text('取消上传', style: TextStyle(color: Colors.red)),
+                    child: Text('取消上传'.tr(), style: TextStyle(color: Colors.red)),
                   ),
                 ],
               ),
@@ -2574,7 +2575,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         Navigator.pop(context);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('上传语音失败'), duration: Duration(seconds: 5)));
+        ).showSnackBar(SnackBar(content: Text('上传语音失败'.tr()), duration: Duration(seconds: 5)));
       }
       return;
     }
@@ -2585,14 +2586,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (context) => AlertDialog(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(height: 20),
             CircularProgressIndicator(),
             SizedBox(height: 20),
-            Text('正在发送语音...', style: TextStyle(fontSize: 16)),
+            Text('正在发送语音...'.tr(), style: TextStyle(fontSize: 16)),
           ],
         ),
       ),
@@ -2608,7 +2609,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         type: 2,
       );
       if (!sendResult.isSuccess && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '语音发送失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '语音发送失败'.tr())));
       }
     } else {
       sendResult = await ChatService().sendPrivateMessage(
@@ -2618,7 +2619,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         type: 2,
       );
       if (!sendResult.isSuccess && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '语音发送失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(sendResult.message ?? '语音发送失败'.tr())));
       }
     }
 
@@ -2680,7 +2681,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final currentUser = _accountService.currentUser;
     if (currentUser == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('未登录')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('未登录'.tr())));
       }
       return;
     }
@@ -2767,7 +2768,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(result.message ?? '消息发送失败'), backgroundColor: AppTheme.badgeColor));
+        ).showSnackBar(SnackBar(content: Text(result.message ?? '消息发送失败'.tr()), backgroundColor: AppTheme.badgeColor));
       }
     }
   }

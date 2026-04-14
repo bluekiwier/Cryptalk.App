@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../models/friend_request.dart';
 import '../../services/friend_service.dart';
@@ -15,8 +16,7 @@ class NewFriendsPage extends StatefulWidget {
   State<NewFriendsPage> createState() => _NewFriendsPageState();
 }
 
-class _NewFriendsPageState extends State<NewFriendsPage>
-    with SingleTickerProviderStateMixin {
+class _NewFriendsPageState extends State<NewFriendsPage> with SingleTickerProviderStateMixin {
   final FriendService _friendService = FriendService();
 
   /// 好友申请列表
@@ -45,14 +45,8 @@ class _NewFriendsPageState extends State<NewFriendsPage>
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    );
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
     _loadPendingRequests();
   }
 
@@ -81,7 +75,7 @@ class _NewFriendsPageState extends State<NewFriendsPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '加载失败，请稍后重试';
+          _errorMessage = '加载失败，请稍后重试'.tr();
           _isLoading = false;
         });
       }
@@ -116,21 +110,12 @@ class _NewFriendsPageState extends State<NewFriendsPage>
       title: Row(
         children: [
           IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
-          const Text(
-            '新朋友',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
+          Text(
+            '新朋友'.tr(),
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
           const Spacer(),
           // 刷新按钮
@@ -148,19 +133,13 @@ class _NewFriendsPageState extends State<NewFriendsPage>
         ],
       ),
       titleSpacing: 0,
-      flexibleSpace: Container(
-        decoration: AppTheme.getAppBarDecoration(context),
-      ),
+      flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
     );
   }
 
   /// 构建搜索栏
   Widget _buildSearchBar() {
-    return CustomSearchBar(
-      hintText: '搜索账号 / 昵称',
-      readOnly: false,
-      onChanged: _onSearchChanged,
-    );
+    return CustomSearchBar(hintText: '搜索账号 / 昵称'.tr(), readOnly: false, onChanged: _onSearchChanged);
   }
 
   /// 构建内容区域
@@ -176,7 +155,7 @@ class _NewFriendsPageState extends State<NewFriendsPage>
 
     // 加载中
     if (_isLoading) {
-      return const SliverFillRemaining(
+      return SliverFillRemaining(
         hasScrollBody: false,
         child: Center(
           child: Column(
@@ -187,16 +166,11 @@ class _NewFriendsPageState extends State<NewFriendsPage>
                 height: 36,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.primaryColor,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                 ),
               ),
               SizedBox(height: 16),
-              Text(
-                '正在加载...',
-                style: TextStyle(color: AppTheme.textHint, fontSize: 14),
-              ),
+              Text('正在加载...'.tr(), style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
             ],
           ),
         ),
@@ -211,35 +185,18 @@ class _NewFriendsPageState extends State<NewFriendsPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.cloud_off_rounded,
-                size: 56,
-                color: AppTheme.textHint.withValues(alpha: 0.5),
-              ),
+              Icon(Icons.cloud_off_rounded, size: 56, color: AppTheme.textHint.withValues(alpha: 0.5)),
               const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                style: const TextStyle(color: AppTheme.textHint, fontSize: 14),
-              ),
+              Text(_errorMessage!, style: const TextStyle(color: AppTheme.textHint, fontSize: 14)),
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: _loadPendingRequests,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.headerGradient,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    '重新加载',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  decoration: BoxDecoration(gradient: AppTheme.headerGradient, borderRadius: BorderRadius.circular(20)),
+                  child: Text(
+                    '重新加载'.tr(),
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                 ),
               ),
@@ -257,25 +214,14 @@ class _NewFriendsPageState extends State<NewFriendsPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.person_search_rounded,
-                size: 72,
-                color: AppTheme.primaryColor.withValues(alpha: 0.2),
-              ),
+              Icon(Icons.person_search_rounded, size: 72, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
               const SizedBox(height: 16),
-              const Text(
-                '暂无好友申请',
-                style: TextStyle(
-                  color: AppTheme.textHint,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+              Text(
+                '暂无好友申请'.tr(),
+                style: TextStyle(color: AppTheme.textHint, fontSize: 16, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '新的好友申请将会显示在这里',
-                style: TextStyle(color: AppTheme.textHint, fontSize: 13),
-              ),
+              Text('新的好友申请将会显示在这里'.tr(), style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
             ],
           ),
         ),
@@ -292,11 +238,7 @@ class _NewFriendsPageState extends State<NewFriendsPage>
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2)),
             ],
           ),
           child: Column(
@@ -317,12 +259,8 @@ class _NewFriendsPageState extends State<NewFriendsPage>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '待处理 (${filteredRequests.length})',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textSecondary,
-                      ),
+                      '待处理 ({count})'.tr(namedArgs: {'count': '${filteredRequests.length}'}),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -355,19 +293,13 @@ class _FriendRequestTile extends StatefulWidget {
   final int animationDelay;
   final VoidCallback? onChanged;
 
-  const _FriendRequestTile({
-    required this.request,
-    required this.isLast,
-    required this.animationDelay,
-    this.onChanged,
-  });
+  const _FriendRequestTile({required this.request, required this.isLast, required this.animationDelay, this.onChanged});
 
   @override
   State<_FriendRequestTile> createState() => _FriendRequestTileState();
 }
 
-class _FriendRequestTileState extends State<_FriendRequestTile>
-    with SingleTickerProviderStateMixin {
+class _FriendRequestTileState extends State<_FriendRequestTile> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _opacityAnimation;
@@ -375,10 +307,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.15, 0),
       end: Offset.zero,
@@ -421,9 +350,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.request.nickname.isNotEmpty
-                              ? widget.request.nickname
-                              : widget.request.account,
+                          widget.request.nickname.isNotEmpty ? widget.request.nickname : widget.request.account,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -432,11 +359,8 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          '账号: ${widget.request.account}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textHint,
-                          ),
+                          '${'账号:'.tr()} ${widget.request.account}',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textHint),
                         ),
                       ],
                     ),
@@ -462,10 +386,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
   Widget _buildAvatar() {
     // 如果头像是空字符串或只是 emoji，使用 AvatarWidget
     if (widget.request.avatar.isEmpty || widget.request.avatar.length <= 2) {
-      return AvatarWidget(
-        avatar: widget.request.avatar.isNotEmpty ? widget.request.avatar : '👤',
-        size: 48,
-      );
+      return AvatarWidget(avatar: widget.request.avatar.isNotEmpty ? widget.request.avatar : '👤', size: 48);
     }
     // 如果是网络头像 URL
     return Container(
@@ -474,11 +395,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: ClipRRect(
@@ -486,8 +403,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
         child: Image.network(
           widget.request.avatar,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              AvatarWidget(avatar: '👤', size: 48),
+          errorBuilder: (context, error, stackTrace) => AvatarWidget(avatar: '👤', size: 48),
         ),
       ),
     );
@@ -500,9 +416,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
         // 跳转到好友申请详情页
         final result = await Navigator.push<bool>(
           context,
-          MaterialPageRoute(
-            builder: (_) => FriendRequestDetailPage(request: widget.request),
-          ),
+          MaterialPageRoute(builder: (_) => FriendRequestDetailPage(request: widget.request)),
         );
         // 如果详情页操作成功（返回 true），通知父组件刷新列表
         if (result == true) {
@@ -514,27 +428,16 @@ class _FriendRequestTileState extends State<_FriendRequestTile>
         decoration: BoxDecoration(
           color: AppTheme.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppTheme.primaryColor.withValues(alpha: 0.3),
-            width: 1,
-          ),
+          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.visibility_outlined,
-              size: 14,
-              color: AppTheme.primaryColor,
-            ),
+            Icon(Icons.visibility_outlined, size: 14, color: AppTheme.primaryColor),
             const SizedBox(width: 4),
             Text(
-              '查看',
-              style: TextStyle(
-                color: AppTheme.primaryColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              '查看'.tr(),
+              style: TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ],
         ),

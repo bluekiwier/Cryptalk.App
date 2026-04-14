@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_switch.dart';
@@ -97,14 +98,14 @@ class ProfilePage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              loggedInUser?.nickname ?? '我',
+                              loggedInUser?.nickname ?? '我'.tr(),
                               style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              '账号: ${loggedInUser?.account ?? ""}',
+                              '${'账号:'.tr()} ${loggedInUser?.account ?? ""}',
                               style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -154,7 +155,7 @@ class ProfilePage extends StatelessWidget {
           _buildMenuItem(
             icon: Icons.person_outline_rounded,
             iconColor: const Color(0xFF6C63FF),
-            label: '个人信息',
+            label: '个人信息'.tr(),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const UserInfoPage()));
             },
@@ -163,7 +164,7 @@ class ProfilePage extends StatelessWidget {
           _buildMenuItem(
             icon: Icons.qr_code_rounded,
             iconColor: const Color(0xFF00D9A6),
-            label: '我的二维码',
+            label: '我的二维码'.tr(),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const MyQrCodePage()));
             },
@@ -214,7 +215,7 @@ class ProfilePage extends StatelessWidget {
           _buildMenuItem(
             icon: Icons.settings_rounded,
             iconColor: const Color(0xFF6B7280),
-            label: '设置',
+            label: '设置'.tr(),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
             },
@@ -223,7 +224,7 @@ class ProfilePage extends StatelessWidget {
           _buildMenuItem(
             icon: Icons.lock_outline_rounded,
             iconColor: const Color(0xFFEF4444),
-            label: '修改密码',
+            label: '修改密码'.tr(),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangePasswordPage()));
             },
@@ -236,7 +237,7 @@ class ProfilePage extends StatelessWidget {
               return _buildMenuItem(
                 icon: Icons.dark_mode_outlined,
                 iconColor: const Color(0xFF8B5CF6),
-                label: '深色模式',
+                label: '深色模式'.tr(),
                 trailing: AppSwitch(value: themeService.isDarkMode, onChanged: (v) => themeService.toggleTheme(v)),
                 onTap: () => themeService.toggleTheme(!themeService.isDarkMode),
               );
@@ -250,8 +251,8 @@ class ProfilePage extends StatelessWidget {
               return _buildMenuItem(
                 icon: Icons.info_outline_rounded,
                 iconColor: const Color(0xFF06B6D4),
-                label: '关于${AppConfig.appName}',
-                subtitle: '版本 $version',
+                label: '${'关于'.tr()}${AppConfig.appName}',
+                subtitle: '${'Version'.tr()} $version',
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutPage()));
                 },
@@ -273,10 +274,10 @@ class ProfilePage extends StatelessWidget {
             context: context,
             builder: (dialogContext) => AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('退出登录'),
-              content: const Text('确定要退出当前账号吗？'),
+              title: Text('退出登录'.tr()),
+              content: Text('确定要退出当前账号吗？'.tr()),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text('取消'.tr())),
                 TextButton(
                   onPressed: () async {
                     // 关闭对话框
@@ -291,7 +292,7 @@ class ProfilePage extends StatelessWidget {
                     }
                   },
                   style: TextButton.styleFrom(foregroundColor: AppTheme.badgeColor),
-                  child: const Text('退出'),
+                  child: Text('退出'.tr()),
                 ),
               ],
             ),
@@ -311,9 +312,9 @@ class ProfilePage extends StatelessWidget {
               ),
             ],
           ),
-          child: const Center(
+          child: Center(
             child: Text(
-              '退出登录',
+              '退出登录'.tr(),
               style: TextStyle(color: AppTheme.badgeColor, fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'theme/app_theme.dart';
 import 'pages/home_page.dart';
 import 'pages/account/login_page.dart';
@@ -95,6 +96,9 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeService.themeMode,
+          locale: context.locale,
+          supportedLocales: context.supportedLocales,
+          localizationsDelegates: context.localizationDelegates,
           // 初始页面：显示启动页检查 companyId
           home: const SplashPage(),
           // 命名路由表
@@ -107,8 +111,8 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
           // 全局路由拦截
           onGenerateRoute: (settings) {
             // 1. 定义白名单（允许未登录访问的页面）
-            final bool isWhiteList =
-                settings.name == '/login' || settings.name == '/register' || settings.name == '/company';
+            const whiteList = {'/login', '/register', '/company', '/splash'}; // 使用 Set 集合，查找效率更高
+            final bool isWhiteList = whiteList.contains(settings.name);
 
             // 2. 如果未登录且访问的不是白名单页面，强制跳转到登录页
             if (!accountService.isLoggedIn && !isWhiteList) {

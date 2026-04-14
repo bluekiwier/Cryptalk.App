@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../theme/app_theme.dart';
 import '../services/friend_service.dart';
 import '../services/chat_service.dart';
@@ -84,8 +85,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 onPressed: () {
                   // 新建聊天
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('新建聊天功能开发中...'),
+                    SnackBar(
+                      content: Text('新建聊天功能开发中...'.tr()),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -124,21 +125,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 0,
                 Icons.chat_bubble_rounded,
                 Icons.chat_bubble_outline_rounded,
-                '聊天',
+                '聊天'.tr(),
                 _accountService.currentUser?.messageUnreadCount ?? 0,
               ),
               _buildNavItem(
                 1,
                 Icons.contacts_rounded,
                 Icons.contacts_outlined,
-                '通讯录',
+                '通讯录'.tr(),
                 _friendRequestCount,
               ),
               _buildNavItem(
                 2,
                 Icons.person_rounded,
                 Icons.person_outline_rounded,
-                '我的',
+                '我的'.tr(),
                 0,
               ),
             ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../services/user_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -44,14 +45,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              '修改密码',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
+            title: Text(
+              '修改密码'.tr(),
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
           ),
@@ -85,8 +81,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '''为了账号安全，密码长度需为 6~20 个字符，
-建议使用字母、数字和特殊字符的组合。''',
+                        '为了账号安全，密码长度需为 6~20 个字符，\n建议使用字母、数字和特殊字符的组合。'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           color: AppTheme.primaryColor.withValues(alpha: 0.8),
@@ -101,15 +96,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               const SizedBox(height: 28),
 
               // 旧密码
-              _buildLabel('当前密码'),
+              _buildLabel('当前密码'.tr()),
               const SizedBox(height: 8),
               _buildPasswordField(
                 controller: _oldPasswordController,
-                hintText: '请输入当前密码',
+                hintText: '请输入当前密码'.tr(),
                 isVisible: _showOldPassword,
                 onToggle: () => setState(() => _showOldPassword = !_showOldPassword),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return '请输入当前密码';
+                  if (v == null || v.isEmpty) return '请输入当前密码'.tr();
                   return null;
                 },
               ),
@@ -117,17 +112,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               const SizedBox(height: 20),
 
               // 新密码
-              _buildLabel('新密码'),
+              _buildLabel('新密码'.tr()),
               const SizedBox(height: 8),
               _buildPasswordField(
                 controller: _newPasswordController,
-                hintText: '请输入新密码（6~20位）',
+                hintText: '请输入新密码（6~20位）'.tr(),
                 isVisible: _showNewPassword,
                 onToggle: () => setState(() => _showNewPassword = !_showNewPassword),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return '请输入新密码';
-                  if (v.length < 6) return '密码不能少于 6 个字符';
-                  if (v.length > 20) return '密码不能超过 20 个字符';
+                  if (v == null || v.isEmpty) return '请输入新密码'.tr();
+                  if (v.length < 6) return '密码不能少于 6 个字符'.tr();
+                  if (v.length > 20) return '密码不能超过 20 个字符'.tr();
                   return null;
                 },
               ),
@@ -135,17 +130,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               const SizedBox(height: 20),
 
               // 确认新密码
-              _buildLabel('确认新密码'),
+              _buildLabel('确认新密码'.tr()),
               const SizedBox(height: 8),
               _buildPasswordField(
                 controller: _confirmPasswordController,
-                hintText: '请再次输入新密码',
+                hintText: '请再次输入新密码'.tr(),
                 isVisible: _showConfirmPassword,
                 onToggle: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return '请确认新密码';
+                  if (v == null || v.isEmpty) return '请确认新密码'.tr();
                   if (v != _newPasswordController.text) {
-                    return '两次输入的密码不一致';
+                    return '两次输入的密码不一致'.tr();
                   }
                   return null;
                 },
@@ -183,8 +178,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             height: 22,
                             child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                           )
-                        : const Text(
-                            '确认修改',
+                        : Text(
+                            '确认修改'.tr(),
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
                           ),
                   ),
@@ -201,11 +196,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 14, 
-        fontWeight: FontWeight.w600, 
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
     );
   }
 
@@ -223,11 +214,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           if (Theme.of(context).brightness != Brightness.dark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: TextFormField(
@@ -258,10 +245,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        style: TextStyle(
-          fontSize: 15,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
+        style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
       ),
     );
   }
@@ -308,7 +292,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('网络异常，请检查网络后重试'),
+          content: Text('网络异常，请检查网络后重试'.tr()),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppTheme.badgeColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,6 +15,7 @@ import 'config/app_config.dart';
 /// 应用入口
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
 
   // 桌面平台初始化 sqflite_common_ffi 和窗口管理
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -61,7 +63,18 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.initialize();
 
-  runApp(const CryptalkApp());
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [
+        Locale('zh', 'CN'),
+        Locale('en', 'US'),
+      ],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('zh', 'CN'),
+      saveLocale: true,
+      child: const CryptalkApp(),
+    ),
+  );
 }
 
 /// FCM 后台消息处理器

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../services/user_service.dart';
@@ -43,12 +44,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
         Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailPage(user: user)));
       } else {
         setState(() {
-          _errorMessage = '该用户不存在';
+          _errorMessage = '该用户不存在'.tr();
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '搜索异常，请稍后重试';
+        _errorMessage = '搜索异常，请稍后重试'.tr();
       });
     } finally {
       if (mounted) {
@@ -81,19 +82,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              '添加好友',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
+            title: Text(
+              '添加好友'.tr(),
+              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
-            flexibleSpace: Container(
-              decoration: AppTheme.getAppBarDecoration(context),
-            ),
+            flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
           ),
 
           // 搜索栏
@@ -102,7 +96,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
               padding: const EdgeInsets.only(top: 8),
               child: CustomSearchBar(
                 controller: _searchController,
-                hintText: '搜索 ID / 账号 / 手机号',
+                hintText: '搜索ID/账号/手机号'.tr(),
                 readOnly: false,
                 onChanged: (_) {},
                 onSubmitted: _handleSearch,
@@ -115,7 +109,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
             hasScrollBody: false,
             child: Center(
               child: _isLoading
-                  ? const Column(
+                  ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
@@ -127,7 +121,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
                           ),
                         ),
                         SizedBox(height: 16),
-                        Text('正在搜索...', style: TextStyle(color: AppTheme.textHint)),
+                        Text('正在搜索...'.tr(), style: TextStyle(color: AppTheme.textHint)),
                       ],
                     )
                   : _errorMessage != null
@@ -151,7 +145,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
                           color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                         ),
                         const SizedBox(height: 16),
-                        const Text('搜索对方账号即可添加', style: TextStyle(color: AppTheme.textHint)),
+                        Text('搜索对方账号即可添加'.tr(), style: TextStyle(color: AppTheme.textHint)),
                       ],
                     ),
             ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
-import '../../config/app_config.dart';
 import '../../config/api_config.dart';
+import '../../config/app_config.dart';
 import '../account/login_page.dart';
 
 /// 加入公司服务器页面
@@ -113,22 +114,22 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
         Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const LoginPage()));
       } else {
         if (!mounted) return;
-        _showErrorSnackBar(responseData?['message'] ?? '验证失败');
+        _showErrorSnackBar(responseData?['message'] ?? '验证失败'.tr());
       }
     } on DioException catch (e) {
       if (!mounted) return;
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        _showErrorSnackBar('连接超时，请检查网络');
+        _showErrorSnackBar('连接超时，请检查网络'.tr());
       } else if (e.type == DioExceptionType.connectionError) {
-        _showErrorSnackBar('网络连接失败');
+        _showErrorSnackBar('网络连接失败'.tr());
       } else {
-        _showErrorSnackBar('验证失败：${e.message}');
+        _showErrorSnackBar('${'验证失败：'.tr()}${e.message}');
       }
     } catch (e) {
       if (!mounted) return;
-      _showErrorSnackBar('验证失败：$e');
+      _showErrorSnackBar('${'验证失败：'.tr()}$e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -176,6 +177,23 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          PopupMenuButton<Locale>(
+            icon: const Icon(Icons.language_rounded, color: Colors.white),
+            onSelected: (Locale locale) {
+              context.setLocale(locale);
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
+              const PopupMenuItem<Locale>(value: Locale('zh', 'CN'), child: Text('简体中文')),
+              const PopupMenuItem<Locale>(value: Locale('en', 'US'), child: Text('English')),
+            ],
+          ),
+        ],
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -223,13 +241,13 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
         opacity: _fadeAnimation,
         child: Column(
           children: [
-            const Text(
-              '闲聊',
+            Text(
+              '闲聊'.tr(),
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4),
             ),
             const SizedBox(height: 8),
             Text(
-              '欢迎加入${AppConfig.appName},服务器由购买方自主运营',
+              '欢迎加入闲聊,服务器由购买方自主运营'.tr(),
               style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 1),
             ),
           ],
@@ -262,10 +280,10 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
                     TextFormField(
                       controller: _companyIdController,
                       style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-                      decoration: _buildInputDecoration(hintText: '请输入服务器 ID', prefixIcon: Icons.business_rounded),
+                      decoration: _buildInputDecoration(hintText: '请输入公司ID'.tr(), prefixIcon: Icons.business_rounded),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return '请输入服务器 ID';
+                          return '请输入公司ID'.tr();
                         }
                         return null;
                       },
@@ -315,7 +333,7 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '历史记录',
+                  '历史记录'.tr(),
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
                 ),
               ],
@@ -344,13 +362,6 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
           }),
         ],
       ),
-    );
-  }
-
-  Widget _buildInputLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
     );
   }
 
@@ -426,8 +437,8 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Text(
-                  '加 入',
+              : Text(
+                  '加入'.tr(),
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 2),
                 ),
         ),

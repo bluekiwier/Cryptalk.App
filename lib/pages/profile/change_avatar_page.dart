@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -43,13 +44,13 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
           aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: '裁剪头像',
+              toolbarTitle: '裁剪头像'.tr(),
               toolbarColor: AppTheme.primaryColor,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.square,
               lockAspectRatio: true,
             ),
-            IOSUiSettings(title: '裁剪头像', aspectRatioLockEnabled: true),
+            IOSUiSettings(title: '裁剪头像'.tr(), aspectRatioLockEnabled: true),
           ],
         );
 
@@ -61,7 +62,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('选择图片失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('选择图片失败'.tr())));
       }
     }
   }
@@ -86,7 +87,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
         format: CompressFormat.png,
       );
 
-      if (result == null) throw Exception("压缩图片失败");
+      if (result == null) throw Exception("压缩图片失败".tr());
 
       final compressedFile = File(result.path);
       final fileSize = await compressedFile.length();
@@ -102,7 +103,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       final uploadResult = await FileService().createUploadUrl("image/png", fileName, fileSize, "avatar");
 
       if (uploadResult == null || !uploadResult.isSuccess) {
-        throw Exception("获取上传凭证失败");
+        throw Exception("获取上传凭证失败".tr());
       }
 
       // 3. 上传到 R2
@@ -110,7 +111,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       final uploaded = await FileService().uploadToR2(uploadResult.uploadUrl!, fileBytes, "image/png");
 
       if (!uploaded) {
-        throw Exception("上传图片到存储失败");
+        throw Exception("上传图片到存储失败".tr());
       }
 
       // 4. 更新后端头像
@@ -120,19 +121,19 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
         if (success) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('头像更新成功'), backgroundColor: AppTheme.onlineColor));
+          ).showSnackBar(SnackBar(content: Text('头像更新成功'.tr()), backgroundColor: AppTheme.onlineColor));
           Navigator.pop(context, true);
         } else {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('头像更新失败'), backgroundColor: AppTheme.badgeColor));
+          ).showSnackBar(SnackBar(content: Text('头像更新失败'.tr()), backgroundColor: AppTheme.badgeColor));
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('操作失败: $e'), backgroundColor: AppTheme.badgeColor));
+        ).showSnackBar(SnackBar(content: Text('${'操作失败:'.tr()} $e'), backgroundColor: AppTheme.badgeColor));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -156,14 +157,14 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       final RenderRepaintBoundary? boundary = _avatarKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
-        throw Exception('无法找到头像区域');
+        throw Exception('无法找到头像区域'.tr());
       }
 
       final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
       if (byteData == null) {
-        throw Exception('图片转换失败');
+        throw Exception('图片转换失败'.tr());
       }
 
       final Uint8List pngBytes = byteData.buffer.asUint8List();
@@ -179,13 +180,13 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('头像已保存到相册！'), backgroundColor: AppTheme.onlineColor));
+        ).showSnackBar(SnackBar(content: Text('头像已保存到相册！'.tr()), backgroundColor: AppTheme.onlineColor));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('保存失败: $e'), backgroundColor: AppTheme.badgeColor));
+        ).showSnackBar(SnackBar(content: Text('${'保存失败:'.tr()} $e'), backgroundColor: AppTheme.badgeColor));
       }
     } finally {
       if (mounted) {
@@ -211,8 +212,8 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              '个人头像',
+            title: Text(
+              '个人头像'.tr(),
               style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
@@ -266,7 +267,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: const Text('取消'),
+                            child: Text('取消'.tr()),
                           ),
                         ),
                         const SizedBox(width: 20),
@@ -286,7 +287,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
                                     height: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
-                                : const Text('确定使用'),
+                                : Text('确定使用'.tr()),
                           ),
                         ),
                       ],
@@ -296,7 +297,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
                   TextButton.icon(
                     onPressed: () => _showPickerOptions(context),
                     icon: const Icon(Icons.camera_alt_rounded, color: Colors.white70),
-                    label: const Text('更换头像', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                    label: Text('更换头像'.tr(), style: const TextStyle(color: Colors.white70, fontSize: 16)),
                   ),
               ],
             ),
@@ -349,7 +350,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_rounded, color: Colors.white),
-              title: const Text('从相册选择', style: TextStyle(color: Colors.white)),
+              title: Text('从相册选择'.tr(), style: const TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -357,7 +358,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_rounded, color: Colors.white),
-              title: const Text('拍照', style: TextStyle(color: Colors.white)),
+              title: Text('拍照'.tr(), style: const TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -365,7 +366,7 @@ class _ChangeAvatarPageState extends State<ChangeAvatarPage> {
             ),
             ListTile(
               leading: const Icon(Icons.save_alt_rounded, color: Colors.white),
-              title: Text(_isSavingLocal ? '保存中...' : '保存图片', style: const TextStyle(color: Colors.white)),
+              title: Text(_isSavingLocal ? '保存中...'.tr() : '保存图片'.tr(), style: const TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _saveImage();

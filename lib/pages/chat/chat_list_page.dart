@@ -1,5 +1,6 @@
 import 'package:cryptalk/utils/time_util.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../models/conversation.dart';
 import '../../widgets/avatar_widget.dart';
@@ -96,7 +97,7 @@ class _ChatListPageState extends State<ChatListPage> {
             // 搜索栏
             SliverToBoxAdapter(
               child: CustomSearchBar(
-                hintText: '搜索会话',
+                hintText: '搜索会话'.tr(),
                 controller: _searchController,
                 readOnly: false,
                 autofocus: false,
@@ -119,7 +120,7 @@ class _ChatListPageState extends State<ChatListPage> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 100),
                   child: Center(
-                    child: Text(isSearching ? '未找到相关会话' : '暂无聊天会话', style: const TextStyle(color: AppTheme.textHint)),
+                    child: Text(isSearching ? '未找到相关会话'.tr() : '暂无聊天会话'.tr(), style: const TextStyle(color: AppTheme.textHint)),
                   ),
                 ),
               )
@@ -160,10 +161,10 @@ class _ChatListPageState extends State<ChatListPage> {
       );
     }
     if (_conversationService.hasMore) return const SizedBox.shrink();
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
-        child: Text('没有更多会话了', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+        child: Text('没有更多会话了'.tr(), style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
       ),
     );
   }
@@ -231,13 +232,13 @@ class _ChatListPageState extends State<ChatListPage> {
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-          _buildPopupItem('create_group', Icons.group_add_rounded, '发起群聊'),
+          _buildPopupItem('create_group', Icons.group_add_rounded, '发起群聊'.tr()),
           const PopupMenuDivider(height: 1),
-          _buildPopupItem('add_friend', Icons.person_add_outlined, '添加好友'),
+          _buildPopupItem('add_friend', Icons.person_add_outlined, '添加好友'.tr()),
           const PopupMenuDivider(height: 1),
-          _buildPopupItem('scanner', Icons.qr_code_scanner_rounded, '扫一扫'),
+          _buildPopupItem('scanner', Icons.qr_code_scanner_rounded, '扫一扫'.tr()),
           const PopupMenuDivider(height: 1),
-          _buildPopupItem('my_qr', Icons.qr_code_rounded, '我的二维码'),
+          _buildPopupItem('my_qr', Icons.qr_code_rounded, '我的二维码'.tr()),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../services/account_service.dart';
 
@@ -54,7 +55,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     if (!_formKey.currentState!.validate()) return;
 
     if (!_agreeToTerms) {
-      _showErrorSnackBar('请先同意用户协议和隐私政策');
+      _showErrorSnackBar('请先同意用户协议和隐私政策'.tr());
       return;
     }
 
@@ -74,7 +75,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
       // 注册成功，直接跳转首页
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } else {
-      _showErrorSnackBar(_accountService.errorMessage ?? '注册失败');
+      _showErrorSnackBar(_accountService.errorMessage ?? '注册失败'.tr());
     }
   }
 
@@ -166,12 +167,12 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     return Column(
       children: [
         const SizedBox(height: 16),
-        const Text(
-          '创建新账号',
+        Text(
+          '创建新账号'.tr(),
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
         ),
         const SizedBox(height: 8),
-        Text('加入闲聊，开始聊天之旅', style: TextStyle(fontSize: 15, color: Colors.white.withValues(alpha: 0.85))),
+        Text('加入闲聊，开始聊天之旅'.tr(), style: TextStyle(fontSize: 15, color: Colors.white.withValues(alpha: 0.85))),
       ],
     );
   }
@@ -193,46 +194,46 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 手机号
-            _buildInputLabel('手机号'),
+            _buildInputLabel('手机号'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-              decoration: _buildInputDecoration(hintText: '请输入手机号', prefixIcon: Icons.phone_android_rounded),
+              decoration: _buildInputDecoration(hintText: '请输入手机号'.tr(), prefixIcon: Icons.phone_android_rounded),
               validator: (value) {
-                if (value == null || value.isEmpty) return '请输入手机号';
-                if (value.length != 11) return '请输入11位手机号';
+                if (value == null || value.isEmpty) return '请输入手机号'.tr();
+                if (value.length != 11) return '请输入11位手机号'.tr();
                 return null;
               },
             ),
             const SizedBox(height: 18),
 
             // 昵称
-            _buildInputLabel('昵称'),
+            _buildInputLabel('昵称'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameController,
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-              decoration: _buildInputDecoration(hintText: '给自己取个名字吧', prefixIcon: Icons.face_rounded),
+              decoration: _buildInputDecoration(hintText: '给自己取个名字吧'.tr(), prefixIcon: Icons.face_rounded),
               validator: (value) {
-                if (value == null || value.isEmpty) return '请输入昵称';
-                if (value.length > 20) return '昵称不能超过20个字符';
+                if (value == null || value.isEmpty) return '请输入昵称'.tr();
+                if (value.length > 20) return '昵称不能超过20个字符'.tr();
                 return null;
               },
             ),
             const SizedBox(height: 18),
 
             // 密码
-            _buildInputLabel('密码'),
+            _buildInputLabel('密码'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
               decoration: _buildInputDecoration(
-                hintText: '设置6位以上密码',
+                hintText: '设置6位以上密码'.tr(),
                 prefixIcon: Icons.lock_rounded,
                 suffixIcon: IconButton(
                   onPressed: () {
@@ -246,22 +247,22 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return '请输入密码';
-                if (value.length < 6) return '密码长度不能少于6位';
+                if (value == null || value.isEmpty) return '请输入密码'.tr();
+                if (value.length < 6) return '密码长度不能少于6位'.tr();
                 return null;
               },
             ),
             const SizedBox(height: 18),
 
             // 确认密码
-            _buildInputLabel('确认密码'),
+            _buildInputLabel('确认密码'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _confirmPasswordController,
               obscureText: _obscureConfirmPassword,
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
               decoration: _buildInputDecoration(
-                hintText: '再次输入密码',
+                hintText: '再次输入密码'.tr(),
                 prefixIcon: Icons.lock_outline_rounded,
                 suffixIcon: IconButton(
                   onPressed: () {
@@ -275,20 +276,20 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return '请再次输入密码';
-                if (value != _passwordController.text) return '两次输入的密码不一致';
+                if (value == null || value.isEmpty) return '请再次输入密码'.tr();
+                if (value != _passwordController.text) return '两次输入的密码不一致'.tr();
                 return null;
               },
             ),
             const SizedBox(height: 18),
 
             // 邀请码
-            _buildInputLabel('邀请码 (选填)'),
+            _buildInputLabel('邀请码 (选填)'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _invitationCodeController,
               style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-              decoration: _buildInputDecoration(hintText: '请输入邀请码', prefixIcon: Icons.card_giftcard_rounded),
+              decoration: _buildInputDecoration(hintText: '请输入邀请码'.tr(), prefixIcon: Icons.card_giftcard_rounded),
             ),
             const SizedBox(height: 20),
 
@@ -371,14 +372,14 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
               text: TextSpan(
                 style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
                 children: [
-                  const TextSpan(text: '我已阅读并同意 '),
+                  TextSpan(text: '我已阅读并同意 '.tr()),
                   TextSpan(
-                    text: '《用户协议》',
+                    text: '《用户协议》'.tr(),
                     style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
                   ),
-                  const TextSpan(text: ' 和 '),
+                  TextSpan(text: ' 和 '.tr()),
                   TextSpan(
-                    text: '《隐私政策》',
+                    text: '《隐私政策》'.tr(),
                     style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -434,8 +435,8 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Text(
-                  '注 册',
+              : Text(
+                  '注册'.tr(),
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 2),
                 ),
         ),
@@ -448,15 +449,15 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('已有账号？', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+        Text('已有账号？'.tr(), style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             minimumSize: const Size(0, 36),
           ),
-          child: const Text(
-            '返回登录',
+          child: Text(
+            '返回登录'.tr(),
             style: TextStyle(
               color: Colors.white,
               fontSize: 14,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../widgets/avatar_widget.dart';
@@ -16,7 +17,7 @@ class ContactDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // 带头像的折叠 AppBar
@@ -29,8 +30,8 @@ class ContactDetailPage extends StatelessWidget {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              '联系人详情',
+            title: Text(
+              '联系人详情'.tr(),
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
@@ -41,34 +42,34 @@ class ContactDetailPage extends StatelessWidget {
                 icon: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 22),
                 onSelected: (value) => _handleMenuAction(context, value),
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'block',
                     child: Row(
                       children: [
                         Icon(Icons.block_rounded, size: 20, color: AppTheme.textPrimary),
                         SizedBox(width: 12),
-                        Text('加入黑名单'),
+                        Text('加入黑名单'.tr()),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'unblock',
                     child: Row(
                       children: [
                         Icon(Icons.person_add_disabled_rounded, size: 20, color: AppTheme.textPrimary),
                         SizedBox(width: 12),
-                        Text('移除黑名单'),
+                        Text('移除黑名单'.tr()),
                       ],
                     ),
                   ),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
                         Icon(Icons.delete_outline_rounded, size: 20, color: AppTheme.badgeColor),
                         SizedBox(width: 12),
-                        Text('删除好友', style: TextStyle(color: AppTheme.badgeColor)),
+                        Text('删除好友'.tr(), style: const TextStyle(color: AppTheme.badgeColor)),
                       ],
                     ),
                   ),
@@ -105,7 +106,10 @@ class ContactDetailPage extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(user.online ? '在线' : '离线', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    child: Text(
+                      user.online ? '在线'.tr() : '离线'.tr(),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -116,10 +120,10 @@ class ContactDetailPage extends StatelessWidget {
           SliverToBoxAdapter(child: _buildActionButtons(context)),
 
           // 个人信息卡片
-          SliverToBoxAdapter(child: _buildInfoCard()),
+          SliverToBoxAdapter(child: _buildInfoCard(context)),
 
           // 更多操作
-          SliverToBoxAdapter(child: _buildMoreActions()),
+          // SliverToBoxAdapter(child: _buildMoreActions(context)),
         ],
       ),
     );
@@ -133,8 +137,9 @@ class ContactDetailPage extends StatelessWidget {
         children: [
           Expanded(
             child: _buildActionButton(
+              context,
               icon: Icons.chat_bubble_rounded,
-              label: '发消息',
+              label: '发消息'.tr(),
               isPrimary: true,
               onTap: () {
                 // 构造一个临时的 Conversation 对象用于私聊
@@ -155,6 +160,7 @@ class ContactDetailPage extends StatelessWidget {
           // const SizedBox(width: 12),
           // Expanded(
           //   child: _buildActionButton(
+          //     context,
           //     icon: Icons.videocam_rounded,
           //     label: '视频通话',
           //     onTap: () {},
@@ -162,30 +168,35 @@ class ContactDetailPage extends StatelessWidget {
           // ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildActionButton(icon: Icons.phone_rounded, label: '语音通话', onTap: () {}),
+            child: _buildActionButton(context, icon: Icons.phone_rounded, label: '语音通话'.tr(), onTap: () {}),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({
+  /// 创建按钮组件
+  Widget _buildActionButton(
+    BuildContext context, {
     required IconData icon,
     required String label,
     bool isPrimary = false,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           gradient: isPrimary ? AppTheme.headerGradient : null,
-          color: isPrimary ? null : Colors.white,
+          color: isPrimary ? null : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: (isPrimary ? AppTheme.primaryColor : Colors.black).withValues(alpha: isPrimary ? 0.2 : 0.04),
+              color: (isPrimary ? AppTheme.primaryColor : Colors.black).withValues(
+                alpha: isPrimary ? 0.2 : (isDark ? 0.2 : 0.04),
+              ),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -200,7 +211,7 @@ class ContactDetailPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isPrimary ? Colors.white : AppTheme.textSecondary,
+                color: isPrimary ? Colors.white : Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -210,38 +221,46 @@ class ContactDetailPage extends StatelessWidget {
   }
 
   /// 信息卡片
-  Widget _buildInfoCard() {
+  Widget _buildInfoCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '个人信息',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+          Text(
+            '个人信息'.tr(),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 16),
           _buildInfoRow(
+            context,
             Icons.edit_note_rounded,
-            '个性签名',
-            (user.signature?.isNotEmpty == true) ? user.signature! : '这个人很懒，什么都没有留下。',
+            '个性签名'.tr(),
+            (user.signature?.isNotEmpty == true) ? user.signature! : '这个人很懒，什么都没有留下。'.tr(),
           ),
           const Divider(height: 24),
-          _buildInfoRow(Icons.phone_outlined, '手机号', user.mobile),
+          _buildInfoRow(context, Icons.phone_outlined, '手机号'.tr(), user.mobile),
           const Divider(height: 24),
-          _buildInfoRow(Icons.email_outlined, '邮箱', user.email),
+          _buildInfoRow(context, Icons.email_outlined, '邮箱'.tr(), user.email),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String? value) {
+  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String? value) {
     return Row(
       children: [
         Icon(icon, color: AppTheme.primaryColor, size: 20),
@@ -252,8 +271,8 @@ class ContactDetailPage extends StatelessWidget {
             Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textHint)),
             const SizedBox(height: 2),
             Text(
-              (value == null || value.isEmpty) ? '未设置' : value,
-              style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+              (value == null || value.isEmpty) ? '未设置'.tr() : value,
+              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -262,21 +281,28 @@ class ContactDetailPage extends StatelessWidget {
   }
 
   /// 更多操作
-  Widget _buildMoreActions() {
+  Widget _buildMoreActions(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          _buildActionRow(Icons.image_outlined, '发送图片'),
+          _buildActionRow(Icons.image_outlined, '发送图片'.tr()),
           const Padding(padding: EdgeInsets.only(left: 56), child: Divider(height: 0.5)),
-          _buildActionRow(Icons.folder_outlined, '发送文件'),
+          _buildActionRow(Icons.folder_outlined, '发送文件'.tr()),
           const Padding(padding: EdgeInsets.only(left: 56), child: Divider(height: 0.5)),
-          _buildActionRow(Icons.location_on_outlined, '发送位置'),
+          _buildActionRow(Icons.location_on_outlined, '发送位置'.tr()),
         ],
       ),
     );
@@ -299,8 +325,8 @@ class ContactDetailPage extends StatelessWidget {
       case 'delete':
         _showConfirmDialog(
           context,
-          title: '删除好友',
-          content: '确定要删除好友 "${user.nickname}" 吗？',
+          title: '删除好友'.tr(),
+          content: '确定要删除好友 {name} 吗？'.tr(namedArgs: {'name': user.nickname}),
           onConfirm: () async {
             final result = await friendService.deleteFriend(user.id);
             if (context.mounted) {
@@ -316,8 +342,8 @@ class ContactDetailPage extends StatelessWidget {
       case 'block':
         _showConfirmDialog(
           context,
-          title: '加入黑名单',
-          content: '加入黑名单后，将不再接收对方的消息。',
+          title: '加入黑名单'.tr(),
+          content: '加入黑名单后，将不再接收对方的消息。'.tr(),
           onConfirm: () async {
             final result = await friendService.blockFriendRequest(user.id);
             if (context.mounted) {
@@ -348,14 +374,14 @@ class ContactDetailPage extends StatelessWidget {
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('取消'.tr())),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               onConfirm();
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.badgeColor),
-            child: const Text('确定'),
+            child: Text('确定'.tr()),
           ),
         ],
       ),

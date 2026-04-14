@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../widgets/avatar_widget.dart';
@@ -44,8 +45,8 @@ class _UserDetailPageState extends State<UserDetailPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('发送失败，请检查网络'),
+          SnackBar(
+            content: Text('发送失败，请检查网络'.tr()),
             backgroundColor: AppTheme.badgeColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -76,14 +77,12 @@ class _UserDetailPageState extends State<UserDetailPage> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              '用户详情',
+            title: Text(
+              '用户详情'.tr(),
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
-            flexibleSpace: Container(
-              decoration: AppTheme.getAppBarDecoration(context),
-            ),
+            flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
           ),
 
           // 顶部个人信息渐变背景区域 - 移入 body
@@ -111,7 +110,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
                   const SizedBox(height: 4),
                   // 账号
                   Text(
-                    '账号: ${widget.user.account}',
+                    '${'账号:'.tr()} ${widget.user.account}',
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                   ),
                 ],
@@ -138,17 +137,17 @@ class _UserDetailPageState extends State<UserDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('个人信息', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('个人信息'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   _buildInfoRow(
                     context,
                     Icons.edit_note_rounded,
-                    '个性签名',
-                    widget.user.signature?.isNotEmpty == true ? widget.user.signature! : '该用户暂未设置签名',
+                    '个性签名'.tr(),
+                    widget.user.signature?.isNotEmpty == true ? widget.user.signature! : '该用户暂未设置签名'.tr(),
                   ),
                   if (widget.user.mobile?.isNotEmpty == true) ...[
                     const Divider(height: 32),
-                    _buildInfoRow(context, Icons.phone_android_rounded, '手机号', widget.user.mobile!),
+                    _buildInfoRow(context, Icons.phone_android_rounded, '手机号'.tr(), widget.user.mobile!),
                   ],
                 ],
               ),
@@ -192,13 +191,13 @@ class _UserDetailPageState extends State<UserDetailPage> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Row(
+                      : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 20),
                             SizedBox(width: 8),
                             Text(
-                              '申请加为好友',
+                              '申请加为好友'.tr(),
                               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],

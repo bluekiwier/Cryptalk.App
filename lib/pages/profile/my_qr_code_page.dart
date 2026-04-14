@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/rendering.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:gal/gal.dart';
@@ -29,11 +30,11 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
   Future<String?> _captureQrImage() async {
     try {
       final RenderRepaintBoundary? boundary = _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) throw Exception('无法找到二维码区域');
+      if (boundary == null) throw Exception('无法找到二维码区域'.tr());
 
       final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) throw Exception('图片转换失败');
+      if (byteData == null) throw Exception('图片转换失败'.tr());
 
       final Uint8List pngBytes = byteData.buffer.asUint8List();
       final tempDir = await getTemporaryDirectory();
@@ -61,15 +62,15 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
 
       // 2. 截屏
       final filePath = await _captureQrImage();
-      if (filePath == null) throw Exception('截屏失败');
+      if (filePath == null) throw Exception('截屏失败'.tr());
 
       // 3. 导出到相册
       await Gal.putImage(filePath);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('二维码已保存到相册！'),
+          SnackBar(
+            content: Text('二维码已保存到相册！'.tr()),
             backgroundColor: AppTheme.onlineColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -79,7 +80,7 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('保存失败: $e'),
+            content: Text('${'保存失败:'.tr()} $e'),
             backgroundColor: AppTheme.badgeColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -99,20 +100,22 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
     try {
       // 1. 截屏
       final filePath = await _captureQrImage();
-      if (filePath == null) throw Exception('截屏失败');
+      if (filePath == null) throw Exception('截屏失败'.tr());
 
       // 2. 调用分享
       final user = AccountService().currentUser;
-      final String text = '这是 ${user?.nickname ?? ""} 的 ${AppConfig.appName} 二维码，快来加我为朋友吧！';
+      final String text = '这是 {name} 的 {app} 二维码，快来加我为朋友吧！'.tr(
+        namedArgs: {'name': user?.nickname ?? '', 'app': AppConfig.appName},
+      );
 
       await SharePlus.instance.share(
-        ShareParams(files: [XFile(filePath)], text: text, subject: '分享 ${AppConfig.appName} 二维码'),
+        ShareParams(files: [XFile(filePath)], text: text, subject: '${'分享'.tr()} ${AppConfig.appName} ${'二维码'.tr()}'),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('分享失败: $e'),
+            content: Text('${'分享失败:'.tr()} $e'),
             backgroundColor: AppTheme.badgeColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -133,9 +136,9 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('请先登录'),
+              Text('请先登录'.tr()),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('返回')),
+              ElevatedButton(onPressed: () => Navigator.pop(context), child: Text('返回'.tr())),
             ],
           ),
         ),
@@ -147,8 +150,8 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          '我的二维码',
+        title: Text(
+          '我的二维码'.tr(),
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
         ),
         leading: IconButton(
@@ -210,7 +213,7 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '账号: ${user.account}',
+                                  '${'账号:'.tr()} ${user.account}',
                                   style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
                                 ),
                               ],
@@ -236,7 +239,7 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
 
                       // 底部提示
                       Text(
-                        '扫一扫上面的二维码图案，加我为朋友。',
+                        '扫一扫上面的二维码图案，加我为朋友。'.tr(),
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 13, color: const Color(0xFF6B7280).withValues(alpha: 0.8)),
                       ),
@@ -254,14 +257,14 @@ class _MyQrCodePageState extends State<MyQrCodePage> {
                   _buildActionButton(
                     context,
                     icon: _isSaving ? Icons.sync_rounded : Icons.download_rounded,
-                    label: _isSaving ? '保存中...' : '保存图片',
+                    label: _isSaving ? '保存中...'.tr() : '保存图片'.tr(),
                     onTap: _saveQrCode,
                   ),
                   const SizedBox(width: 40),
                   _buildActionButton(
                     context,
                     icon: Icons.qr_code_scanner_rounded,
-                    label: '扫一扫',
+                    label: '扫一扫'.tr(),
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerPage()));
                     },

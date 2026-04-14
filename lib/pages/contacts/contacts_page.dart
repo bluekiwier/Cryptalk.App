@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/friend_service.dart';
@@ -181,7 +182,7 @@ class _ContactsPageState extends State<ContactsPage> {
               _buildAppBar(),
               // 搜索栏
               SliverToBoxAdapter(
-                child: CustomSearchBar(hintText: '搜索联系人', readOnly: false, onChanged: _onSearchChanged),
+                child: CustomSearchBar(hintText: '搜索联系人'.tr(), readOnly: false, onChanged: _onSearchChanged),
               ),
               // 快捷入口
               SliverToBoxAdapter(child: _buildQuickActions(context)),
@@ -193,7 +194,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text(
-                      _isLoading ? '正在加载...' : '共 ${_friends.length} 位联系人',
+                      _isLoading ? '正在加载...'.tr() : '共 {count} 位联系人'.tr(namedArgs: {'count': '${_friends.length}'}),
                       style: const TextStyle(fontSize: 13, color: AppTheme.textHint),
                     ),
                   ),
@@ -225,8 +226,8 @@ class _ContactsPageState extends State<ContactsPage> {
       automaticallyImplyLeading: false,
       title: Row(
         children: [
-          const Text(
-            '通讯录',
+          Text(
+            '通讯录'.tr(),
             style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
           const Spacer(),
@@ -269,7 +270,7 @@ class _ContactsPageState extends State<ContactsPage> {
   /// 快捷入口：新朋友、群聊、标签
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
-      {'icon': Icons.person_add_alt_1_rounded, 'label': '新朋友', 'badge': _requestCount},
+      {'key': 'new_friend', 'icon': Icons.person_add_alt_1_rounded, 'label': '新朋友'.tr(), 'badge': _requestCount},
       // {'icon': Icons.group_rounded, 'label': '群聊', 'badge': 0},
       // {'icon': Icons.label_rounded, 'label': '标签', 'badge': 0},
     ];
@@ -323,7 +324,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   ],
                 ),
                 onTap: () async {
-                  if (action['label'] == '新朋友') {
+                  if (action['key'] == 'new_friend') {
                     // 从新朋友页面返回时刷新数据
                     await Navigator.push(context, MaterialPageRoute(builder: (_) => const NewFriendsPage()));
                     // 返回后刷新好友列表和申请数量
@@ -343,7 +344,7 @@ class _ContactsPageState extends State<ContactsPage> {
   List<Widget> _buildFriendList(BuildContext context) {
     if (_isLoading) {
       return [
-        const SliverFillRemaining(
+        SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
             child: Padding(
@@ -360,7 +361,7 @@ class _ContactsPageState extends State<ContactsPage> {
                     ),
                   ),
                   SizedBox(height: 12),
-                  Text('正在加载好友列表...', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
+                  Text('正在加载好友列表...'.tr(), style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
                 ],
               ),
             ),
@@ -381,12 +382,12 @@ class _ContactsPageState extends State<ContactsPage> {
                 children: [
                   Icon(Icons.people_outline_rounded, size: 64, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
                   const SizedBox(height: 12),
-                  const Text(
-                    '暂无好友',
-                    style: TextStyle(color: AppTheme.textHint, fontSize: 15, fontWeight: FontWeight.w500),
+                  Text(
+                    '暂无好友'.tr(),
+                    style: const TextStyle(color: AppTheme.textHint, fontSize: 15, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 6),
-                  const Text('点击右上角添加好友', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
+                  Text('点击右上角添加好友'.tr(), style: const TextStyle(color: AppTheme.textHint, fontSize: 13)),
                 ],
               ),
             ),
@@ -455,13 +456,13 @@ class _ContactsPageState extends State<ContactsPage> {
         }
       } else {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('获取用户信息失败')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('获取用户信息失败'.tr())));
         }
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // 确保关闭加载提示
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('网络错误，请稍后重试')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('网络错误，请稍后重试'.tr())));
       }
     }
   }
@@ -480,7 +481,8 @@ class _ContactTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: Theme.of(context).cardColor,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        // 左边距保留给头像，右边距放到线条所在的 Container 中以实现线条顶满右侧
+        padding: const EdgeInsets.only(left: 16),
         height: 60,
         child: Row(
           children: [
@@ -489,8 +491,10 @@ class _ContactTile extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppTheme.dividerColor, width: 1)),
+                height: 60, // 强制撑满 60，让边框落到 Row 的最底部
+                padding: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppTheme.dividerColor.withValues(alpha: 0.5), width: 0.5)),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -517,7 +521,6 @@ class _ContactTile extends StatelessWidget {
                 ),
               ),
             ),
-            Padding(padding: EdgeInsets.only(left: 14), child: Divider(height: 0.5)),
           ],
         ),
       ),
@@ -536,6 +539,7 @@ class _AlphabetIndexBar extends StatefulWidget {
   State<_AlphabetIndexBar> createState() => _AlphabetIndexBarState();
 }
 
+/// 字母索引条
 class _AlphabetIndexBarState extends State<_AlphabetIndexBar> {
   String? _activeLetter;
 

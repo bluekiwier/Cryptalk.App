@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_switch.dart';
@@ -35,8 +36,8 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              '设置',
+              title: Text(
+              '设置'.tr(),
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,
@@ -52,12 +53,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 通知设置
-                  _buildSectionTitle('通知设置'),
+                  _buildSectionTitle('通知设置'.tr()),
                   _buildCard([
                     _buildSwitchItem(
                       icon: Icons.notifications_outlined,
                       iconColor: const Color(0xFF6C63FF),
-                      label: '新消息通知',
+                      label: '新消息通知'.tr(),
                       value: _notificationEnabled,
                       onChanged: (v) => setState(() => _notificationEnabled = v),
                     ),
@@ -65,7 +66,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSwitchItem(
                       icon: Icons.volume_up_outlined,
                       iconColor: const Color(0xFF00D9A6),
-                      label: '声音',
+                      label: '声音'.tr(),
                       value: _soundEnabled,
                       onChanged: (v) => setState(() => _soundEnabled = v),
                     ),
@@ -73,7 +74,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSwitchItem(
                       icon: Icons.vibration_rounded,
                       iconColor: const Color(0xFFF97316),
-                      label: '振动',
+                      label: '振动'.tr(),
                       value: _vibrateEnabled,
                       onChanged: (v) => setState(() => _vibrateEnabled = v),
                     ),
@@ -81,7 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSwitchItem(
                       icon: Icons.visibility_outlined,
                       iconColor: const Color(0xFF3B82F6),
-                      label: '消息预览',
+                      label: '消息预览'.tr(),
                       value: _showPreview,
                       onChanged: (v) => setState(() => _showPreview = v),
                     ),
@@ -90,28 +91,28 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 20),
 
                   // 隐私
-                  _buildSectionTitle('隐私'),
+                  _buildSectionTitle('隐私'.tr()),
                   _buildCard([
-                    _buildNavItem(icon: Icons.block_outlined, iconColor: const Color(0xFFEF4444), label: '黑名单'),
+                    _buildNavItem(icon: Icons.block_outlined, iconColor: const Color(0xFFEF4444), label: '黑名单'.tr()),
                     _buildCardDivider(),
-                    _buildNavItem(icon: Icons.lock_outline_rounded, iconColor: const Color(0xFF8B5CF6), label: '隐私权限'),
+                    _buildNavItem(icon: Icons.lock_outline_rounded, iconColor: const Color(0xFF8B5CF6), label: '隐私权限'.tr()),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.delete_outline_rounded,
                       iconColor: const Color(0xFFF97316),
-                      label: '清除聊天记录',
+                      label: '清除聊天记录'.tr(),
                     ),
                   ]),
 
                   const SizedBox(height: 20),
 
                   // 服务器设置
-                  _buildSectionTitle('服务器'),
+                  _buildSectionTitle('服务器'.tr()),
                   _buildCard([
                     _buildNavItem(
                       icon: Icons.business_rounded,
                       iconColor: const Color(0xFF6366F1),
-                      label: '切换服务器',
+                      label: '切换服务器'.tr(),
                       onTap: _leaveCompany,
                     ),
                   ]),
@@ -119,33 +120,34 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 20),
 
                   // 通用
-                  _buildSectionTitle('通用'),
+                  _buildSectionTitle('通用'.tr()),
                   _buildCard([
                     _buildNavItem(
                       icon: Icons.language_rounded,
                       iconColor: const Color(0xFF06B6D4),
-                      label: '语言',
-                      subtitle: '简体中文',
+                      label: '语言'.tr(),
+                      subtitle: _languageSubtitle(context),
+                      onTap: () => _showLanguagePicker(),
                     ),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.font_download_outlined,
                       iconColor: const Color(0xFFFBBF24),
-                      label: '字体大小',
-                      subtitle: '标准',
+                      label: '字体大小'.tr(),
+                      subtitle: '标准'.tr(),
                     ),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.storage_outlined,
                       iconColor: const Color(0xFF22C55E),
-                      label: '存储空间',
+                      label: '存储空间'.tr(),
                       subtitle: '234 MB',
                     ),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.cached_rounded,
                       iconColor: const Color(0xFF6B7280),
-                      label: '清除缓存',
+                      label: '清除缓存'.tr(),
                       subtitle: '18.5 MB',
                     ),
                   ]),
@@ -220,13 +222,13 @@ class _SettingsPageState extends State<SettingsPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认切换'),
-        content: const Text('切换服务器将清除当前登录信息，确定要继续吗？'),
+        title: Text('确认切换'.tr()),
+        content: Text('切换服务器将清除当前登录信息，确定要继续吗？'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定', style: TextStyle(color: AppTheme.primaryColor)),
+            child: Text('确定'.tr(), style: const TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),
@@ -287,5 +289,39 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildCardDivider() {
     return const Padding(padding: EdgeInsets.only(left: 72), child: Divider(height: 0.5));
+  }
+
+  String _languageSubtitle(BuildContext context) {
+    return context.locale.languageCode == 'en' ? '英文'.tr() : '简体中文'.tr();
+  }
+
+  Future<void> _showLanguagePicker() async {
+    if (!mounted) return;
+    final selected = await showDialog<Locale>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('语言'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('简体中文'.tr()),
+              onTap: () => Navigator.pop(dialogContext, const Locale('zh', 'CN')),
+            ),
+            ListTile(
+              title: Text('英文'.tr()),
+              onTap: () => Navigator.pop(dialogContext, const Locale('en', 'US')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selected != null && mounted) {
+      await context.setLocale(selected);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('selectedLocale', selected.toLanguageTag());
+      setState(() {});
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/account_service.dart';
@@ -95,7 +96,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       // 显示错误提示
-      _showErrorSnackBar(_accountService.errorMessage ?? '登录失败');
+      _showErrorSnackBar(_accountService.errorMessage ?? '登录失败'.tr());
     }
   }
 
@@ -209,13 +210,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             // ),
             // const SizedBox(height: 10),
             // 应用名称
-            const Text(
-              '闲聊',
+            Text(
+              '闲聊'.tr(),
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4),
             ),
             const SizedBox(height: 8),
             Text(
-              '与朋友畅快聊天',
+              '与朋友畅快聊天'.tr(),
               style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 1),
             ),
           ],
@@ -245,12 +246,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 标题
-                const Text(
-                  '欢迎回来',
+                Text(
+                  '欢迎回来'.tr(),
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 4),
-                Text('登录您的账号', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary.withValues(alpha: 0.8))),
+                Text(
+                  '登录您的账号'.tr(),
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary.withValues(alpha: 0.8)),
+                ),
                 const SizedBox(height: 16),
 
                 // 当前服务器信息
@@ -258,20 +262,20 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 const SizedBox(height: 16),
 
                 // 手机号输入
-                _buildInputLabel('手机号'),
+                _buildInputLabel('手机号'.tr()),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
                   style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-                  decoration: _buildInputDecoration(hintText: '请输入手机号', prefixIcon: Icons.phone_android_rounded),
+                  decoration: _buildInputDecoration(hintText: '请输入手机号'.tr(), prefixIcon: Icons.phone_android_rounded),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return '请输入手机号';
+                      return '请输入手机号'.tr();
                     }
                     if (value.length != 11) {
-                      return '请输入11位手机号';
+                      return '请输入11位手机号'.tr();
                     }
                     return null;
                   },
@@ -279,14 +283,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 const SizedBox(height: 20),
 
                 // 密码输入
-                _buildInputLabel('密码'),
+                _buildInputLabel('密码'.tr()),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
                   decoration: _buildInputDecoration(
-                    hintText: '请输入密码',
+                    hintText: '请输入密码'.tr(),
                     prefixIcon: Icons.lock_rounded,
                     suffixIcon: IconButton(
                       onPressed: () {
@@ -301,10 +305,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return '请输入密码';
+                      return '请输入密码'.tr();
                     }
                     if (value.length < 6) {
-                      return '密码长度不能少于6位';
+                      return '密码长度不能少于6位'.tr();
                     }
                     return null;
                   },
@@ -316,17 +320,17 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('忘记密码功能开发中...'), behavior: SnackBarBehavior.floating),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('忘记密码功能开发中...'.tr()), behavior: SnackBarBehavior.floating));
                     },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(0, 32),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text(
-                      '忘记密码？',
+                    child: Text(
+                      '忘记密码？'.tr(),
                       style: TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -361,7 +365,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '当前服务器',
+                  '当前服务器'.tr(),
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary.withValues(alpha: 0.8),
@@ -387,7 +391,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              '切换',
+              '切换'.tr(),
               style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
             ),
           ),
@@ -478,8 +482,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Text(
-                  '登 录',
+              : Text(
+                  '登录'.tr(),
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 2),
                 ),
         ),
@@ -494,15 +498,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('还没有账号？', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+          Text('还没有账号？'.tr(), style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
           TextButton(
             onPressed: _navigateToRegister,
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               minimumSize: const Size(0, 36),
             ),
-            child: const Text(
-              '立即注册',
+            child: Text(
+              '立即注册'.tr(),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,

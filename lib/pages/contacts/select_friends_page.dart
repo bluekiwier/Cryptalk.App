@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:logger/logger.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
@@ -120,7 +121,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
     if (_selectedUserIds.length < 2) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请至少选择2位好友'), behavior: SnackBarBehavior.floating));
+      ).showSnackBar(SnackBar(content: Text('请至少选择2位好友'.tr()), behavior: SnackBarBehavior.floating));
       return;
     }
 
@@ -143,8 +144,8 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('群聊创建成功'),
+          SnackBar(
+            content: Text('群聊创建成功'.tr()),
             backgroundColor: AppTheme.accentColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -153,8 +154,8 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('群聊创建失败'),
+          SnackBar(
+            content: Text('群聊创建失败'.tr()),
             backgroundColor: AppTheme.badgeColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -165,8 +166,8 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('创建群组失败，请稍后重试'),
+        SnackBar(
+          content: Text('创建群组失败，请稍后重试'.tr()),
           backgroundColor: AppTheme.badgeColor,
           behavior: SnackBarBehavior.floating,
         ),
@@ -179,36 +180,22 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: AppTheme.getAppBarDecoration(context),
-        ),
+        flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded, 
-            color: Colors.white,
-            size: 20,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '发起群聊',
-              style: TextStyle(
-                fontSize: 18, 
-                fontWeight: FontWeight.w600, 
-                color: Colors.white,
-              ),
+              '发起群聊'.tr(),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
             ),
             Text(
-              '已选择 ${_selectedUserIds.length} 位好友',
-              style: TextStyle(
-                fontSize: 12, 
-                color: Colors.white.withValues(alpha: 0.7), 
-                fontWeight: FontWeight.normal
-              ),
+              '已选择 {count} 位好友'.tr(namedArgs: {'count': '${_selectedUserIds.length}'}),
+              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.normal),
             ),
           ],
         ),
@@ -216,7 +203,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
           TextButton(
             onPressed: _selectedUserIds.length >= 2 ? _createGroup : null,
             child: Text(
-              '完成',
+              '完成'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 color: _selectedUserIds.length >= 2 ? Colors.white : Colors.white.withValues(alpha: 0.5),
@@ -232,7 +219,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
             color: Theme.of(context).scaffoldBackgroundColor,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: CustomSearchBar(
-              hintText: '搜索好友',
+              hintText: '搜索好友'.tr(),
               onChanged: (value) {
                 setState(() {
                   _searchQuery = value;
@@ -310,7 +297,7 @@ class _SelectFriendsPageState extends State<SelectFriendsPage> {
                           color: AppTheme.primaryColor.withValues(alpha: 0.2),
                         ),
                         const SizedBox(height: 12),
-                        const Text('暂无好友', style: TextStyle(color: AppTheme.textHint, fontSize: 15)),
+                        Text('暂无好友'.tr(), style: const TextStyle(color: AppTheme.textHint, fontSize: 15)),
                       ],
                     ),
                   )

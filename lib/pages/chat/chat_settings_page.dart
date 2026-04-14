@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../models/conversation.dart';
 import '../../models/db/conversation_entity.dart';
 import '../../services/database_service.dart';
 import '../../services/conversation_service.dart';
 import '../../theme/app_theme.dart';
-import 'group_management_page.dart';
 import '../../widgets/app_switch.dart';
+import 'group_management_page.dart';
 
 class ChatSettingsPage extends StatefulWidget {
   final Conversation conversation;
@@ -157,7 +158,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('群公告修改成功'), backgroundColor: AppTheme.onlineColor));
+          ).showSnackBar(SnackBar(content: Text('群公告修改成功'.tr()), backgroundColor: AppTheme.onlineColor));
         }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(updateResult?['message'] ?? '群公告修改失败')));
@@ -277,7 +278,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           if (mounted) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(const SnackBar(content: Text('已退出群聊'), backgroundColor: AppTheme.onlineColor));
+            ).showSnackBar(SnackBar(content: Text('已退出群聊'.tr()), backgroundColor: AppTheme.onlineColor));
             Navigator.of(context).popUntil((route) => route.isFirst);
           }
         } else if (mounted) {

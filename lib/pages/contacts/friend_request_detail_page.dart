@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_theme.dart';
 import '../../models/friend_request.dart';
 import '../../services/friend_service.dart';
@@ -75,7 +76,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '加载用户信息失败';
+          _errorMessage = '加载用户信息失败'.tr();
           _isLoading = false;
         });
       }
@@ -92,9 +93,9 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
     // 拉黑操作需要二次确认
     if (actionType == 'block') {
       final confirmed = await _showConfirmDialog(
-        title: '确认拉黑',
-        content: '拉黑后将不再接收该用户的消息和好友申请，确定要拉黑吗？',
-        confirmText: '拉黑',
+        title: '确认拉黑'.tr(),
+        content: '拉黑后将不再接收该用户的消息和好友申请，确定要拉黑吗？'.tr(),
+        confirmText: '拉黑'.tr(),
         confirmColor: Colors.red,
       );
       if (!confirmed) return;
@@ -140,7 +141,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('取消', style: TextStyle(color: AppTheme.textHint)),
+                child: Text('取消'.tr(), style: const TextStyle(color: AppTheme.textHint)),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
@@ -186,8 +187,8 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
-              const Text(
-                '申请详情',
+              Text(
+                '申请详情'.tr(),
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
               const Spacer(),
@@ -202,11 +203,11 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
   /// 构建页面主体
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 36,
               height: 36,
               child: CircularProgressIndicator(
@@ -214,8 +215,8 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                 valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
               ),
             ),
-            SizedBox(height: 16),
-            Text('正在加载用户资料...', style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
+            const SizedBox(height: 16),
+            Text('正在加载用户资料...'.tr(), style: const TextStyle(color: AppTheme.textHint, fontSize: 14)),
           ],
         ),
       );
@@ -235,8 +236,8 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                 decoration: BoxDecoration(gradient: AppTheme.headerGradient, borderRadius: BorderRadius.circular(20)),
-                child: const Text(
-                  '重新加载',
+                child: Text(
+                  '重新加载'.tr(),
                   style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
@@ -289,7 +290,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
           const SizedBox(height: 16),
           // 昵称
           Text(
-            nickname.isNotEmpty ? nickname : '未知用户',
+            nickname.isNotEmpty ? nickname : '未知用户'.tr(),
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -312,7 +313,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
               ),
               const SizedBox(width: 6),
               Text(
-                _userProfile?['online'] == 1 ? '在线' : '离线',
+                _userProfile?['online'] == 1 ? '在线'.tr() : '离线'.tr(),
                 style: TextStyle(
                   fontSize: 13,
                   color: _userProfile?['online'] == 1 ? AppTheme.onlineColor : AppTheme.textHint,
@@ -387,19 +388,19 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                   decoration: BoxDecoration(gradient: AppTheme.headerGradient, borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  '基本信息',
+                Text(
+                  '基本信息'.tr(),
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                 ),
               ],
             ),
           ),
           // 信息列表
-          _buildInfoRow(Icons.account_circle_outlined, '账号', account),
-          if (email.isNotEmpty) _buildInfoRow(Icons.email_outlined, '邮箱', email),
-          if (mobile.isNotEmpty) _buildInfoRow(Icons.phone_outlined, '手机', mobile),
-          if (inviteCode.isNotEmpty) _buildInfoRow(Icons.card_giftcard_outlined, '邀请码', inviteCode),
-          if (createdAt.isNotEmpty) _buildInfoRow(Icons.access_time_rounded, '注册时间', createdAt),
+          _buildInfoRow(Icons.account_circle_outlined, '账号'.tr(), account),
+          if (email.isNotEmpty) _buildInfoRow(Icons.email_outlined, '邮箱'.tr(), email),
+          if (mobile.isNotEmpty) _buildInfoRow(Icons.phone_outlined, '手机'.tr(), mobile),
+          if (inviteCode.isNotEmpty) _buildInfoRow(Icons.card_giftcard_outlined, '邀请码'.tr(), inviteCode),
+          if (createdAt.isNotEmpty) _buildInfoRow(Icons.access_time_rounded, '注册时间'.tr(), createdAt),
           const SizedBox(height: 12),
         ],
       ),
@@ -465,7 +466,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                 // 拉黑按钮
                 Expanded(
                   child: _buildActionButton(
-                    label: '拉黑',
+                    label: '拉黑'.tr(),
                     icon: Icons.block_rounded,
                     bgColor: Colors.grey.shade100,
                     textColor: Colors.red.shade400,
@@ -476,7 +477,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                 // 拒绝按钮
                 Expanded(
                   child: _buildActionButton(
-                    label: '拒绝',
+                    label: '拒绝'.tr(),
                     icon: Icons.close_rounded,
                     bgColor: Colors.grey.shade100,
                     textColor: AppTheme.textSecondary,
@@ -488,7 +489,7 @@ class _FriendRequestDetailPageState extends State<FriendRequestDetailPage> with 
                 Expanded(
                   flex: 2,
                   child: _buildGradientActionButton(
-                    label: '接受',
+                    label: '接受'.tr(),
                     icon: Icons.check_rounded,
                     onTap: () => _handleAction('agree', _friendService.agreeFriendRequest),
                   ),

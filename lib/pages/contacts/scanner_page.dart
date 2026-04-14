@@ -1,5 +1,6 @@
 import 'package:cryptalk/services/conversation_service.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/friend_service.dart';
@@ -125,8 +126,8 @@ class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStat
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('未在图片中识别到有效的二维码'),
+            SnackBar(
+              content: Text('未在图片中识别到有效的二维码'.tr()),
               backgroundColor: AppTheme.badgeColor,
               behavior: SnackBarBehavior.floating,
             ),
@@ -137,7 +138,7 @@ class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStat
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('识别异常: $e'),
+            content: Text('${'识别异常:'.tr()} $e'),
             backgroundColor: AppTheme.badgeColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -153,7 +154,7 @@ class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStat
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: AppBar(
-          title: const Text('扫一扫', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          title: Text('扫一扫'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -237,8 +238,8 @@ class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStat
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  '将二维码放入框内，即可自动扫描',
+                Text(
+                  '将二维码放入框内，即可自动扫描'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
@@ -249,13 +250,13 @@ class _ScannerPageState extends State<ScannerPage> with SingleTickerProviderStat
                   children: [
                     _buildBottomButton(
                       icon: Icons.qr_code_rounded,
-                      label: '我的二维码',
+                      label: '我的二维码'.tr(),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const MyQrCodePage()));
                       },
                     ),
                     const SizedBox(width: 60),
-                    _buildBottomButton(icon: Icons.photo_library_rounded, label: '相册', onTap: _pickAndScanImage),
+                    _buildBottomButton(icon: Icons.photo_library_rounded, label: '相册'.tr(), onTap: _pickAndScanImage),
                   ],
                 ),
               ],

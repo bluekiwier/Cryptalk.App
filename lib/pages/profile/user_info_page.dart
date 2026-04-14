@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../models/user.dart';
 import '../../services/account_service.dart';
 import '../../services/user_service.dart';
@@ -59,14 +60,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
-                title: const Text(
-                  '个人信息',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
+                title: Text(
+                  '个人信息'.tr(),
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
                 ),
                 centerTitle: true,
                 actions: [
@@ -86,7 +82,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
             ),
           ),
           body: user == null
-              ? const Center(child: Text('未登录'))
+              ? Center(child: Text('请先登录'.tr()))
               : SingleChildScrollView(
                   child: Column(
                     children: [
@@ -148,22 +144,22 @@ class _UserInfoPageState extends State<UserInfoPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('修改$title'),
+        title: Text('${'修改'.tr()}${title.tr()}'),
         content: TextField(
           controller: controller,
           maxLines: maxLines,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: '请输入新的$title',
+            hintText: '${'请输入新的'.tr()}${title.tr()}',
             suffixIcon: IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => controller.clear()),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
-            child: const Text('确定'),
+            child: Text('确定'.tr()),
           ),
         ],
       ),
@@ -180,7 +176,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
           if (mounted) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(const SnackBar(content: Text('请输入正确的手机号码格式'), backgroundColor: AppTheme.badgeColor));
+            ).showSnackBar(SnackBar(content: Text('请输入正确的手机号码格式'.tr()), backgroundColor: AppTheme.badgeColor));
           }
           return;
         }
@@ -197,9 +193,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
         if (res.success) {
           if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('$title修改成功！'), backgroundColor: AppTheme.onlineColor));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${title.tr()}${'修改成功！'.tr()}'), backgroundColor: AppTheme.onlineColor),
+            );
           }
           await _refreshProfile();
         } else {
@@ -232,28 +228,28 @@ class _UserInfoPageState extends State<UserInfoPage> {
       child: Column(
         children: [
           _buildInfoTile(
-            label: '昵称',
+            label: '昵称'.tr(),
             value: user.nickname,
             onTap: () => _editField(title: '昵称', initialValue: user.nickname, fieldKey: 'nickname'),
           ),
           _buildDivider(),
-          _buildInfoTile(label: '账号', value: user.account, showArrow: false),
+          _buildInfoTile(label: '账号'.tr(), value: user.account, showArrow: false),
           _buildDivider(),
           _buildInfoTile(
-            label: '手机号',
-            value: user.mobile ?? '未绑定',
+            label: '手机号'.tr(),
+            value: user.mobile ?? '未绑定'.tr(),
             onTap: () => _editField(title: '手机号', initialValue: user.mobile ?? '', fieldKey: 'mobile'),
           ),
           _buildDivider(),
           _buildInfoTile(
-            label: '邮箱',
-            value: user.email ?? '未设置',
+            label: '邮箱'.tr(),
+            value: user.email ?? '未设置'.tr(),
             onTap: () => _editField(title: '邮箱', initialValue: user.email ?? '', fieldKey: 'email'),
           ),
           _buildDivider(),
           _buildInfoTile(
-            label: '个性签名',
-            value: user.signature?.isNotEmpty == true ? user.signature! : '这个家伙很懒，什么都没写',
+            label: '个性签名'.tr(),
+            value: user.signature?.isNotEmpty == true ? user.signature! : '这个家伙很懒，什么都没写'.tr(),
             isLongText: true,
             onTap: () =>
                 _editField(title: '个性签名', initialValue: user.signature ?? '', fieldKey: 'signature', maxLines: 3),
