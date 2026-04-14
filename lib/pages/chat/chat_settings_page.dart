@@ -73,7 +73,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     } else {
       if (mounted) {
         setState(() => _isMuted = !value);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '设置失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '设置失败'.tr())));
       }
     }
   }
@@ -87,7 +87,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     } else {
       if (mounted) {
         setState(() => _isPinned = !value);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '设置失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '设置失败'.tr())));
       }
     }
   }
@@ -116,7 +116,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         setState(() => _groupName = result);
         await _updateLocalConversationTitle(result);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(updateResult?['message'] ?? '群名称修改失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(updateResult?['message'] ?? '群名称修改失败'.tr())));
       }
     }
   }
@@ -161,7 +161,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           ).showSnackBar(SnackBar(content: Text('群公告修改成功'.tr()), backgroundColor: AppTheme.onlineColor));
         }
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(updateResult?['message'] ?? '群公告修改失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(updateResult?['message'] ?? '群公告修改失败'.tr())));
       }
     }
   }
@@ -237,7 +237,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('仅限群主或管理员才能进入群管理')));
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '获取角色权限失败')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result?['message'] ?? '获取角色权限失败'.tr())));
       }
     } catch (e) {
       if (!mounted) return;

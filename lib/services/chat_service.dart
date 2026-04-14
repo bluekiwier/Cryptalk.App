@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptalk/services/encryption_service.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -463,7 +464,7 @@ class ChatService extends ChangeNotifier {
       if (!isInChatPage(message.conversationId) && message.senderId != currentUserId) {
         NotificationService().showChatNotification(
           id: message.payload.id.hashCode,
-          title: message.payload.senderNickname ?? '新消息',
+          title: message.payload.senderNickname ?? '新消息'.tr(),
           body: _getMessagePreview(message.payload.content, message.payload.type),
           payload: message.conversationId,
         );
@@ -956,7 +957,6 @@ class ChatService extends ChangeNotifier {
   void sendMessage(String message) {
     if (_channel != null && _isConnected) {
       _channel!.sink.add(message);
-      // _logger.d('发送 WebSocket 消息: $message');
     } else {
       _logger.w('WebSocket 未连接，无法发送消息');
     }
@@ -1089,11 +1089,11 @@ class ChatService extends ChangeNotifier {
         return SendMessageResult(success: true, messageId: messageData?['id']?.toString(), messageData: messageData);
       } else {
         _logger.e('发送私聊消息失败：${responseData?['message']}');
-        return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败');
+        return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败'.tr());
       }
     } catch (e) {
       _logger.e('发送私聊消息异常：$e');
-      return SendMessageResult(success: false, message: '网络异常');
+      return SendMessageResult(success: false, message: '网络异常'.tr());
     }
   }
 
@@ -1129,11 +1129,11 @@ class ChatService extends ChangeNotifier {
         return SendMessageResult(success: true, messageId: messageData?['id']?.toString(), messageData: messageData);
       } else {
         _logger.e('发送群聊消息失败: ${responseData?['message']}');
-        return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败');
+        return SendMessageResult(success: false, message: responseData?['message'] ?? '发送失败'.tr());
       }
     } catch (e) {
       _logger.e('发送群聊消息异常: $e');
-      return SendMessageResult(success: false, message: '网络异常');
+      return SendMessageResult(success: false, message: '网络异常'.tr());
     }
   }
 

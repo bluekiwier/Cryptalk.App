@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../models/conversation.dart';
 import '../../services/conversation_service.dart';
@@ -199,7 +200,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       _showToast('已设为管理员', isSuccess: true);
       await _loadGroupMembers();
     } else {
-      _showToast(result?['message'] ?? '操作失败');
+      _showToast(result?['message'] ?? '操作失败'.tr());
     }
   }
 
@@ -209,7 +210,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       _showToast('已移除管理员', isSuccess: true);
       await _loadGroupMembers();
     } else {
-      _showToast(result?['message'] ?? '操作失败');
+      _showToast(result?['message'] ?? '操作失败'.tr());
     }
   }
 
@@ -239,9 +240,9 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
                     ? await ConversationService().unmuteMember(widget.conversation.id, userId)
                     : await ConversationService().muteMember(widget.conversation.id, userId, value);
                 if (result != null && result['success'] == true) {
-                  _showToast(value == -1 ? '已取消禁言' : '已禁言', isSuccess: true);
+                  _showToast(value == -1 ? '已取消禁言'.tr() : '已禁言'.tr(), isSuccess: true);
                 } else {
-                  _showToast(result?['message'] ?? '操作失败');
+                  _showToast(result?['message'] ?? '操作失败'.tr());
                 }
               },
             );
@@ -255,13 +256,13 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('移出群聊'),
-        content: Text('确定要将 $nickname 移出群聊吗？'),
+        title: Text('移出群聊'.tr()),
+        content: Text('确定要将 $nickname 移出群聊吗？'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定', style: TextStyle(color: Colors.red)),
+            child: Text('确定'.tr(), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -270,10 +271,10 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     if (confirm == true) {
       final result = await ConversationService().removeGroupMember(widget.conversation.id, userId);
       if (result != null && result['success'] == true) {
-        _showToast('已移出群聊', isSuccess: true);
+        _showToast('已移出群聊'.tr(), isSuccess: true);
         await _loadGroupMembers();
       } else {
-        _showToast(result?['message'] ?? '操作失败');
+        _showToast(result?['message'] ?? '操作失败'.tr());
       }
     }
   }
@@ -282,13 +283,13 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('转让群主'),
-        content: Text('确定要将群主转让给 $nickname 吗？'),
+        title: Text('转让群主'.tr()),
+        content: Text('确定要将群主转让给 $nickname 吗？'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定', style: TextStyle(color: Colors.red)),
+            child: Text('确定'.tr(), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -297,10 +298,10 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     if (confirm == true) {
       final result = await ConversationService().transferGroupOwner(widget.conversation.id, userId);
       if (result != null && result['success'] == true) {
-        _showToast('已转让群主', isSuccess: true);
+        _showToast('已转让群主'.tr(), isSuccess: true);
         if (mounted) Navigator.pop(context);
       } else {
-        _showToast(result?['message'] ?? '操作失败');
+        _showToast(result?['message'] ?? '操作失败'.tr());
       }
     }
   }
@@ -309,13 +310,13 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('解散群聊'),
-        content: const Text('确定要解散该群聊吗？此操作不可恢复！'),
+        title: Text('解散群聊'.tr()),
+        content: Text('确定要解散该群聊吗？此操作不可恢复！'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定', style: TextStyle(color: Colors.red)),
+            child: Text('确定'.tr(), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -324,10 +325,10 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     if (confirm == true) {
       final result = await ConversationService().dissolveGroup(widget.conversation.id);
       if (result != null && result['success'] == true) {
-        _showToast('群聊已解散', isSuccess: true);
+        _showToast('群聊已解散'.tr(), isSuccess: true);
         if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
-        _showToast(result?['message'] ?? '操作失败');
+        _showToast(result?['message'] ?? '操作失败'.tr());
       }
     }
   }
@@ -345,15 +346,15 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     final account = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('邀请成员'),
+        title: Text('邀请成员'.tr()),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.text,
-          decoration: const InputDecoration(hintText: '请输入用户账号', border: OutlineInputBorder()),
+          decoration: InputDecoration(hintText: '请输入用户账号'.tr(), border: OutlineInputBorder()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('确定')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('取消'.tr())),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: Text('确定'.tr())),
         ],
       ),
     );
@@ -361,10 +362,10 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     if (account != null && account.isNotEmpty) {
       final result = await ConversationService().addGroupMember(widget.conversation.id, account);
       if (result != null && result['success'] == true) {
-        _showToast('邀请成功', isSuccess: true);
+        _showToast('邀请成功'.tr(), isSuccess: true);
         await _loadGroupMembers(refresh: true);
       } else {
-        _showToast(result?['message'] ?? '邀请失败');
+        _showToast(result?['message'] ?? '邀请失败'.tr());
       }
     }
   }
@@ -379,13 +380,13 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('从相册选择'),
+              leading: Icon(Icons.photo_library),
+              title: Text('从相册选择'.tr()),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('拍照'),
+              leading: Icon(Icons.camera_alt),
+              title: Text('拍照'.tr()),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
           ],
@@ -406,13 +407,13 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
         aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: '裁剪头像',
+            toolbarTitle: '裁剪头像'.tr(),
             toolbarColor: AppTheme.primaryColor,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.square,
             lockAspectRatio: true,
           ),
-          IOSUiSettings(title: '裁剪头像', aspectRatioLockEnabled: true),
+          IOSUiSettings(title: '裁剪头像'.tr(), aspectRatioLockEnabled: true),
         ],
       );
 
@@ -432,7 +433,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
         format: CompressFormat.png,
       );
 
-      if (result == null) throw Exception("压缩图片失败");
+      if (result == null) throw Exception("压缩图片失败".tr());
 
       final compressedFile = File(result.path);
       final fileSize = await compressedFile.length();
@@ -441,25 +442,25 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       final uploadResult = await FileService().createUploadUrl("image/png", fileName, fileSize, "group-avatar");
 
       if (uploadResult == null || !uploadResult.isSuccess) {
-        throw Exception("获取上传凭证失败");
+        throw Exception("获取上传凭证失败".tr());
       }
 
       final fileBytes = await compressedFile.readAsBytes();
       final uploaded = await FileService().uploadToR2(uploadResult.uploadUrl!, fileBytes, "image/png");
 
       if (!uploaded) {
-        throw Exception("上传图片到存储失败");
+        throw Exception("上传图片到存储失败".tr());
       }
 
       final updateResult = await ConversationService().updateGroupAvatar(widget.conversation.id, uploadResult.fileUrl!);
 
       if (mounted) {
         if (updateResult != null && updateResult['success'] == true) {
-          _showToast('群头像更新成功', isSuccess: true);
+          _showToast('群头像更新成功'.tr(), isSuccess: true);
           // 发送全局通知或通过回调更新上一级页面
           await ConversationService().notifyConversationListChanged();
         } else {
-          _showToast(updateResult?['message'] ?? '头像更新失败');
+          _showToast(updateResult?['message'] ?? '头像更新失败'.tr());
         }
       }
     } catch (e) {
@@ -482,8 +483,8 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          '群管理',
+        title: Text(
+          '群管理'.tr(),
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -529,7 +530,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             controller: _searchController,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
-              hintText: '搜索成员昵称或账号',
+              hintText: '搜索成员昵称或账号'.tr(),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchKeyword.isNotEmpty
                   ? IconButton(icon: const Icon(Icons.clear), onPressed: _clearSearch)
@@ -554,7 +555,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       child: Center(
         child: _isLoadingMore
             ? const CircularProgressIndicator()
-            : TextButton(onPressed: _loadMoreMembers, child: const Text('点击加载更多')),
+            : TextButton(onPressed: _loadMoreMembers, child: Text('点击加载更多'.tr())),
       ),
     );
   }
@@ -572,7 +573,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       color: Colors.white,
       child: Column(
         children: _filteredMembers.map((member) {
-          final nickname = member['nickname'] ?? member['name'] ?? '未知';
+          final nickname = member['nickname'] ?? member['name'] ?? '未知'.tr();
           final avatar = member['avatar'] ?? '';
           final isOwner = member['role'] == 1;
           final isAdmin = member['role'] == 2;
@@ -583,7 +584,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
               child: avatar.isEmpty ? const Icon(Icons.person) : null,
             ),
             title: Text(nickname),
-            subtitle: Text(isOwner ? '群主' : (isAdmin ? '管理员' : '')),
+            subtitle: Text(isOwner ? '群主'.tr() : (isAdmin ? '管理员'.tr() : '')),
             trailing: const Icon(Icons.chevron_right, color: Colors.grey),
             onTap: () => _showMemberActions(context, member),
           );
@@ -601,25 +602,25 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('全体禁言（群主和管理员除外）', style: TextStyle(fontSize: 16)),
+              Text('全体禁言（群主和管理员除外）'.tr(), style: TextStyle(fontSize: 16)),
               AppSwitch(
                 value: _isAllMuted,
                 onChanged: (value) async {
                   if (value) {
                     final result = await ConversationService().muteAll(widget.conversation.id);
                     if (result != null && result['success'] == true) {
-                      _showToast('已开启全体禁言', isSuccess: true);
+                      _showToast('已开启全体禁言'.tr(), isSuccess: true);
                       setState(() => _isAllMuted = true);
                     } else {
-                      _showToast(result?['message'] ?? '操作失败');
+                      _showToast(result?['message'] ?? '操作失败'.tr());
                     }
                   } else {
                     final result = await ConversationService().unmuteAll(widget.conversation.id);
                     if (result != null && result['success'] == true) {
-                      _showToast('已关闭全体禁言', isSuccess: true);
+                      _showToast('已关闭全体禁言'.tr(), isSuccess: true);
                       setState(() => _isAllMuted = false);
                     } else {
-                      _showToast(result?['message'] ?? '操作失败');
+                      _showToast(result?['message'] ?? '操作失败'.tr());
                     }
                   }
                 },
@@ -643,7 +644,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
           minimumSize: const Size(double.infinity, 48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: const Text('解散群聊'),
+        child: Text('解散群聊'.tr()),
       ),
     );
   }
@@ -660,7 +661,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('修改群头像', style: TextStyle(fontSize: 16)),
+                Text('修改群头像'.tr(), style: TextStyle(fontSize: 16)),
                 Row(
                   children: [
                     if (_isUpdatingAvatar)

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../models/user.dart';
@@ -313,16 +314,16 @@ class AccountService extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = responseData?['message'] ?? '登录失败';
+        _errorMessage = responseData?['message'] ?? '登录失败'.tr();
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } on DioException catch (e) {
       if (e.response != null && e.response?.data != null && e.response?.data is Map) {
-        _errorMessage = e.response?.data['message'] ?? '登录失败';
+        _errorMessage = e.response?.data['message'] ?? '登录失败'.tr();
       } else {
-        _errorMessage = '网络错误：无法连接到服务器';
+        _errorMessage = '网络错误：无法连接到服务器'.tr();
       }
       _isLoading = false;
       notifyListeners();

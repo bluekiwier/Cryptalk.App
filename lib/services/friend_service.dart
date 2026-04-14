@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/friend_request.dart';
 import '../services/account_service.dart';
 
@@ -56,7 +57,7 @@ class FriendService {
         options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         // _logger.d('接受好友申请成功');
         return (success: true, message: msg);
@@ -66,7 +67,7 @@ class FriendService {
       }
     } catch (e) {
       _logger.e('接受好友申请异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 
@@ -80,7 +81,7 @@ class FriendService {
         options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         // _logger.d('拒绝好友申请成功');
         return (success: true, message: msg);
@@ -90,7 +91,7 @@ class FriendService {
       }
     } catch (e) {
       _logger.e('拒绝好友申请异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 
@@ -104,7 +105,7 @@ class FriendService {
         options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         // _logger.d('拉黑用户成功');
         return (success: true, message: msg);
@@ -114,7 +115,7 @@ class FriendService {
       }
     } catch (e) {
       _logger.e('拉黑用户异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 
@@ -128,7 +129,7 @@ class FriendService {
         options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         // _logger.d('移除黑名单成功');
         return (success: true, message: msg);
@@ -138,7 +139,7 @@ class FriendService {
       }
     } catch (e) {
       _logger.e('移除黑名单异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 
@@ -155,7 +156,7 @@ class FriendService {
       );
 
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         // _logger.d('删除好友成功');
         return (success: true, message: msg);
@@ -165,7 +166,7 @@ class FriendService {
       }
     } catch (e) {
       _logger.e('删除好友异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 
@@ -198,7 +199,7 @@ class FriendService {
         options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         // _logger.d('添加好友成功: $msg');
         return (success: true, message: msg);
@@ -208,7 +209,7 @@ class FriendService {
       }
     } catch (e) {
       _logger.e('添加好友异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 

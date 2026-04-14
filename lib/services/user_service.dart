@@ -1,5 +1,6 @@
 import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/user.dart';
 import 'account_service.dart';
 
@@ -40,7 +41,6 @@ class UserService {
       final response = await dio.get('/api/user/profile/$userId');
       final responseData = response.data;
       if (responseData != null && responseData['success'] == true) {
-        // _logger.d('获取用户详情成功');
         return responseData['data'] as Map<String, dynamic>?;
       } else {
         _logger.e('获取用户详情失败: ${responseData?['message']}');
@@ -77,10 +77,9 @@ class UserService {
       );
 
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '提交完成';
+      final msg = responseData?['message']?.toString() ?? '提交完成'.tr();
 
       if (responseData != null && responseData['success'] == true) {
-        // _logger.d('修改用户信息成功');
         return (success: true, message: msg);
       } else {
         _logger.e('修改用户信息失败: $msg');
@@ -106,9 +105,8 @@ class UserService {
       );
 
       final responseData = response.data;
-      final msg = responseData?['message']?.toString() ?? '操作完成';
+      final msg = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
-        // _logger.d('修改密码成功');
         return (success: true, message: msg);
       } else {
         _logger.e('修改密码失败: $msg');
@@ -116,7 +114,7 @@ class UserService {
       }
     } catch (e) {
       _logger.e('修改密码异常: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     }
   }
 
@@ -199,7 +197,6 @@ class UserService {
       );
       final data = response.data;
       if (data != null && data['success'] == true) {
-        _logger.d('设备注册成功');
         return true;
       } else {
         _logger.e('设备注册失败: ${data?['message']}');

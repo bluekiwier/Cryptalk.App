@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../utils/logger_util.dart';
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../utils/logger_util.dart';
 import 'database_service.dart';
 import 'account_service.dart';
 import '../models/conversation.dart';
@@ -10,7 +12,6 @@ import '../models/conversation_list_result.dart';
 import '../models/conversation_keyinfo_result.dart';
 import '../utils/time_util.dart';
 import '../models/db/conversation_entity.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// 会话服务（ChangeNotifier）
 /// 策略：本地 DB 优先呈现，后台异步同步网络数据
@@ -436,8 +437,7 @@ class ConversationService extends ChangeNotifier {
       return data;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout) {
-        _logger.e('获取消息列表超时: $e');
-        return {'success': false, 'error': 'connection_timeout', 'message': '网络连接超时，请检查网络后重试'};
+        return {'success': false, 'error': 'connection_timeout', 'message': '网络连接超时，请检查网络后重试'.tr()};
       } else {
         _logger.e('获取消息列表失败: $e');
         return null;
@@ -500,7 +500,6 @@ class ConversationService extends ChangeNotifier {
       );
 
       final responseData = response.data;
-      _logger.d('创建群组响应: $responseData');
 
       if (responseData['success'] == true && responseData['data'] != null) {
         final data = responseData['data'] as Map<String, dynamic>;
@@ -509,7 +508,6 @@ class ConversationService extends ChangeNotifier {
         final row = _conversationDetailToRow(conversationDetail);
         await DatabaseService().insertConversationIfAbsent(row);
 
-        _logger.d('群组会话已写入本地数据库: ${conversationDetail.id}');
         return conversationDetail;
       } else {
         _logger.e('创建群组失败: ${responseData['message']}');
@@ -553,10 +551,8 @@ class ConversationService extends ChangeNotifier {
       );
       return response.data;
     } on DioException catch (e) {
-      _logger.e('获取群成员列表失败: $e');
       return null;
     } catch (e) {
-      _logger.e('获取群成员列表异常: $e');
       return null;
     }
   }
@@ -572,10 +568,8 @@ class ConversationService extends ChangeNotifier {
       }
       return 0;
     } on DioException catch (e) {
-      _logger.e('获取群成员数量失败: $e');
       return 0;
     } catch (e) {
-      _logger.e('获取群成员数量异常: $e');
       return 0;
     }
   }
@@ -587,16 +581,12 @@ class ConversationService extends ChangeNotifier {
       final response = await dio.post('/api/conversation/$conversationId/enter');
       final data = response.data;
       if (data != null && data['success'] == true) {
-        _logger.d('进入群聊室成功');
         return true;
       }
-      _logger.e('进入群聊室失败: ${data?['message']}');
       return false;
     } on DioException catch (e) {
-      _logger.e('进入群聊室失败: $e');
       return false;
     } catch (e) {
-      _logger.e('进入群聊室异常: $e');
       return false;
     }
   }
@@ -608,7 +598,6 @@ class ConversationService extends ChangeNotifier {
       final response = await dio.post('/api/conversation/$conversationId/exit');
       final data = response.data;
       if (data != null && data['success'] == true) {
-        _logger.d('离开群聊室成功');
         return true;
       }
       _logger.e('离开群聊室失败: ${data?['message']}');
@@ -628,7 +617,7 @@ class ConversationService extends ChangeNotifier {
       final dio = await AccountService().getDio();
       final response = await dio.post('/api/conversation/$conversationId/join');
       final responseData = response.data;
-      final message = responseData?['message']?.toString() ?? '操作完成';
+      final message = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         return (success: true, message: message);
       } else {
@@ -649,7 +638,7 @@ class ConversationService extends ChangeNotifier {
       final dio = await AccountService().getDio();
       final response = await dio.delete('/api/conversation/$conversationId/quit');
       final responseData = response.data;
-      final message = responseData?['message']?.toString() ?? '操作完成';
+      final message = responseData?['message']?.toString() ?? '操作完成'.tr();
       if (responseData != null && responseData['success'] == true) {
         return (success: true, message: message);
       } else {
@@ -657,10 +646,10 @@ class ConversationService extends ChangeNotifier {
       }
     } on DioException catch (e) {
       _logger.e('退出群聊失败: $e');
-      return (success: false, message: '网络错误，请稍后重试');
+      return (success: false, message: '网络错误，请稍后重试'.tr());
     } catch (e) {
       _logger.e('退出群聊异常: $e');
-      return (success: false, message: '未知错误');
+      return (success: false, message: '未知错误'.tr());
     }
   }
 
@@ -676,10 +665,10 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } on DioException catch (e) {
       _logger.e('修改群头像失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     } catch (e) {
       _logger.e('修改群头像异常: $e');
-      return {'success': false, 'message': '未知错误', 'code': 200};
+      return {'success': false, 'message': '未知错误'.tr(), 'code': 200};
     }
   }
 
@@ -695,10 +684,10 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } on DioException catch (e) {
       _logger.e('修改群名称失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     } catch (e) {
       _logger.e('修改群名称异常: $e');
-      return {'success': false, 'message': '未知错误', 'code': 200};
+      return {'success': false, 'message': '未知错误'.tr(), 'code': 200};
     }
   }
 
@@ -714,10 +703,10 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } on DioException catch (e) {
       _logger.e('修改群公告失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     } catch (e) {
       _logger.e('修改群公告异常: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -759,7 +748,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('获取我的角色失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -775,7 +764,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('添加群管理员失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -791,7 +780,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('移除群管理员失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -807,7 +796,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('转让群主失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -819,7 +808,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('解散群聊失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -834,7 +823,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('设置群内禁言失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -850,7 +839,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('取消群内禁言失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -866,7 +855,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('踢出群成员失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -882,7 +871,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('邀请成员失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -897,7 +886,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('禁言成员失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -909,7 +898,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('解除禁言失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -921,7 +910,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('开启全体禁言失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
@@ -933,7 +922,7 @@ class ConversationService extends ChangeNotifier {
       return response.data;
     } catch (e) {
       _logger.e('关闭全体禁言失败: $e');
-      return {'success': false, 'message': '网络错误', 'code': 200};
+      return {'success': false, 'message': '网络错误'.tr(), 'code': 200};
     }
   }
 
