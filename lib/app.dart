@@ -5,6 +5,8 @@ import 'theme/app_theme.dart';
 import 'pages/home_page.dart';
 import 'pages/account/login_page.dart';
 import 'pages/account/register_page.dart';
+import 'pages/account/forgot_password_page.dart';
+import 'pages/account/reset_password_page.dart';
 import 'pages/company/company_page.dart';
 import 'pages/splash/splash_page.dart';
 import 'services/account_service.dart';
@@ -101,9 +103,7 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
           localizationsDelegates: context.localizationDelegates,
           builder: (context, child) {
             return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(themeService.textScale),
-              ),
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(themeService.textScale)),
               child: child!,
             );
           },
@@ -115,11 +115,20 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
             '/register': (context) => const RegisterPage(),
             '/login': (context) => const LoginPage(),
             '/home': (context) => const HomePage(),
+            '/forgot-password': (context) => const ForgotPasswordPage(),
+            '/reset-password': (context) => const ResetPasswordPage(account: ''),
           },
           // 全局路由拦截
           onGenerateRoute: (settings) {
             // 1. 定义白名单（允许未登录访问的页面）
-            const whiteList = {'/login', '/register', '/company', '/splash'}; // 使用 Set 集合，查找效率更高
+            const whiteList = {
+              '/login',
+              '/register',
+              '/company',
+              '/splash',
+              '/forgot-password',
+              '/reset-password',
+            }; // 使用 Set 集合，查找效率更高
             final bool isWhiteList = whiteList.contains(settings.name);
 
             // 2. 如果未登录且访问的不是白名单页面，强制跳转到登录页

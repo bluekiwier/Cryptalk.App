@@ -583,7 +583,7 @@ class AccountService extends ChangeNotifier {
       final dio = await getDio();
       final response = await dio.post(
         '/api/account/reset-password',
-        data: {'companyId': companyId, 'account': account, 'code': code, 'password': password},
+        data: {'companyId': companyId, 'account': account, 'code': code, 'newPassword': password},
         options: Options(extra: {'obfuscate': true}),
       );
       final responseData = response.data;

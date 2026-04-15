@@ -1,33 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/account_service.dart';
 import '../company/company_page.dart';
-import 'register_page.dart';
-import 'forgot_password_page.dart';
+import 'reset_password_page.dart';
 
-/// 登录页面
-/// 包含手机号/密码登录表单，以及跳转注册的入口
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _accountController = TextEditingController();
   final _accountService = AccountService();
 
-  bool _obscurePassword = true;
   bool _isLoading = false;
   String? _currentCompanyId;
 
-  // 动画控制器
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
@@ -39,11 +32,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.initState();
     _loadCurrentCompanyId();
 
-    // 淡入动画
     _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
-    // 滑入动画
     _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.3),
@@ -54,12 +45,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
 
-    // 启动动画
     _fadeController.forward();
     _slideController.forward();
   }
 
-  /// 加载当前 companyId
   Future<void> _loadCurrentCompanyId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -67,60 +56,59 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     });
   }
 
-  /// 切换到 CompanyPage
   void _navigateToCompanyPage() {
     Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const CompanyPage()));
   }
 
   @override
   void dispose() {
-    _phoneController.dispose();
-    _passwordController.dispose();
+    _accountController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
   }
 
-  /// 执行登录
-  Future<void> _handleLogin() async {
+  Future<void> _sendCode() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    final success = await _accountService.loginWithPhone(_phoneController.text.trim(), _passwordController.text);
+    final result = await _accountService.sendEmailCode(_accountController.text.trim());
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (success) {
-      // 登录成功，导航到首页
-      Navigator.of(context).pushReplacementNamed('/home');
+    if (result.success) {
+      _showSuccessSnackBar(result.message);
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (context) => ResetPasswordPage(account: _accountController.text.trim())));
+      }
     } else {
-      // 显示错误提示
-      _showErrorSnackBar(_accountService.errorMessage ?? '登录失败'.tr());
+      _showErrorSnackBar(result.message);
     }
   }
 
-  /// 跳转到注册页
-  void _navigateToRegister() {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const RegisterPage(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.accentColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
 
-  /// 显示错误提示
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -128,7 +116,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(message.tr())),
+            Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: AppTheme.badgeColor,
@@ -167,15 +155,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // const SizedBox(height: 10),
-                    // 品牌标识区域
                     _buildBrandSection(),
                     const SizedBox(height: 24),
-                    // 表单区域
                     _buildFormSection(),
                     const SizedBox(height: 32),
-                    // 注册入口
-                    _buildRegisterLink(),
+                    _buildBackButton(),
                     const SizedBox(height: 48),
                   ],
                 ),
@@ -187,7 +171,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  /// 构建品牌标识区域
   Widget _buildBrandSection() {
     return SlideTransition(
       position: _slideAnimation,
@@ -195,38 +178,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         opacity: _fadeAnimation,
         child: Column(
           children: [
-            // 应用图标
-            // Container(
-            //   width: 96,
-            //   height: 96,
-            //   decoration: BoxDecoration(color: Colors.transparent),
-            //   child: Center(
-            //     child: Image.asset(
-            //       'assets/images/logo@96.png',
-            //       width: 96,
-            //       height: 96,
-            //       fit: BoxFit.contain,
-            //     ),
-            //   ),
-            // ),
-            // const SizedBox(height: 10),
-            // 应用名称
-            Text(
-              '闲聊'.tr(),
+            const Text(
+              '闲聊',
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4),
             ),
             const SizedBox(height: 8),
-            Text(
-              '与朋友畅快聊天'.tr(),
-              style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 1),
-            ),
+            Text('重置密码', style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 1)),
           ],
         ),
       ),
     );
   }
 
-  /// 构建表单区域
   Widget _buildFormSection() {
     return SlideTransition(
       position: _formSlideAnimation,
@@ -246,98 +209,36 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 标题
-                Text(
-                  '欢迎回来'.tr(),
+                const Text(
+                  '找回密码',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '登录您的账号'.tr(),
+                  '输入您的账号，我们将发送验证码到您的邮箱',
                   style: TextStyle(fontSize: 14, color: AppTheme.textSecondary.withValues(alpha: 0.8)),
                 ),
                 const SizedBox(height: 16),
 
-                // 当前服务器信息
                 if (_currentCompanyId != null) _buildCompanyInfo(),
                 const SizedBox(height: 16),
 
-                // 手机号输入
-                _buildInputLabel('手机号'.tr()),
+                _buildInputLabel('账号'),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
+                  controller: _accountController,
                   style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-                  decoration: _buildInputDecoration(hintText: '请输入手机号'.tr(), prefixIcon: Icons.phone_android_rounded),
+                  decoration: _buildInputDecoration(hintText: '请输入账号', prefixIcon: Icons.person_rounded),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return '请输入手机号'.tr();
-                    }
-                    if (value.length != 11) {
-                      return '请输入11位手机号'.tr();
+                      return '请输入账号';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // 密码输入
-                _buildInputLabel('密码'.tr()),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-                  decoration: _buildInputDecoration(
-                    hintText: '请输入密码'.tr(),
-                    prefixIcon: Icons.lock_rounded,
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                        color: AppTheme.textHint,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '请输入密码'.tr();
-                    }
-                    if (value.length < 6) {
-                      return '密码长度不能少于6位'.tr();
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                // 忘记密码
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ForgotPasswordPage()));
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      '忘记密码？'.tr(),
-                      style: TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // 登录按钮
-                _buildLoginButton(),
+                _buildSendButton(),
               ],
             ),
           ),
@@ -346,7 +247,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  /// 构建公司信息显示
   Widget _buildCompanyInfo() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -364,7 +264,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '当前服务器'.tr(),
+                  '当前服务器',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary.withValues(alpha: 0.8),
@@ -399,7 +299,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  /// 构建输入框标签
   Widget _buildInputLabel(String label) {
     return Text(
       label,
@@ -407,7 +306,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  /// 构建输入框装饰
   InputDecoration _buildInputDecoration({required String hintText, required IconData prefixIcon, Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hintText,
@@ -437,8 +335,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  /// 构建登录按钮
-  Widget _buildLoginButton() {
+  Widget _buildSendButton() {
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -466,7 +363,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 ],
         ),
         child: ElevatedButton(
-          onPressed: _isLoading ? null : _handleLogin,
+          onPressed: _isLoading ? null : _sendCode,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
@@ -482,40 +379,31 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   ),
                 )
               : Text(
-                  '登录'.tr(),
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 2),
+                  '发送验证码'.tr(),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                  ),
                 ),
         ),
       ),
     );
   }
 
-  /// 构建注册链接
-  Widget _buildRegisterLink() {
+  Widget _buildBackButton() {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('还没有账号？'.tr(), style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
-          TextButton(
-            onPressed: _navigateToRegister,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              minimumSize: const Size(0, 36),
-            ),
-            child: Text(
-              '立即注册'.tr(),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
-                decorationColor: Colors.white,
-              ),
-            ),
-          ),
-        ],
+      child: TextButton.icon(
+        onPressed: () {
+          Navigator.of(context).pop();
+        },
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        label: Text(
+          '返回登录'.tr(),
+          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
