@@ -26,7 +26,7 @@ class AboutPage extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
-              '关于'.tr(),
+              '${'关于'.tr()}${AppConfig.appName}',
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             centerTitle: true,

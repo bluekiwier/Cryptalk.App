@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_switch.dart';
 import '../company/company_page.dart';
+import '../../services/theme_service.dart';
+import '../../services/database_service.dart';
+import '../../services/conversation_service.dart';
 
 /// 设置页面
 /// 包含通知、隐私、通用等设置项
@@ -19,6 +25,215 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _soundEnabled = true;
   bool _vibrateEnabled = true;
   bool _showPreview = true;
+  String _cacheSizeStr = '计算中...'.tr();
+  String _storageSizeStr = '计算中...'.tr();
+
+  double _tempDirSize = 0;
+  double _docDirSize = 0;
+  double _supportDirSize = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllSizes();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationEnabled = prefs.getBool('notificationEnabled') ?? true;
+        _soundEnabled = prefs.getBool('soundEnabled') ?? true;
+        _vibrateEnabled = prefs.getBool('vibrateEnabled') ?? true;
+      });
+    }
+  }
+
+  Future<void> _updateSetting(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+    if (key == 'vibrateEnabled' && value) {
+      // 开启振动时给予反馈
+      HapticFeedback.vibrate();
+    }
+  }
+
+  Future<void> _loadAllSizes() async {
+    try {
+      _tempDirSize = 0;
+      _docDirSize = 0;
+      _supportDirSize = 0;
+
+      final tempDir = await getTemporaryDirectory();
+      _tempDirSize = await _getTotalSizeOfFilesInDir(tempDir);
+
+      try {
+        final docDir = await getApplicationDocumentsDirectory();
+        _docDirSize = await _getTotalSizeOfFilesInDir(docDir);
+      } catch (_) {}
+
+      try {
+        final supportDir = await getApplicationSupportDirectory();
+        _supportDirSize = await _getTotalSizeOfFilesInDir(supportDir);
+      } catch (_) {}
+
+      if (mounted) {
+        setState(() {
+          _cacheSizeStr = _formatSize(_tempDirSize);
+          _storageSizeStr = _formatSize(_tempDirSize + _docDirSize + _supportDirSize);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cacheSizeStr = '未知'.tr();
+          _storageSizeStr = '未知'.tr();
+        });
+      }
+    }
+  }
+
+  Future<void> _showStorageDetails() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('存储空间详情'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.description_outlined, color: Colors.blue),
+              title: Text('应用文稿数据'.tr(), style: const TextStyle(fontSize: 14)),
+              trailing: Text(
+                _formatSize(_docDirSize),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.settings_system_daydream_outlined, color: Colors.purple),
+              title: Text('核心支持数据'.tr(), style: const TextStyle(fontSize: 14)),
+              trailing: Text(
+                _formatSize(_supportDirSize),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.cached_rounded, color: Colors.grey),
+              title: Text('临时缓存数据'.tr(), style: const TextStyle(fontSize: 14)),
+              trailing: Text(
+                _formatSize(_tempDirSize),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${'总计'.tr()} $_storageSizeStr',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('关闭'.tr()))],
+      ),
+    );
+  }
+
+  Future<double> _getTotalSizeOfFilesInDir(final FileSystemEntity file) async {
+    try {
+      if (file is File) {
+        int length = await file.length();
+        return double.parse(length.toString());
+      }
+      if (file is Directory) {
+        final List<FileSystemEntity> children = file.listSync();
+        double total = 0;
+        for (final FileSystemEntity child in children) {
+          total += await _getTotalSizeOfFilesInDir(child);
+        }
+        return total;
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  String _formatSize(double value) {
+    if (value == 0) return '0.00 B';
+    if (value < 1024) {
+      return '${value.toStringAsFixed(2)} B';
+    } else if (value < 1024 * 1024) {
+      return '${(value / 1024).toStringAsFixed(2)} KB';
+    } else if (value < 1024 * 1024 * 1024) {
+      return '${(value / (1024 * 1024)).toStringAsFixed(2)} MB';
+    } else {
+      return '${(value / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
+  }
+
+  Future<void> _clearCache() async {
+    if (_cacheSizeStr == '0.00 B' || _cacheSizeStr == '未知'.tr() || _cacheSizeStr == '计算中...'.tr()) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('暂无缓存可清理'.tr()), behavior: SnackBarBehavior.floating));
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('清除缓存'.tr()),
+        content: Text('确定要清除所有缓存数据吗？'.tr()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('确定'.tr(), style: const TextStyle(color: AppTheme.primaryColor)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      Directory tempDir = await getTemporaryDirectory();
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // 隐藏loading
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('缓存已清理'.tr()), behavior: SnackBarBehavior.floating));
+
+      _loadAllSizes();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // 隐藏loading
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('清理缓存失败'.tr()), behavior: SnackBarBehavior.floating));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +251,7 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-              title: Text(
+            title: Text(
               '设置'.tr(),
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
@@ -60,7 +275,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       iconColor: const Color(0xFF6C63FF),
                       label: '新消息通知'.tr(),
                       value: _notificationEnabled,
-                      onChanged: (v) => setState(() => _notificationEnabled = v),
+                      onChanged: (v) {
+                        setState(() => _notificationEnabled = v);
+                        _updateSetting('notificationEnabled', v);
+                      },
                     ),
                     _buildCardDivider(),
                     _buildSwitchItem(
@@ -68,7 +286,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       iconColor: const Color(0xFF00D9A6),
                       label: '声音'.tr(),
                       value: _soundEnabled,
-                      onChanged: (v) => setState(() => _soundEnabled = v),
+                      onChanged: (v) {
+                        setState(() => _soundEnabled = v);
+                        _updateSetting('soundEnabled', v);
+                      },
                     ),
                     _buildCardDivider(),
                     _buildSwitchItem(
@@ -76,16 +297,19 @@ class _SettingsPageState extends State<SettingsPage> {
                       iconColor: const Color(0xFFF97316),
                       label: '振动'.tr(),
                       value: _vibrateEnabled,
-                      onChanged: (v) => setState(() => _vibrateEnabled = v),
+                      onChanged: (v) {
+                        setState(() => _vibrateEnabled = v);
+                        _updateSetting('vibrateEnabled', v);
+                      },
                     ),
-                    _buildCardDivider(),
-                    _buildSwitchItem(
-                      icon: Icons.visibility_outlined,
-                      iconColor: const Color(0xFF3B82F6),
-                      label: '消息预览'.tr(),
-                      value: _showPreview,
-                      onChanged: (v) => setState(() => _showPreview = v),
-                    ),
+                    // _buildCardDivider(),
+                    // _buildSwitchItem(
+                    //   icon: Icons.visibility_outlined,
+                    //   iconColor: const Color(0xFF3B82F6),
+                    //   label: '消息预览'.tr(),
+                    //   value: _showPreview,
+                    //   onChanged: (v) => setState(() => _showPreview = v),
+                    // ),
                   ]),
 
                   const SizedBox(height: 20),
@@ -95,12 +319,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildCard([
                     _buildNavItem(icon: Icons.block_outlined, iconColor: const Color(0xFFEF4444), label: '黑名单'.tr()),
                     _buildCardDivider(),
-                    _buildNavItem(icon: Icons.lock_outline_rounded, iconColor: const Color(0xFF8B5CF6), label: '隐私权限'.tr()),
+                    _buildNavItem(
+                      icon: Icons.lock_outline_rounded,
+                      iconColor: const Color(0xFF8B5CF6),
+                      label: '隐私权限'.tr(),
+                    ),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.delete_outline_rounded,
                       iconColor: const Color(0xFFF97316),
                       label: '清除聊天记录'.tr(),
+                      onTap: _clearChatHistory,
                     ),
                   ]),
 
@@ -134,21 +363,24 @@ class _SettingsPageState extends State<SettingsPage> {
                       icon: Icons.font_download_outlined,
                       iconColor: const Color(0xFFFBBF24),
                       label: '字体大小'.tr(),
-                      subtitle: '标准'.tr(),
+                      subtitle: _fontSizeLabel(),
+                      onTap: _showFontSizePicker,
                     ),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.storage_outlined,
                       iconColor: const Color(0xFF22C55E),
                       label: '存储空间'.tr(),
-                      subtitle: '234 MB',
+                      subtitle: _storageSizeStr,
+                      onTap: _showStorageDetails,
                     ),
                     _buildCardDivider(),
                     _buildNavItem(
                       icon: Icons.cached_rounded,
                       iconColor: const Color(0xFF6B7280),
                       label: '清除缓存'.tr(),
-                      subtitle: '18.5 MB',
+                      subtitle: _cacheSizeStr,
+                      onTap: _clearCache,
                     ),
                   ]),
                 ],
@@ -222,7 +454,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('确认切换'.tr()),
+        title: Text('温馨提示'.tr()),
         content: Text('切换服务器将清除当前登录信息，确定要继续吗？'.tr()),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
@@ -255,6 +487,50 @@ class _SettingsPageState extends State<SettingsPage> {
     Navigator.of(
       context,
     ).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const CompanyPage()), (route) => false);
+  }
+
+  Future<void> _clearChatHistory() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('清除聊天记录'.tr()),
+        content: Text('确定要清除所有本地聊天记录吗？清除后不可恢复。'.tr()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('取消'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('确定'.tr(), style: const TextStyle(color: AppTheme.primaryColor)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await DatabaseService().clearAllChatHistory();
+      await ConversationService().notifyConversationListChanged();
+
+      if (!mounted) return;
+      Navigator.pop(context); // 隐藏loading
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('聊天记录已清除'.tr()), behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // 隐藏loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('清除失败'.tr()), behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 
   /// 导航选项
@@ -304,14 +580,8 @@ class _SettingsPageState extends State<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              title: Text('简体中文'.tr()),
-              onTap: () => Navigator.pop(dialogContext, const Locale('zh', 'CN')),
-            ),
-            ListTile(
-              title: Text('英文'.tr()),
-              onTap: () => Navigator.pop(dialogContext, const Locale('en', 'US')),
-            ),
+            ListTile(title: Text('简体中文'.tr()), onTap: () => Navigator.pop(dialogContext, const Locale('zh', 'CN'))),
+            ListTile(title: Text('英文'.tr()), onTap: () => Navigator.pop(dialogContext, const Locale('en', 'US'))),
           ],
         ),
       ),
@@ -321,6 +591,49 @@ class _SettingsPageState extends State<SettingsPage> {
       await context.setLocale(selected);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('selectedLocale', selected.toLanguageTag());
+      setState(() {});
+    }
+  }
+
+  String _fontSizeLabel() {
+    final scale = ThemeService().textScale;
+    if (scale <= 0.8) return '小'.tr();
+    if (scale == 1.0) return '标准'.tr();
+    if (scale == 1.2) return '大'.tr();
+    if (scale >= 1.4) return '特大'.tr();
+    return '标准'.tr();
+  }
+
+  Future<void> _showFontSizePicker() async {
+    if (!mounted) return;
+
+    final currentScale = ThemeService().textScale;
+    double? selected = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('字体大小'.tr()),
+        content: RadioGroup<double>(
+          groupValue: currentScale,
+          onChanged: (val) {
+            if (val != null) {
+              Navigator.pop(dialogContext, val);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<double>(title: Text('小'.tr()), value: 0.8, activeColor: AppTheme.primaryColor),
+              RadioListTile<double>(title: Text('标准'.tr()), value: 1.0, activeColor: AppTheme.primaryColor),
+              RadioListTile<double>(title: Text('大'.tr()), value: 1.2, activeColor: AppTheme.primaryColor),
+              RadioListTile<double>(title: Text('特大'.tr()), value: 1.4, activeColor: AppTheme.primaryColor),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (selected != null && mounted) {
+      await ThemeService().setTextScale(selected);
       setState(() {});
     }
   }

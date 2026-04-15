@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logger/logger.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app.dart';
 import 'conversation_service.dart';
 import 'user_service.dart';
@@ -191,27 +192,37 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    // 读取用户设置
+    final prefs = await SharedPreferences.getInstance();
+    final bool notificationEnabled = prefs.getBool('notificationEnabled') ?? true; // 通知设置：新消息通知
+    final bool soundEnabled = prefs.getBool('soundEnabled') ?? true; // 通知设置：声音
+    final bool vibrateEnabled = prefs.getBool('vibrateEnabled') ?? true; // 通知设置：振动
+
+    if (!notificationEnabled) return;
+
     // Android 通知详情配置
-    const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
+    final AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
       'chat_messages', // 渠道 ID
       '聊天消息', // 渠道名称
       channelDescription: '显示接收到的聊天消息',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
+      playSound: soundEnabled,
+      enableVibration: vibrateEnabled,
       // 这里的配置决定了通知是否显示为横幅
       fullScreenIntent: false,
       visibility: NotificationVisibility.public,
     );
 
     // iOS 通知详情配置
-    const DarwinNotificationDetails darwinNotificationDetails = DarwinNotificationDetails(
+    final DarwinNotificationDetails darwinNotificationDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: soundEnabled,
     );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
+    final NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
       iOS: darwinNotificationDetails,
       macOS: darwinNotificationDetails,

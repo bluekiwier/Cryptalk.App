@@ -99,6 +99,14 @@ class _CryptalkAppState extends State<CryptalkApp> with WidgetsBindingObserver {
           locale: context.locale,
           supportedLocales: context.supportedLocales,
           localizationsDelegates: context.localizationDelegates,
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(themeService.textScale),
+              ),
+              child: child!,
+            );
+          },
           // 初始页面：显示启动页检查 companyId
           home: const SplashPage(),
           // 命名路由表

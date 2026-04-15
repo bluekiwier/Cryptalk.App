@@ -81,7 +81,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '为了账号安全，密码长度需为 6~20 个字符，\n建议使用字母、数字和特殊字符的组合。'.tr(),
+                        '为了账号安全，密码长度为 6~20 个字符，\n建议使用字母、数字和特殊字符的组合。'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           color: AppTheme.primaryColor.withValues(alpha: 0.8),
@@ -116,7 +116,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               const SizedBox(height: 8),
               _buildPasswordField(
                 controller: _newPasswordController,
-                hintText: '请输入新密码（6~20位）'.tr(),
+                hintText: '请输入新密码(6~20位)'.tr(),
                 isVisible: _showNewPassword,
                 onToggle: () => setState(() => _showNewPassword = !_showNewPassword),
                 validator: (v) {

@@ -548,6 +548,32 @@ class DatabaseService {
     );
   }
 
+  /// 清除所有本地聊天记录
+  /// 在清除前需要将各个会话的最新 seq_id 更新到 conversation 表中的 last_seq_id 上
+  Future<void> clearAllChatHistory() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // 1. 对于每个会话，找到其目前本地最大的 seq_id
+      // 并更新到 conversation 表的 last_seq_id
+      await txn.execute('''
+        UPDATE ${ConversationEntity.tableName}
+        SET ${ConversationEntity.lastSeqId} = COALESCE(
+          (SELECT MAX(${ConversationMessageEntity.seqId}) 
+           FROM ${ConversationMessageEntity.tableName} 
+           WHERE ${ConversationMessageEntity.tableName}.${ConversationMessageEntity.conversationId} = ${ConversationEntity.tableName}.${ConversationEntity.id}),
+          ${ConversationEntity.lastSeqId}
+        ),
+        ${ConversationEntity.lastMessageId} = '',
+        ${ConversationEntity.lastMessagePreview} = '',
+        ${ConversationEntity.lastMessageAt} = NULL,
+        ${ConversationEntity.unreadCount} = 0
+      ''');
+
+      // 2. 删除所有消息记录
+      await txn.delete(ConversationMessageEntity.tableName);
+    });
+  }
+
   /// 关闭数据库
   Future<void> close() async {
     await _database?.close();

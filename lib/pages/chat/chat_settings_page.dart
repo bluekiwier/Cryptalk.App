@@ -199,7 +199,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
                 backgroundColor: Colors.white,
               ),
               const SizedBox(height: 10),
-              Text(_groupName, style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              Text(_groupName, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
               const SizedBox(height: 20),
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭')),
             ],
@@ -297,7 +297,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     final isGroup = widget.conversation.isGroup;
 
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
         elevation: 0,
@@ -308,7 +308,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          isGroup ? '群设置' : '聊天设置',
+          isGroup ? '群设置'.tr() : '聊天设置'.tr(),
           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -389,11 +389,11 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
       decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(10)),
       child: ListTile(
         leading: Icon(icon, color: AppTheme.primaryColor),
-        title: Text(title, style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary)),
+        title: Text(title, style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
         subtitle: subtitle != null
             ? Text(
                 subtitle,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 maxLines: subtitleMaxLines,
                 overflow: TextOverflow.ellipsis,
               )

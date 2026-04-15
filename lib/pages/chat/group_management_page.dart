@@ -473,7 +473,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         flexibleSpace: Container(decoration: AppTheme.getAppBarDecoration(context)),
         elevation: 0,
@@ -570,7 +570,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
   /// 构建群成员列表
   Widget _buildMemberList() {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       child: Column(
         children: _filteredMembers.map((member) {
           final nickname = member['nickname'] ?? member['name'] ?? '未知'.tr();
@@ -584,7 +584,10 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
               child: avatar.isEmpty ? const Icon(Icons.person) : null,
             ),
             title: Text(nickname),
-            subtitle: Text(isOwner ? '群主'.tr() : (isAdmin ? '管理员'.tr() : '')),
+            subtitle: Text(
+              isOwner ? '群主'.tr() : (isAdmin ? '管理员'.tr() : ''),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
             trailing: const Icon(Icons.chevron_right, color: Colors.grey),
             onTap: () => _showMemberActions(context, member),
           );
@@ -597,7 +600,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -656,7 +659,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
         InkWell(
           onTap: _isUpdatingAvatar ? null : _pickAndUploadAvatar,
           child: Container(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

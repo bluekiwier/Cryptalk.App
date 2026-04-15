@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../services/account_service.dart';
+import '../../services/config_service.dart';
 
 /// 注册页面
 /// 包含手机号、昵称、密码、确认密码输入，以及用户协议勾选
@@ -27,6 +30,10 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
   bool _agreeToTerms = false;
   bool _isLoading = false;
 
+  // 协议跳转
+  late TapGestureRecognizer _agreementRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
+
   // 动画控制器
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -37,6 +44,9 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();
+
+    _agreementRecognizer = TapGestureRecognizer()..onTap = _showAgreement;
+    _privacyRecognizer = TapGestureRecognizer()..onTap = _showPrivacy;
   }
 
   @override
@@ -47,6 +57,8 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     _confirmPasswordController.dispose();
     _invitationCodeController.dispose();
     _fadeController.dispose();
+    _agreementRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -76,6 +88,40 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } else {
       _showErrorSnackBar(_accountService.errorMessage ?? '注册失败'.tr());
+    }
+  }
+
+  /// 显示用户协议
+  void _showAgreement() async {
+    final url = await ConfigService().getUrlWithCache('agreement');
+    if (url != null && url.isNotEmpty) {
+      final uri = Uri.parse(url);
+      try {
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          _showErrorSnackBar('无法打开链接'.tr());
+        }
+      } catch (e) {
+        _showErrorSnackBar('链接格式错误'.tr());
+      }
+    } else {
+      _showErrorSnackBar('暂未配置协议地址'.tr());
+    }
+  }
+
+  /// 显示隐私政策
+  void _showPrivacy() async {
+    final url = await ConfigService().getUrlWithCache('privacy');
+    if (url != null && url.isNotEmpty) {
+      final uri = Uri.parse(url);
+      try {
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          _showErrorSnackBar('无法打开链接'.tr());
+        }
+      } catch (e) {
+        _showErrorSnackBar('链接格式错误'.tr());
+      }
+    } else {
+      _showErrorSnackBar('暂未配置隐私政策地址'.tr());
     }
   }
 
@@ -126,7 +172,6 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                       opacity: _fadeAnimation,
                       child: Column(
                         children: [
-                          const SizedBox(height: 16),
                           _buildHeader(),
                           const SizedBox(height: 32),
                           _buildFormCard(),
@@ -156,6 +201,10 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 22),
           ),
+          // Text(
+          //   '注册'.tr(),
+          //   style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1),
+          // ),
           const Spacer(),
         ],
       ),
@@ -168,7 +217,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
       children: [
         const SizedBox(height: 16),
         Text(
-          '创建新账号'.tr(),
+          '注册新账号'.tr(),
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
         ),
         const SizedBox(height: 8),
@@ -200,7 +249,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
               controller: _phoneController,
               keyboardType: TextInputType.phone,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
-              style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+              style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary),
               decoration: _buildInputDecoration(hintText: '请输入手机号'.tr(), prefixIcon: Icons.phone_android_rounded),
               validator: (value) {
                 if (value == null || value.isEmpty) return '请输入手机号'.tr();
@@ -215,7 +264,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameController,
-              style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+              style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary),
               decoration: _buildInputDecoration(hintText: '给自己取个名字吧'.tr(), prefixIcon: Icons.face_rounded),
               validator: (value) {
                 if (value == null || value.isEmpty) return '请输入昵称'.tr();
@@ -231,7 +280,7 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+              style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary),
               decoration: _buildInputDecoration(
                 hintText: '设置6位以上密码'.tr(),
                 prefixIcon: Icons.lock_rounded,
@@ -376,11 +425,13 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                   TextSpan(
                     text: '《用户协议》'.tr(),
                     style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                    recognizer: _agreementRecognizer,
                   ),
                   TextSpan(text: ' 和 '.tr()),
                   TextSpan(
                     text: '《隐私政策》'.tr(),
                     style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                    recognizer: _privacyRecognizer,
                   ),
                 ],
               ),

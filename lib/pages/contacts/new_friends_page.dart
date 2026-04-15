@@ -85,7 +85,7 @@ class _NewFriendsPageState extends State<NewFriendsPage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -122,6 +122,7 @@ class _NewFriendsPageState extends State<NewFriendsPage> with SingleTickerProvid
           GestureDetector(
             onTap: _loadPendingRequests,
             child: Container(
+              margin: EdgeInsets.only(right: 15),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.15),

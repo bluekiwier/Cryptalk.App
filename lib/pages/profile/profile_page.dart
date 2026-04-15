@@ -252,7 +252,7 @@ class ProfilePage extends StatelessWidget {
                 icon: Icons.info_outline_rounded,
                 iconColor: const Color(0xFF06B6D4),
                 label: '${'关于'.tr()}${AppConfig.appName}',
-                subtitle: '${'Version'.tr()} $version',
+                subtitle: '${'版本'.tr()} $version',
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutPage()));
                 },

@@ -379,16 +379,16 @@ class AccountService extends ChangeNotifier {
         }
         return loggedIn;
       } else {
-        _errorMessage = responseData?['message'] ?? '注册失败';
+        _errorMessage = responseData?['message'] ?? '注册失败'.tr();
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } on DioException catch (e) {
       if (e.response != null && e.response?.data != null && e.response?.data is Map) {
-        _errorMessage = e.response?.data['message'] ?? '注册失败';
+        _errorMessage = e.response?.data['message'] ?? '注册失败'.tr();
       } else {
-        _errorMessage = '网络错误：无法连接到服务器';
+        _errorMessage = '网络错误：无法连接到服务器'.tr();
       }
       _isLoading = false;
       notifyListeners();
@@ -550,5 +550,51 @@ class AccountService extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  /// 发送重置密码验证码邮件
+  Future<({bool success, String message})> sendEmailCode(String account) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final companyId = prefs.getString('companyId');
+      final dio = await getDio();
+      final response = await dio.post(
+        '/api/account/send-email-code',
+        data: {'companyId': companyId, 'account': account},
+        options: Options(extra: {'obfuscate': true}),
+      );
+      final responseData = response.data;
+      final message = responseData?['message']?.toString() ?? '操作完成'.tr();
+      if (responseData != null && responseData['success'] == true) {
+        return (success: true, message: message);
+      } else {
+        return (success: false, message: message);
+      }
+    } catch (e) {
+      return (success: false, message: '网络错误，请稍后重试'.tr());
+    }
+  }
+
+  /// 重置密码
+  Future<({bool success, String message})> resetPassword(String account, String code, String password) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final companyId = prefs.getString('companyId');
+      final dio = await getDio();
+      final response = await dio.post(
+        '/api/account/reset-password',
+        data: {'companyId': companyId, 'account': account, 'code': code, 'password': password},
+        options: Options(extra: {'obfuscate': true}),
+      );
+      final responseData = response.data;
+      final message = responseData?['message']?.toString() ?? '操作完成'.tr();
+      if (responseData != null && responseData['success'] == true) {
+        return (success: true, message: message);
+      } else {
+        return (success: false, message: message);
+      }
+    } catch (e) {
+      return (success: false, message: '网络错误，请稍后重试'.tr());
+    }
   }
 }

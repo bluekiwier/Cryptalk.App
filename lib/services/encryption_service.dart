@@ -64,7 +64,7 @@ class EncryptionService {
       final requestData = {'companyId': companyId};
       final dio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl));
       //final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final response = await dio.post('/api/account/public-key', data: requestData);
+      final response = await dio.post('/api/config/public-key', data: requestData);
       if (response.statusCode == 200 && response.data['success'] == true) {
         final data = response.data['data'];
         _publicKeyString = data['key'];

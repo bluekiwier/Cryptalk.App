@@ -163,7 +163,9 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(message)),
+            Expanded(
+              child: Text(message.tr(), style: TextStyle(color: Colors.white)),
+            ),
           ],
         ),
         backgroundColor: AppTheme.badgeColor,
@@ -194,37 +196,44 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
           ),
         ],
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF6C63FF), Color(0xFF897CFF), Color(0xFFB4AEFF)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      body: GestureDetector(
+        onTap: () {
+          if (_showHistory) {
+            setState(() => _showHistory = false);
+          }
+          FocusScope.of(context).unfocus();
+        },
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6C63FF), Color(0xFF897CFF), Color(0xFFB4AEFF)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight:
-                    MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top -
-                    MediaQuery.of(context).padding.bottom,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildBrandSection(),
-                    const SizedBox(height: 24),
-                    _buildFormSection(),
-                    if (_showHistory && _companyHistory.isNotEmpty) _buildHistorySection(),
-                    const SizedBox(height: 48),
-                  ],
+          child: SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight:
+                      MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildBrandSection(),
+                      const SizedBox(height: 24),
+                      _buildFormSection(),
+                      const SizedBox(height: 48),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -242,12 +251,12 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
         child: Column(
           children: [
             Text(
-              '闲聊'.tr(),
+              AppConfig.appName.tr(),
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4),
             ),
             const SizedBox(height: 8),
             Text(
-              '欢迎加入闲聊,服务器由购买方自主运营'.tr(),
+              '欢迎加入${AppConfig.appName},服务器由购买方自主运营'.tr(),
               style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 1),
             ),
           ],
@@ -272,41 +281,62 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
           ),
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                Stack(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextFormField(
-                      controller: _companyIdController,
-                      style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
-                      decoration: _buildInputDecoration(hintText: '请输入公司ID'.tr(), prefixIcon: Icons.business_rounded),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '请输入公司ID'.tr();
-                        }
-                        return null;
-                      },
-                    ),
-                    if (_companyHistory.isNotEmpty)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: IconButton(
-                          icon: Icon(
-                            _showHistory ? Icons.expand_less : Icons.expand_more,
-                            color: AppTheme.primaryColor,
+                    Stack(
+                      children: [
+                        TextFormField(
+                          controller: _companyIdController,
+                          style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+                          decoration: _buildInputDecoration(
+                            hintText: '请输入公司ID'.tr(),
+                            prefixIcon: Icons.business_rounded,
                           ),
-                          onPressed: () {
-                            setState(() => _showHistory = !_showHistory);
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return '请输入公司ID'.tr();
+                            }
+                            return null;
                           },
                         ),
-                      ),
+                        if (_companyHistory.isNotEmpty)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: IconButton(
+                              icon: Icon(
+                                _showHistory ? Icons.expand_less : Icons.expand_more,
+                                color: AppTheme.primaryColor,
+                              ),
+                              onPressed: () {
+                                setState(() => _showHistory = !_showHistory);
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildJoinButton(),
                   ],
                 ),
-                const SizedBox(height: 24),
-
-                _buildJoinButton(),
+                // 悬浮下拉历史记录 - 放在 Stack 最后以确保显示在最顶层
+                if (_showHistory && _companyHistory.isNotEmpty)
+                  Positioned(
+                    top: 60,
+                    left: 0,
+                    right: 0,
+                    child: Material(
+                      elevation: 8,
+                      shadowColor: Colors.black.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.white,
+                      child: _buildHistorySection(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -315,15 +345,11 @@ class _CompanyPageState extends State<CompanyPage> with TickerProviderStateMixin
     );
   }
 
+  /// 历史记录下拉列表
   Widget _buildHistorySection() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(top: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

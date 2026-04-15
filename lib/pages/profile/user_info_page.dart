@@ -279,7 +279,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
               child: Text(
                 value,
                 textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 15, color: onTap != null ? AppTheme.textPrimary : AppTheme.textHint),
+                style: TextStyle(
+                  fontSize: 15,
+                  color: onTap != null ? Theme.of(context).colorScheme.onSurface : AppTheme.textHint,
+                ),
                 maxLines: isLongText ? 2 : 1,
                 overflow: TextOverflow.ellipsis,
               ),
